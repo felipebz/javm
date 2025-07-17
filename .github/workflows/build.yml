@@ -8,13 +8,8 @@ on:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        go-version: [1.24.x]
+    name: Build
+    runs-on: ubuntu-latest
 
     steps:
     - name: Check out code
@@ -22,10 +17,10 @@ jobs:
       with:
         fetch-depth: 0  # Needed to get the version from git describe
 
-    - name: Set up Go ${{ matrix.go-version }}
+    - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: 1.24.x
         cache: true
 
     - name: Install dependencies
@@ -35,13 +30,12 @@ jobs:
       run: make test
 
     - name: Build
-      run: make build
+      run: make build-release
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: jabba-${{ runner.os }}
+        name: jabba
         path: |
-          jabba
-          jabba.exe
+          release/**
         if-no-files-found: ignore

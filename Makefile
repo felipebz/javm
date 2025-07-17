@@ -3,7 +3,6 @@ VERSION := $(shell git describe --tags --abbrev=0)
 
 fetch:
 	go get \
-	github.com/mitchellh/gox \
 	github.com/modocache/gover \
 	github.com/aktau/github-release
 
@@ -29,10 +28,18 @@ build:
 	go build -ldflags "-s -w -X main.version=${VERSION}"
 
 build-release:
-	GOARM=7 gox -verbose \
-	-ldflags "-X main.version=${VERSION}" \
-	-osarch="windows/amd64 linux/386 linux/amd64 darwin/amd64 linux/arm linux/arm64" \
-	-output="release/{{.Dir}}-${VERSION}-{{.OS}}-{{.Arch}}" .
+	mkdir -p release
+	# Windows
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -X main.version=${VERSION}" -o release/jabba-${VERSION}-windows-amd64.exe
+	GOOS=windows GOARCH=arm64 go build -ldflags "-s -w -X main.version=${VERSION}" -o release/jabba-${VERSION}-windows-arm64.exe
+
+	# Linux
+	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.version=${VERSION}" -o release/jabba-${VERSION}-linux-amd64
+	GOOS=linux GOARCH=arm64 go build -ldflags "-s -w -X main.version=${VERSION}" -o release/jabba-${VERSION}-linux-arm64
+
+	# macOS
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w -X main.version=${VERSION}" -o release/jabba-${VERSION}-darwin-amd64
+	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w -X main.version=${VERSION}" -o release/jabba-${VERSION}-darwin-arm64
 
 install: build
 	JABBA_MAKE_INSTALL=true JABBA_VERSION=${VERSION} sh install.sh
