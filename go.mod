@@ -12,6 +12,7 @@ require (
 	github.com/spf13/pflag v1.0.7
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
