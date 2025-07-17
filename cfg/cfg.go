@@ -1,8 +1,8 @@
 package cfg
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"github.com/mitchellh/go-homedir"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 )

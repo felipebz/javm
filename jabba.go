@@ -13,10 +13,10 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	log "github.com/Sirupsen/logrus"
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/shyiko/jabba/command"
 	"github.com/shyiko/jabba/semver"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

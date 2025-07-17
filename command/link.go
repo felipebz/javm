@@ -2,9 +2,9 @@ package command
 
 import (
 	"errors"
-	log "github.com/Sirupsen/logrus"
 	"github.com/shyiko/jabba/cfg"
 	"github.com/shyiko/jabba/semver"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"runtime"
