@@ -1,7 +1,6 @@
 package fileiter
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,7 +12,7 @@ func TestDFS(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	dir, err := ioutil.TempDir("", "fileiter_test")
+	dir, err := os.MkdirTemp("", "fileiter_test")
 	ok(err)
 	ok(touch(dir, "a", "b", "c"))
 	ok(touch(dir, "b", "c"))
@@ -39,7 +38,7 @@ func TestBFS(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	dir, err := ioutil.TempDir("", "fileiter_test")
+	dir, err := os.MkdirTemp("", "fileiter_test")
 	ok(err)
 	ok(touch(dir, "a", "b", "c"))
 	ok(touch(dir, "b", "c"))
@@ -65,7 +64,7 @@ func TestNew(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	dir, err := ioutil.TempDir("", "fileiter_test")
+	dir, err := os.MkdirTemp("", "fileiter_test")
 	ok(err)
 	ok(touch(dir, "a", "b"))
 	if it := New(filepath.Join(dir, "a", "b")); it.Err() != nil || it.IsDir() {
@@ -99,7 +98,7 @@ func touch(path ...string) error {
 	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filename, nil, 0755); err != nil {
+	if err := os.WriteFile(filename, nil, 0755); err != nil {
 		return err
 	}
 	return nil

@@ -3,7 +3,7 @@ package command
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -56,7 +56,7 @@ func fetch(url string) (content []byte, err error) {
 	if res.StatusCode >= 400 {
 		return nil, errors.New("GET " + url + " returned " + strconv.Itoa(res.StatusCode))
 	}
-	content, err = ioutil.ReadAll(res.Body)
+	content, err = io.ReadAll(res.Body)
 	if err != nil {
 		return
 	}

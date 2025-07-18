@@ -9,6 +9,15 @@ import (
 	"time"
 )
 
+type DirEntryMock string
+
+func (d DirEntryMock) Name() string      { return string(d) }
+func (d DirEntryMock) IsDir() bool       { return true }
+func (d DirEntryMock) Type() os.FileMode { return os.FileMode(0) }
+func (d DirEntryMock) Info() (os.FileInfo, error) {
+	return FileInfoMock(d), nil
+}
+
 type FileInfoMock string
 
 func (f FileInfoMock) Name() string       { return string(f) }
@@ -23,9 +32,9 @@ func TestUse(t *testing.T) {
 	defer func() { os.Setenv("PATH", prevPath) }()
 	var prevReadDir = readDir
 	defer func() { readDir = prevReadDir }()
-	readDir = func(dirname string) ([]os.FileInfo, error) {
-		return []os.FileInfo{
-			FileInfoMock("1.6.0"), FileInfoMock("1.7.0"), FileInfoMock("1.7.2"), FileInfoMock("1.8.0"),
+	readDir = func(dirname string) ([]os.DirEntry, error) {
+		return []os.DirEntry{
+			DirEntryMock("1.6.0"), DirEntryMock("1.7.0"), DirEntryMock("1.7.2"), DirEntryMock("1.8.0"),
 		}, nil
 	}
 	os.Setenv("PATH", "/usr/local/bin:"+cfg.Dir()+"/jdk/1.6.0/bin:/usr/bin")

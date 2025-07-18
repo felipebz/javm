@@ -14,7 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/xi2/xz"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -141,7 +140,7 @@ func Install(selector string, dst string) (string, error) {
 }
 
 func isEmptyDir(name string) (bool, error) {
-	entries, err := ioutil.ReadDir(name)
+	entries, err := os.ReadDir(name)
 	if err != nil {
 		return false, err
 	}
@@ -169,7 +168,7 @@ func (self RedirectTracer) RoundTrip(req *http.Request) (resp *http.Response, er
 }
 
 func download(url string, fileType string) (file string, err error) {
-	tmp, err := ioutil.TempFile("", "jabba-d-")
+	tmp, err := os.CreateTemp("", "jabba-d-")
 	if err != nil {
 		return
 	}
@@ -330,7 +329,7 @@ func assertJavaDistribution(dir string, goos string) error {
 }
 
 func installFromDmg(src string, dst string) error {
-	tmp, err := ioutil.TempDir("", "jabba-i-")
+	tmp, err := os.MkdirTemp("", "jabba-i-")
 	if err != nil {
 		return err
 	}
@@ -421,7 +420,7 @@ func installOnWindows(file string, fileType string, dst string) (err error) {
 }
 
 func installFromBin(src string, dst string) (err error) {
-	tmp, err := ioutil.TempDir("", "jabba-i-")
+	tmp, err := os.MkdirTemp("", "jabba-i-")
 	if err != nil {
 		return
 	}
@@ -435,7 +434,7 @@ func installFromBin(src string, dst string) (err error) {
 }
 
 func installFromIa(src string, dst string) error {
-	tmp, err := ioutil.TempDir("", "jabba-i-")
+	tmp, err := os.MkdirTemp("", "jabba-i-")
 	if err != nil {
 		return err
 	}

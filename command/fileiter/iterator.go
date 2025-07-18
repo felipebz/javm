@@ -1,7 +1,6 @@
 package fileiter
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -44,12 +43,14 @@ func (w *Iterator) Next() bool {
 	}
 	if !w.head.skip && w.head.err == nil && w.head.stat.IsDir() {
 		path := filepath.Join(w.head.dir, w.head.stat.Name())
-		if ff, err := ioutil.ReadDir(path); len(ff) != 0 { // sorts ASC
+		ff, err := os.ReadDir(path)
+		if len(ff) != 0 {
 			if err == nil {
 				if w.breadthFirst {
 					// add one-by-one to the tail
 					for _, f := range ff {
-						w.tail.next = &node{path, f, nil, false, nil}
+						info, _ := f.Info()
+						w.tail.next = &node{path, info, nil, false, nil}
 						w.tail = w.tail.next
 					}
 					return w.next(w.head.next)
@@ -57,7 +58,8 @@ func (w *Iterator) Next() bool {
 					w.head = w.head.next // drop current
 					// add one-by-one to the head (in reverse order)
 					for i := len(ff) - 1; i > -1; i-- {
-						w.head = &node{path, ff[i], nil, false, w.head}
+						info, _ := ff[i].Info()
+						w.head = &node{path, info, nil, false, w.head}
 					}
 					return w.next(w.head)
 				}

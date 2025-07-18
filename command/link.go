@@ -44,7 +44,8 @@ func LinkLatest() error {
 	}
 	cache := make(map[string]string)
 	for _, f := range files {
-		if f.IsDir() || f.Mode()&os.ModeSymlink == os.ModeSymlink {
+		info, _ := f.Info()
+		if f.IsDir() || info.Mode()&os.ModeSymlink == os.ModeSymlink {
 			sourceVersion := f.Name()
 			if strings.Count(sourceVersion, ".") == 1 && !strings.HasPrefix(sourceVersion, "system@") {
 				target := GetLink(sourceVersion)

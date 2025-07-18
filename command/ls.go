@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/semver"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
-var readDir = ioutil.ReadDir
+var readDir = os.ReadDir
 
 func Ls() ([]*semver.Version, error) {
 	files, _ := readDir(filepath.Join(cfg.Dir(), "jdk"))
 	var r []*semver.Version
 	for _, f := range files {
-		if f.IsDir() || (f.Mode()&os.ModeSymlink == os.ModeSymlink && strings.HasPrefix(f.Name(), "system@")) {
+		info, _ := f.Info()
+		if f.IsDir() || (info.Mode()&os.ModeSymlink == os.ModeSymlink && strings.HasPrefix(f.Name(), "system@")) {
 			v, err := semver.ParseVersion(f.Name())
 			if err != nil {
 				return nil, err

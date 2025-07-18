@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime"
@@ -360,7 +359,7 @@ type jabbarc struct {
 }
 
 func rc() (rc jabbarc) {
-	b, err := ioutil.ReadFile(".jabbarc")
+	b, err := os.ReadFile(".jabbarc")
 	if err != nil {
 		return
 	}
@@ -388,7 +387,7 @@ func use(ver string) error {
 func printForShellToEval(out []string) {
 	fd3, _ := rootCmd.Flags().GetString("fd3")
 	if fd3 != "" {
-		ioutil.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0666)
+		os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0666)
 	} else {
 		fd3 := os.NewFile(3, "fd3")
 		for _, line := range out {

@@ -1,7 +1,6 @@
 package command
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +17,7 @@ func TestBinJavaRelocation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	dir, err := ioutil.TempDir("", "install_test")
+	dir, err := os.MkdirTemp("", "install_test")
 	ok(err)
 	for _, scenario := range []struct {
 		os     string
@@ -84,7 +83,7 @@ func touch(path ...string) error {
 	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filename, nil, 0755); err != nil {
+	if err := os.WriteFile(filename, nil, 0755); err != nil {
 		return err
 	}
 	return nil
