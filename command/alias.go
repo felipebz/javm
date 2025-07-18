@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/shyiko/jabba/cfg"
+	"github.com/felipebz/javm/cfg"
 	"io/ioutil"
 	"os"
 	"path/filepath"

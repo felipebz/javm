@@ -1,4 +1,4 @@
-module github.com/shyiko/jabba
+module github.com/felipebz/javm
 
 go 1.24
 

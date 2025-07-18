@@ -22,7 +22,7 @@ func Dir() string {
 func Index() string {
 	registry := os.Getenv("JABBA_INDEX")
 	if registry == "" {
-		registry = "https://github.com/shyiko/jabba/raw/master/index.json"
+		registry = "https://github.com/felipebz/javm/raw/master/index.json"
 	}
 	return registry
 }

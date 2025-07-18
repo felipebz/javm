@@ -2,8 +2,8 @@ package command
 
 import (
 	"errors"
-	"github.com/shyiko/jabba/cfg"
-	"github.com/shyiko/jabba/semver"
+	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/semver"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"

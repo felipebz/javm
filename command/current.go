@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/shyiko/jabba/cfg"
+	"github.com/felipebz/javm/cfg"
 	"os"
 	"os/exec"
 	"path/filepath"
