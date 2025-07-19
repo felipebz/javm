@@ -1,6 +1,5 @@
-jabba
+javm
 coverage.html
-release
-vendor
+dist/
 .tmp
 .idea
