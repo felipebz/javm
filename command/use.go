@@ -21,12 +21,13 @@ func Use(selector string) ([]string, error) {
 }
 
 func usePath(path string) ([]string, error) {
+	sep := string(os.PathListSeparator)
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
 	pth, _ := os.LookupEnv("PATH")
-	rgxp := regexp.MustCompile(regexp.QuoteMeta(filepath.Join(cfg.Dir(), "jdk")) + "[^:]+[:]")
+	rgxp := regexp.MustCompile(regexp.QuoteMeta(filepath.Join(cfg.Dir(), "jdk")) + "[^" + sep + "]+[" + sep + "]")
 	// strip references to ~/.jabba/jdk/*, otherwise leave unchanged
 	pth = rgxp.ReplaceAllString(pth, "")
 	if runtime.GOOS == "darwin" {

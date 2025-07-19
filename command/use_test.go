@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/felipebz/javm/cfg"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
@@ -29,6 +30,15 @@ func (f FileInfoMock) Sys() interface{}   { return nil }
 
 func TestUse(t *testing.T) {
 	prevPath := os.Getenv("PATH")
+	sep := string(os.PathListSeparator)
+
+	var suffix string
+	if runtime.GOOS == "darwin" {
+		suffix = "/Contents/Home"
+	}
+	javaHome := filepath.Join(cfg.Dir(), "jdk", "1.7.2", suffix)
+	javaPath := filepath.Join(javaHome, "bin")
+
 	defer func() { os.Setenv("PATH", prevPath) }()
 	var prevReadDir = readDir
 	defer func() { readDir = prevReadDir }()
@@ -37,19 +47,15 @@ func TestUse(t *testing.T) {
 			DirEntryMock("1.6.0"), DirEntryMock("1.7.0"), DirEntryMock("1.7.2"), DirEntryMock("1.8.0"),
 		}, nil
 	}
-	os.Setenv("PATH", "/usr/local/bin:"+cfg.Dir()+"/jdk/1.6.0/bin:/usr/bin")
+	os.Setenv("PATH", "/usr/local/bin"+sep+filepath.Join(cfg.Dir(), "jdk", "1.6.0", "bin")+sep+"/usr/bin")
 	os.Setenv("JAVA_HOME", "/system-jdk")
 	actual, err := Use("1.7")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	var suffix string
-	if runtime.GOOS == "darwin" {
-		suffix = "/Contents/Home"
-	}
 	expected := []string{
-		"export PATH=\"" + cfg.Dir() + "/jdk/1.7.2" + suffix + "/bin:/usr/local/bin:/usr/bin\"",
-		"export JAVA_HOME=\"" + cfg.Dir() + "/jdk/1.7.2" + suffix + "\"",
+		"export PATH=\"" + javaPath + sep + "/usr/local/bin" + sep + "/usr/bin\"",
+		"export JAVA_HOME=\"" + javaHome + "\"",
 		"export JAVA_HOME_BEFORE_JABBA=\"/system-jdk\"",
 	}
 	if !reflect.DeepEqual(actual, expected) {

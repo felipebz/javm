@@ -3,22 +3,26 @@ package command
 import (
 	"github.com/felipebz/javm/cfg"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
 
 func TestDeactivate(t *testing.T) {
 	prevPath := os.Getenv("PATH")
+	sep := string(os.PathListSeparator)
 	defer func() { os.Setenv("PATH", prevPath) }()
-	os.Setenv("PATH", "/usr/local/bin:"+cfg.Dir()+"/jdk/zulu@1.8.72/bin:/system-jdk/bin:/usr/bin")
-	os.Setenv("JAVA_HOME", cfg.Dir()+"/jdk/zulu@1.8.72")
+	javaHome := filepath.Join(cfg.Dir(), "jdk", "zulu@1.8.72")
+	javaPath := filepath.Join(javaHome, "bin")
+	os.Setenv("PATH", "/usr/local/bin"+sep+javaPath+sep+"/system-jdk/bin"+sep+"/usr/bin")
+	os.Setenv("JAVA_HOME", javaHome)
 	os.Setenv("JAVA_HOME_BEFORE_JABBA", "/system-jdk")
 	actual, err := Deactivate()
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	expected := []string{
-		"export PATH=\"/usr/local/bin:/system-jdk/bin:/usr/bin\"",
+		"export PATH=\"/usr/local/bin" + sep + "/system-jdk/bin" + sep + "/usr/bin\"",
 		"export JAVA_HOME=\"/system-jdk\"",
 		"unset JAVA_HOME_BEFORE_JABBA",
 	}
