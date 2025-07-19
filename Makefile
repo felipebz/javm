@@ -1,4 +1,6 @@
+ifneq ($(OS),Windows_NT)
 SHELL := /bin/bash -o pipefail
+endif
 VERSION := $(shell git describe --tags --abbrev=0)
 
 fetch:
@@ -14,9 +16,8 @@ fmt:
 	gofmt -l -s -w `find . -type f -name '*.go' -not -path "./vendor/*"`
 
 test:
-	go vet `go list ./... | grep -v /vendor/`
-	SRC=`find . -type f -name '*.go' -not -path "./vendor/*"` && gofmt -l -s $$SRC | read && gofmt -l -s -d $$SRC && exit 1 || true
-	go test `go list ./... | grep -v /vendor/`
+	go vet ./...
+	go test ./...
 
 test-coverage:
 	go list ./... | grep -v /vendor/ | xargs -L1 -I{} sh -c 'go test -coverprofile `basename {}`.coverprofile {}' && \

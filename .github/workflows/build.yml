@@ -7,10 +7,34 @@ on:
     branches: [ main ]
 
 jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: true
+
+      - name: Run tests (make test)
+        run: make test
+        shell: bash
+
   build:
     name: Build
     runs-on: ubuntu-latest
-
+    needs: test
     steps:
     - name: Check out code
       uses: actions/checkout@v4
