@@ -191,6 +191,7 @@ func main() {
 		cmd.Flags().StringVar(&trimTo, "latest", "",
 			"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
 	}
+	client := discoapi.NewClient()
 	rootCmd.AddCommand(
 		installCmd,
 		&cobra.Command{
@@ -331,19 +332,7 @@ func main() {
 				return nil
 			},
 		},
-		&cobra.Command{
-			Use:   "ls-distributions",
-			Short: "List all available Java distributions",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				client := discoapi.NewClient()
-				distributions, err := command.LsDistributions(client)
-				if err != nil {
-					return err
-				}
-				command.PrintDistributions(cmd.OutOrStdout(), distributions)
-				return nil
-			},
-		},
+		command.NewLsDistributionsCommand(client),
 		whichCmd,
 	)
 	rootCmd.Flags().Bool("version", false, "version of javm")

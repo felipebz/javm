@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"github.com/spf13/cobra"
 	"io"
 
 	"github.com/felipebz/javm/discoapi"
@@ -11,8 +12,19 @@ type DistributionsClient interface {
 	GetDistributions() ([]discoapi.Distribution, error)
 }
 
-func LsDistributions(client DistributionsClient) ([]discoapi.Distribution, error) {
-	return client.GetDistributions()
+func NewLsDistributionsCommand(client DistributionsClient) *cobra.Command {
+	return &cobra.Command{
+		Use:   "ls-distributions",
+		Short: "List all available Java distributions",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			distributions, err := client.GetDistributions()
+			if err != nil {
+				return err
+			}
+			PrintDistributions(cmd.OutOrStdout(), distributions)
+			return nil
+		},
+	}
 }
 
 func PrintDistributions(w io.Writer, distributions []discoapi.Distribution) {
