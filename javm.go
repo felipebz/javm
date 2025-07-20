@@ -53,7 +53,7 @@ func (f *simpleFormatter) Format(entry *log.Entry) ([]byte, error) {
 
 func main() {
 	rootCmd = &cobra.Command{
-		Use:  "jabba",
+		Use:  "javm",
 		Long: "Java Version Manager (https://github.com/felipebz/javm).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if showVersion, _ := cmd.Flags().GetBool("version"); !showVersion {
@@ -113,12 +113,12 @@ func main() {
 				return nil
 			}
 		},
-		Example: "  jabba install 1.8\n" +
-			"  jabba install ~1.8.73 # same as \">=1.8.73 <1.9.0\"\n" +
-			"  jabba install 1.8.73=dmg+http://.../jdk-9-ea+110_osx-x64_bin.dmg",
+		Example: "  javm install 1.8\n" +
+			"  javm install ~1.8.73 # same as \">=1.8.73 <1.9.0\"\n" +
+			"  javm install 1.8.73=dmg+http://.../jdk-9-ea+110_osx-x64_bin.dmg",
 	}
 	installCmd.Flags().StringVarP(&customInstallDestination, "output", "o", "",
-		"Custom destination (any JDK outside of $JABBA_HOME/jdk is considered to be unmanaged, i.e. not available to jabba ls, use, etc. (unless `jabba link`ed))")
+		"Custom destination (any JDK outside of $JABBA_HOME/jdk is considered to be unmanaged, i.e. not available to javm ls, use, etc. (unless `javm link`ed))")
 	var trimTo string
 	lsCmd := &cobra.Command{
 		Use:   "ls",
@@ -202,7 +202,7 @@ func main() {
 				}
 				if strings.HasPrefix(args[0], "system@") {
 					log.Fatal("Link to system JDK can only be removed with 'unlink'" +
-						" (e.g. 'jabba unlink " + args[0] + "')")
+						" (e.g. 'javm unlink " + args[0] + "')")
 				}
 				err := command.Uninstall(args[0])
 				if err != nil {
@@ -213,7 +213,7 @@ func main() {
 				}
 				return nil
 			},
-			Example: "  jabba uninstall 1.8",
+			Example: "  javm uninstall 1.8",
 		},
 		&cobra.Command{
 			Use:   "link [name] [path]",
@@ -234,8 +234,8 @@ func main() {
 				}
 				return nil
 			},
-			Example: "  jabba link system@1.8.20 /Library/Java/JavaVirtualMachines/jdk1.8.0_20.jdk\n" +
-				"  jabba link system@1.8.20 # show link target",
+			Example: "  javm link system@1.8.20 /Library/Java/JavaVirtualMachines/jdk1.8.0_20.jdk\n" +
+				"  javm link system@1.8.20 # show link target",
 		},
 		&cobra.Command{
 			Use:   "unlink [name]",
@@ -249,7 +249,7 @@ func main() {
 				}
 				return nil
 			},
-			Example: "  jabba unlink system@1.8.20",
+			Example: "  javm unlink system@1.8.20",
 		},
 		&cobra.Command{
 			Use:   "use [version to use]",
@@ -266,8 +266,8 @@ func main() {
 				}
 				return use(ver)
 			},
-			Example: "  jabba use 1.8\n" +
-				"  jabba use ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
+			Example: "  javm use 1.8\n" +
+				"  javm use ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
 		},
 		&cobra.Command{
 			Use:   "current",
@@ -283,7 +283,7 @@ func main() {
 		lsRemoteCmd,
 		&cobra.Command{
 			Use:   "deactivate",
-			Short: "Undo effects of `jabba` on current shell",
+			Short: "Undo effects of `javm` on current shell",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				out, err := command.Deactivate()
 				if err != nil {
@@ -315,8 +315,8 @@ func main() {
 				}
 				return nil
 			},
-			Example: "  jabba alias default 1.8\n" +
-				"  jabba alias default # show value bound to an alias",
+			Example: "  javm alias default 1.8\n" +
+				"  javm alias default # show value bound to an alias",
 		},
 		&cobra.Command{
 			Use:   "unalias [name]",
@@ -346,7 +346,7 @@ func main() {
 		},
 		whichCmd,
 	)
-	rootCmd.Flags().Bool("version", false, "version of jabba")
+	rootCmd.Flags().Bool("version", false, "version of javm")
 	rootCmd.PersistentFlags().String("fd3", "", "")
 	rootCmd.PersistentFlags().MarkHidden("fd3")
 	if err := rootCmd.Execute(); err != nil {
