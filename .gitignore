@@ -3,3 +3,4 @@ coverage.html
 dist/
 .tmp
 .idea
+*.out

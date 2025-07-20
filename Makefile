@@ -15,16 +15,6 @@ clean:
 fmt:
 	gofmt -l -s -w `find . -type f -name '*.go' -not -path "./vendor/*"`
 
-test:
-	go vet ./...
-	go test ./...
-
-test-coverage:
-	go list ./... | grep -v /vendor/ | xargs -L1 -I{} sh -c 'go test -coverprofile `basename {}`.coverprofile {}' && \
-	gover && \
-	go tool cover -html=gover.coverprofile -o coverage.html && \
-	rm *.coverprofile
-
 install: build
 	JABBA_MAKE_INSTALL=true JABBA_VERSION=${VERSION} sh install.sh
 
