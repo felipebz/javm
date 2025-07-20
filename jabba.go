@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/felipebz/javm/command"
+	"github.com/felipebz/javm/discoapi"
 	"github.com/felipebz/javm/semver"
 	"github.com/hashicorp/go-rootcerts"
 	log "github.com/sirupsen/logrus"
@@ -327,6 +328,19 @@ func main() {
 				if err := command.SetAlias(args[0], ""); err != nil {
 					log.Fatal(err)
 				}
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "ls-distributions",
+			Short: "List all available Java distributions",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				client := discoapi.NewClient()
+				distributions, err := command.LsDistributions(client)
+				if err != nil {
+					return err
+				}
+				command.PrintDistributions(cmd.OutOrStdout(), distributions)
 				return nil
 			},
 		},
