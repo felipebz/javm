@@ -14,8 +14,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"net/http"
 	"os"
-	"runtime"
-	"sort"
 	"strings"
 )
 
@@ -148,46 +146,7 @@ func main() {
 			return nil
 		},
 	}
-	lsRemoteCmd := &cobra.Command{
-		Use:   "ls-remote",
-		Short: "List remote versions available for install",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var r *semver.Range
-			if len(args) > 0 {
-				var err error
-				r, err = semver.ParseRange(args[0])
-				if err != nil {
-					log.Fatal(err)
-				}
-			}
-			os, _ := cmd.Flags().GetString("os")
-			arch, _ := cmd.Flags().GetString("arch")
-			releaseMap, err := command.LsRemote(os, arch)
-			if err != nil {
-				log.Fatal(err)
-			}
-			var vs = make([]*semver.Version, len(releaseMap))
-			var i = 0
-			for k := range releaseMap {
-				vs[i] = k
-				i++
-			}
-			sort.Sort(sort.Reverse(semver.VersionSlice(vs)))
-			if trimTo != "" {
-				vs = semver.VersionSlice(vs).TrimTo(parseTrimTo(trimTo))
-			}
-			for _, v := range vs {
-				if r != nil && !r.Contains(v) {
-					continue
-				}
-				fmt.Println(v)
-			}
-			return nil
-		},
-	}
-	lsRemoteCmd.Flags().String("os", runtime.GOOS, "Operating System (darwin, linux, windows)")
-	lsRemoteCmd.Flags().String("arch", runtime.GOARCH, "Architecture (amd64, 386)")
-	for _, cmd := range []*cobra.Command{lsCmd, lsRemoteCmd} {
+	for _, cmd := range []*cobra.Command{lsCmd} {
 		cmd.Flags().StringVar(&trimTo, "latest", "",
 			"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
 	}
@@ -281,7 +240,7 @@ func main() {
 			},
 		},
 		lsCmd,
-		lsRemoteCmd,
+		command.NewLsRemoteCommand(client),
 		&cobra.Command{
 			Use:   "deactivate",
 			Short: "Undo effects of `javm` on current shell",
