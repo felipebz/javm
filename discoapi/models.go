@@ -8,3 +8,14 @@ type Distribution struct {
 type DistributionsResponse struct {
 	Distributions []Distribution `json:"result"`
 }
+
+type Package struct {
+	Id                  string `json:"id"`
+	Distribution        string `json:"distribution"`
+	JavaVersion         string `json:"java_version"`
+	DistributionVersion string `json:"distribution_version"`
+}
+
+type PackagesResponse struct {
+	Packages []Package `json:"result"`
+}
