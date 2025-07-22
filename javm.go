@@ -6,10 +6,10 @@ import (
 	"github.com/felipebz/javm/command"
 	"github.com/felipebz/javm/discoapi"
 	"github.com/felipebz/javm/semver"
+	"github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v3"
 	"os"
 	"strings"
 )
