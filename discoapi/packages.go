@@ -21,9 +21,16 @@ func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package,
 		params.Set("version", version)
 	}
 
+	if os == "windows" {
+		params.Set("archive_type", "zip")
+		params.Set("lib_c_type", "c_std_lib")
+	} else {
+		params.Set("archive_type", "tar.gz")
+		params.Set("lib_c_type", "glibc") // TODO support musl based distros
+	}
+
 	params.Set("package_type", "jdk")
 	params.Set("release_status", "ga")
-	params.Set("archive_type", "zip")
 
 	data, err := c.fetch("packages", params)
 	if err != nil {

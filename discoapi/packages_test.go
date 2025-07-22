@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -25,41 +26,92 @@ const mockPackagesResponse = `{
   ]
 }`
 
-func TestGetPackages(t *testing.T) {
-	// Set up a fake HTTP server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Test that the endpoint and query param are correct
-		if r.URL.Path == "/packages" {
-			//query := r.URL.Query()
-			//if query.Get("include_versions") == "false" {
-			w.WriteHeader(http.StatusOK)
-			io.WriteString(w, mockPackagesResponse)
-			return
-			//}
-			//w.WriteHeader(http.StatusBadRequest)
-			//return
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
-
-	client := &Client{
-		BaseURL:    server.URL,
-		HTTPClient: server.Client(),
+func TestGetPackages_QueryParams(t *testing.T) {
+	type wantParam struct {
+		key, value string
+	}
+	tests := []struct {
+		name   string
+		os     string
+		arch   string
+		dist   string
+		ver    string
+		expect []wantParam
+	}{
+		{
+			name: "linux amd64 temurin 21",
+			os:   "linux",
+			arch: "amd64",
+			dist: "temurin",
+			ver:  "24",
+			expect: []wantParam{
+				{"operating_system", "linux"},
+				{"architecture", "amd64"},
+				{"distribution", "temurin"},
+				{"version", "24"},
+				{"archive_type", "tar.gz"},
+				{"lib_c_type", "glibc"},
+				{"package_type", "jdk"},
+				{"release_status", "ga"},
+			},
+		},
+		{
+			name: "windows arm64 zulu 24",
+			os:   "windows",
+			arch: "arm64",
+			dist: "zulu",
+			ver:  "24",
+			expect: []wantParam{
+				{"operating_system", "windows"},
+				{"architecture", "arm64"},
+				{"distribution", "zulu"},
+				{"version", "24"},
+				{"archive_type", "zip"},
+				{"lib_c_type", "c_std_lib"},
+				{"package_type", "jdk"},
+				{"release_status", "ga"},
+			},
+		},
 	}
 
-	packages, err := client.GetPackages("linux", "x64", "temurin", "24")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var gotParams url.Values
 
-	if len(packages) != 2 {
-		t.Fatalf("expected 2 packages, got %d", len(packages))
-	}
-	if packages[0].Id != "50f16d2dc2bb80a421afc1af38fc92e3" || packages[0].Distribution != "temurin" || packages[0].JavaVersion != "24.0.2+12" || packages[0].DistributionVersion != "24.0.2" {
-		t.Errorf("unexpected first package: %+v", packages[0])
-	}
-	if packages[1].Id != "4b983e5b6800eee4023259bd42e03844" || packages[1].Distribution != "temurin" || packages[1].JavaVersion != "24+36" || packages[1].DistributionVersion != "24" {
-		t.Errorf("unexpected second package: %+v", packages[1])
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotParams = r.URL.Query()
+				w.WriteHeader(http.StatusOK)
+				io.WriteString(w, mockPackagesResponse)
+			}))
+			defer server.Close()
+
+			client := &Client{
+				BaseURL:    server.URL,
+				HTTPClient: server.Client(),
+			}
+
+			packages, err := client.GetPackages(tc.os, tc.arch, tc.dist, tc.ver)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// Check expected parameters
+			for _, want := range tc.expect {
+				if got := gotParams.Get(want.key); got != want.value {
+					t.Errorf("param %q: got %q, want %q", want.key, got, want.value)
+				}
+			}
+
+			if len(packages) != 2 {
+				t.Fatalf("expected 2 packages, got %d", len(packages))
+			}
+			if packages[0].Id != "50f16d2dc2bb80a421afc1af38fc92e3" || packages[0].Distribution != "temurin" || packages[0].JavaVersion != "24.0.2+12" || packages[0].DistributionVersion != "24.0.2" {
+				t.Errorf("unexpected first package: %+v", packages[0])
+			}
+			if packages[1].Id != "4b983e5b6800eee4023259bd42e03844" || packages[1].Distribution != "temurin" || packages[1].JavaVersion != "24+36" || packages[1].DistributionVersion != "24" {
+				t.Errorf("unexpected second package: %+v", packages[1])
+			}
+		})
 	}
 }
