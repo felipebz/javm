@@ -10,7 +10,7 @@ import (
 	"github.com/felipebz/javm/command/fileiter"
 	"github.com/felipebz/javm/semver"
 	"github.com/felipebz/javm/w32"
-	"github.com/mitchellh/ioprogress"
+	"github.com/schollz/progressbar/v3"
 	log "github.com/sirupsen/logrus"
 	"github.com/xi2/xz"
 	"io"
@@ -215,11 +215,12 @@ func download(url string, fileType string) (file string, err error) {
 		return
 	}
 	defer res.Body.Close()
-	progressTracker := &ioprogress.Reader{
-		Reader: res.Body,
-		Size:   res.ContentLength,
-	}
-	_, err = io.Copy(tmp, progressTracker)
+
+	bar := progressbar.DefaultBytes(
+		res.ContentLength,
+		"downloading",
+	)
+	_, err = io.Copy(io.MultiWriter(tmp, bar), res.Body)
 	if err != nil {
 		return
 	}
