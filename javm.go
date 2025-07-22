@@ -2,17 +2,14 @@ package main
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"github.com/felipebz/javm/command"
 	"github.com/felipebz/javm/discoapi"
 	"github.com/felipebz/javm/semver"
-	"github.com/hashicorp/go-rootcerts"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
-	"net/http"
 	"os"
 	"strings"
 )
@@ -24,17 +21,6 @@ func init() {
 	log.SetFormatter(&simpleFormatter{})
 	// todo: make it configurable through the command line
 	log.SetLevel(log.InfoLevel)
-
-	tlsConfig := &tls.Config{}
-	err := rootcerts.ConfigureTLS(tlsConfig, &rootcerts.Config{
-		CAFile: os.Getenv("JABBA_CAFILE"),
-		CAPath: os.Getenv("JABBA_CAPATH"),
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defTransport := http.DefaultTransport.(*http.Transport)
-	defTransport.TLSClientConfig = tlsConfig
 }
 
 type simpleFormatter struct{}
