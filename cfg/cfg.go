@@ -1,7 +1,6 @@
 package cfg
 
 import (
-	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
@@ -12,7 +11,7 @@ func Dir() string {
 	if home != "" {
 		return filepath.Clean(home)
 	}
-	dir, err := homedir.Dir()
+	dir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
 	}
