@@ -12,7 +12,7 @@ import (
 	"github.com/felipebz/javm/w32"
 	"github.com/schollz/progressbar/v3"
 	log "github.com/sirupsen/logrus"
-	"github.com/xi2/xz"
+	"github.com/ulikunitz/xz"
 	"io"
 	"net/http"
 	"os"
@@ -582,7 +582,7 @@ func untgx(src string, dst string, strip bool) error {
 	defer xzFile.Close()
 	var prefixToStrip string
 	if strip {
-		xzr, err := xz.NewReader(xzFile, 0)
+		xzr, err := xz.NewReader(xzFile)
 		if err != nil {
 			return err
 		}
@@ -622,7 +622,7 @@ func untgx(src string, dst string, strip bool) error {
 		prefixToStrip = strings.Join(prefix, string(filepath.Separator))
 	}
 	xzFile.Seek(0, 0)
-	xzr, err := xz.NewReader(xzFile, 0)
+	xzr, err := xz.NewReader(xzFile)
 	if err != nil {
 		return err
 	}
