@@ -2,7 +2,7 @@ package semver
 
 import (
 	"fmt"
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"strings"
 )
 
@@ -43,15 +43,15 @@ func (t *Version) TrimTo(part VersionPart) string {
 	return t.raw
 }
 
-func (t *Version) Major() int64 {
+func (t *Version) Major() uint64 {
 	return t.ver.Major()
 }
 
-func (t *Version) Minor() int64 {
+func (t *Version) Minor() uint64 {
 	return t.ver.Minor()
 }
 
-func (t *Version) Patch() int64 {
+func (t *Version) Patch() uint64 {
 	return t.ver.Patch()
 }
 
@@ -100,7 +100,7 @@ const (
 func (c VersionSlice) TrimTo(part VersionPart) VersionSlice {
 	var r []*Version
 	var pQualifier string
-	var pMajor, pMinor, pPatch int64
+	var pMajor, pMinor, pPatch uint64
 	for _, v := range c {
 		switch part {
 		case VPMajor:

@@ -3,7 +3,7 @@ module github.com/felipebz/javm
 go 1.24
 
 require (
-	github.com/Masterminds/semver v1.5.0
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
