@@ -44,7 +44,7 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&osFlag, "os", runtime.GOOS, "Operating System (macos, linux, windows)")
 	cmd.Flags().StringVar(&archFlag, "arch", runtime.GOARCH, "Architecture (amd64, arm64)")
-	cmd.Flags().StringVar(&distributionFlag, "distribution", "", "Java distribution (e.g. temurin, zulu, corretto). Default is 'temurin'")
+	cmd.Flags().StringVar(&distributionFlag, "distribution", "temurin", "Java distribution (e.g. temurin, zulu, corretto)")
 	cmd.Flags().StringVar(&trimTo, "latest", "",
 		"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
 	return cmd
@@ -64,13 +64,7 @@ func runLsRemote(
 		}
 	}
 
-	// Default distribution is "temurin" unless --distribution is set
-	filterDistribution := distributionFlag
-	if filterDistribution == "" {
-		filterDistribution = "temurin"
-	}
-
-	packages, err := client.GetPackages(osFlag, archFlag, filterDistribution, "")
+	packages, err := client.GetPackages(osFlag, archFlag, distributionFlag, "")
 	if err != nil {
 		return err
 	}
