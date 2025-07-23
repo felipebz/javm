@@ -36,8 +36,8 @@ func TestNewLsRemoteCommand_DefaultAndFlags(t *testing.T) {
 	}
 	got := out.String()
 	want := `Identifier           Full Version    Distribution Version
-17.0.8               17.0.8          temurin 17.0.8
-21.0.1               21.0.1          temurin 21.0.1
+temurin@17.0.8       17.0.8          temurin 17.0.8
+temurin@21.0.1       21.0.1          temurin 21.0.1
 `
 	if got != want {
 		t.Errorf("default got:\n%q\nwant:\n%q", got, want)
@@ -71,7 +71,7 @@ zulu@19.0.1          19.0.1          zulu 19.0.1
 	}
 	got = out.String()
 	want = `Identifier           Full Version    Distribution Version
-21.0.1               21.0.1          temurin 21.0.1
+temurin@21.0.1       21.0.1          temurin 21.0.1
 `
 	if got != want {
 		t.Errorf("--distribution= got:\n%q\nwant:\n%q", got, want)
@@ -89,7 +89,7 @@ zulu@19.0.1          19.0.1          zulu 19.0.1
 	}
 	got = out.String()
 	want = `Identifier           Full Version    Distribution Version
-21.0.1               21.0.1          temurin 21.0.1
+temurin@21.0.1       21.0.1          temurin 21.0.1
 `
 	if got != want {
 		t.Errorf("range got:\n%q\nwant:\n%q", got, want)
@@ -147,7 +147,7 @@ func TestRunLsRemote_WithRange(t *testing.T) {
 	}
 	got := out.String()
 	want := `Identifier           Full Version    Distribution Version
-21.0.1               21.0.1          temurin 21.0.1
+temurin@21.0.1       21.0.1          temurin 21.0.1
 `
 	if got != want {
 		t.Errorf("range got:\n%q\nwant:\n%q", got, want)

@@ -95,9 +95,7 @@ func runLsRemote(
 		vs = semver.VersionSlice(vs).TrimTo(parseTrimTo(trimTo))
 	}
 
-	printDistribution := distributionFlag != "" && distributionFlag != "temurin"
-
-	printVersions(out, vs, releaseMap, printDistribution, r)
+	printVersions(out, vs, releaseMap, r)
 	return nil
 }
 
@@ -105,7 +103,6 @@ func printVersions(
 	out io.Writer,
 	versions []*semver.Version,
 	releaseMap map[*semver.Version]discoapi.Package,
-	printDistribution bool,
 	r *semver.Range,
 ) {
 	headerPrinted := false
@@ -115,10 +112,7 @@ func printVersions(
 		}
 		pkg := releaseMap[v]
 
-		shortVersion := stripBuildSuffix(pkg.JavaVersion)
-		if printDistribution {
-			shortVersion = fmt.Sprintf("%s@%s", pkg.Distribution, shortVersion)
-		}
+		shortVersion := fmt.Sprintf("%s@%s", pkg.Distribution, stripBuildSuffix(pkg.JavaVersion))
 
 		if !headerPrinted {
 			fmt.Fprintf(out, "%-20s %-15s %s\n", "Identifier", "Full Version", "Distribution Version")
