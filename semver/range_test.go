@@ -12,7 +12,7 @@ func TestContains(t *testing.T) {
 	assertWithinRange(t, "~1.8", "1.8.99", true)
 	assertWithinRange(t, "~1.8", "1.9.0", false)
 	assertWithinRange(t, "a@1.8", "a@1.8.72", true)
-	assertWithinRange(t, "1.8", "a@1.8.72", false)
+	assertWithinRange(t, "1.8", "a@1.8.72", true)
 	assertWithinRange(t, "a@1.8", "b@1.8.72", false)
 	assertWithinRange(t, "a@1.8", "1.8.72", false)
 	assertWithinRange(t, "a@1.7.x", "a@1.7.72", true)

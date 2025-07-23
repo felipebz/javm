@@ -30,7 +30,7 @@ func TestNewLsRemoteCommand_DefaultAndFlags(t *testing.T) {
 	cmd.SetOut(&out)
 
 	// Test default (should use "temurin" and print versions descending)
-	cmd.SetArgs([]string{"--os=linux", "--arch=amd64"})
+	cmd.SetArgs([]string{"--os=linux", "--arch=amd64", "--latest=patch"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestRunLsRemote_EmptyResult(t *testing.T) {
 		Pkgs: []discoapi.Package{},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(&out, mock, "linux", "amd64", "", "", "")
+	err := runLsRemote(&out, mock, "linux", "amd64", "", "major", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestRunLsRemote_SpecificDistribution(t *testing.T) {
 		},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(&out, mock, "linux", "amd64", "zulu", "", "")
+	err := runLsRemote(&out, mock, "linux", "amd64", "zulu", "patch", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestRunLsRemote_WithRange(t *testing.T) {
 		},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(&out, mock, "linux", "amd64", "", "", ">=20")
+	err := runLsRemote(&out, mock, "linux", "amd64", "", "patch", ">=20")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

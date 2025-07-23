@@ -2,20 +2,11 @@ package command
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"github.com/felipebz/javm/semver"
 	"github.com/spf13/cobra"
 	"io"
 	"runtime"
-	"sort"
-	"strings"
-
-	"github.com/felipebz/javm/discoapi"
-	"github.com/felipebz/javm/semver"
 )
-
-type PackagesClient interface {
-	GetPackages(os, arch, distribution, version string) ([]discoapi.Package, error)
-}
 
 func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 	var trimTo string
@@ -45,7 +36,7 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 	cmd.Flags().StringVar(&osFlag, "os", runtime.GOOS, "Operating System (macos, linux, windows)")
 	cmd.Flags().StringVar(&archFlag, "arch", runtime.GOARCH, "Architecture (amd64, arm64)")
 	cmd.Flags().StringVar(&distributionFlag, "distribution", "temurin", "Java distribution (e.g. temurin, zulu, corretto)")
-	cmd.Flags().StringVar(&trimTo, "latest", "",
+	cmd.Flags().StringVar(&trimTo, "latest", "major",
 		"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
 	return cmd
 }
@@ -64,76 +55,34 @@ func runLsRemote(
 		}
 	}
 
-	packages, err := client.GetPackages(osFlag, archFlag, distributionFlag, "")
+	packageIndex, err := makePackageIndex(client, osFlag, archFlag, distributionFlag)
 	if err != nil {
 		return err
 	}
 
-	// Build map for version lookup
-	releaseMap := make(map[*semver.Version]discoapi.Package)
-	for _, pkg := range packages {
-		v, err := semver.ParseVersion(pkg.JavaVersion)
-		if err != nil {
-			continue
-		}
-		releaseMap[v] = pkg
-	}
-
-	vs := make([]*semver.Version, 0, len(releaseMap))
-	for v := range releaseMap {
-		vs = append(vs, v)
-	}
-	sort.Sort(semver.VersionSlice(vs))
-
+	trimToValue := parseTrimTo(trimTo)
+	vs := packageIndex.Sorted
 	if trimTo != "" {
-		vs = semver.VersionSlice(vs).TrimTo(parseTrimTo(trimTo))
+		vs = semver.VersionSlice(vs).TrimTo(trimToValue)
 	}
 
-	printVersions(out, vs, releaseMap, r)
+	printVersions(out, vs, packageIndex, r, trimToValue)
 	return nil
 }
 
-func printVersions(
-	out io.Writer,
-	versions []*semver.Version,
-	releaseMap map[*semver.Version]discoapi.Package,
-	r *semver.Range,
-) {
+func printVersions(out io.Writer, versions []*semver.Version, packageIndex *packageIndex, r *semver.Range, value semver.VersionPart) {
 	headerPrinted := false
 	for _, v := range versions {
 		if r != nil && !r.Contains(v) {
 			continue
 		}
-		pkg := releaseMap[v]
-
-		shortVersion := fmt.Sprintf("%s@%s", pkg.Distribution, stripBuildSuffix(pkg.JavaVersion))
+		pkg := packageIndex.ByVersion[v]
 
 		if !headerPrinted {
 			fmt.Fprintf(out, "%-20s %-15s %s\n", "Identifier", "Full Version", "Distribution Version")
 			headerPrinted = true
 		}
 
-		fmt.Fprintf(out, "%-20s %-15s %s %s\n", shortVersion, pkg.JavaVersion, pkg.Distribution, pkg.DistributionVersion)
-	}
-}
-
-func stripBuildSuffix(javaVersion string) string {
-	if idx := strings.Index(javaVersion, "+"); idx != -1 {
-		return javaVersion[:idx]
-	}
-	return javaVersion
-}
-
-func parseTrimTo(value string) semver.VersionPart {
-	switch strings.ToLower(value) {
-	case "major":
-		return semver.VPMajor
-	case "minor":
-		return semver.VPMinor
-	case "patch":
-		return semver.VPPatch
-	default:
-		log.Fatal("Unexpected value of --latest (must be either \"major\", \"minor\" or \"patch\")")
-		return -1
+		fmt.Fprintf(out, "%-20s %-15s %s %s\n", v.TrimTo(value), pkg.JavaVersion, pkg.Distribution, pkg.DistributionVersion)
 	}
 }

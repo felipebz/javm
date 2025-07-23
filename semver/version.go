@@ -3,6 +3,7 @@ package semver
 import (
 	"fmt"
 	"github.com/Masterminds/semver/v3"
+	"sort"
 	"strings"
 )
 
@@ -98,29 +99,31 @@ const (
 )
 
 func (c VersionSlice) TrimTo(part VersionPart) VersionSlice {
-	var r []*Version
-	var pQualifier string
-	var pMajor, pMinor, pPatch uint64
+	latest := make(map[string]*Version)
 	for _, v := range c {
-		switch part {
-		case VPMajor:
-			if pQualifier == v.qualifier && pMajor == v.Major() {
-				continue
-			}
-		case VPMinor:
-			if pQualifier == v.qualifier && pMajor == v.Major() && pMinor == v.Minor() {
-				continue
-			}
-		case VPPatch:
-			if pQualifier == v.qualifier && pMajor == v.Major() && pMinor == v.Minor() && pPatch == v.Patch() {
-				continue
-			}
+		key := versionTrimKey(v, part)
+		if prev, ok := latest[key]; !ok || v.ver.GreaterThan(prev.ver) {
+			latest[key] = v
 		}
-		pQualifier = v.qualifier
-		pMajor = v.Major()
-		pMinor = v.Minor()
-		pPatch = v.Patch()
-		r = append(r, v)
 	}
-	return r
+
+	result := make(VersionSlice, 0, len(latest))
+	for _, v := range latest {
+		result = append(result, v)
+	}
+	sort.Sort(result)
+	return result
+}
+
+func versionTrimKey(v *Version, part VersionPart) string {
+	switch part {
+	case VPMajor:
+		return fmt.Sprintf("%s:%d", v.qualifier, v.Major())
+	case VPMinor:
+		return fmt.Sprintf("%s:%d.%d", v.qualifier, v.Major(), v.Minor())
+	case VPPatch:
+		return fmt.Sprintf("%s:%d.%d.%d", v.qualifier, v.Major(), v.Minor(), v.Patch())
+	default:
+		return v.String()
+	}
 }
