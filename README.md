@@ -40,7 +40,7 @@ javm install graalvm@21             # GraalVM
 javm install openjdk@21             # Upstream OpenJDK
 ```
 
-Custom URL (qualifiers: `zip`, `tgz`, `tgx`, `dmg`, `bin`, `exe`):
+Custom URL (qualifiers: `zip`, `tgz`, `tgx`):
 
 ```sh
 javm install 1.8.0-custom=tgz+https://example.com/dist.tar.gz

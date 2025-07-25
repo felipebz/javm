@@ -9,14 +9,12 @@ import (
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/command/fileiter"
 	"github.com/felipebz/javm/semver"
-	"github.com/felipebz/javm/w32"
 	"github.com/schollz/progressbar/v3"
 	log "github.com/sirupsen/logrus"
 	"github.com/ulikunitz/xz"
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -229,8 +227,6 @@ func download(url string, fileType string) (file string, err error) {
 
 func installOnDarwin(file string, fileType string, dst string) (err error) {
 	switch fileType {
-	case "dmg":
-		err = installFromDmg(file, dst)
 	case "tgz":
 		err = installFromTgz(file, dst)
 	case "tgx":
@@ -329,57 +325,8 @@ func assertJavaDistribution(dir string, goos string) error {
 	return err
 }
 
-func installFromDmg(src string, dst string) error {
-	tmp, err := os.MkdirTemp("", "jabba-i-")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmp)
-	srcName := filepath.Base(src)
-	pkgdir := tmp + "/" + srcName + "-pkg"
-	mountpoint := tmp + "/" + srcName
-	log.Info("Mounting " + src)
-	err = sh(fmt.Sprintf(`hdiutil mount -mountpoint "%s" "%s"`, mountpoint, src))
-	if err != nil {
-		return err
-	}
-	defer func() {
-		log.Info("Unmounting " + mountpoint)
-		sh(fmt.Sprintf(`hdiutil unmount "%s"`, mountpoint))
-	}()
-	log.Info("Extracting " + mountpoint + "/*.pkg")
-	err = sh(fmt.Sprintf(`pkgutil --expand "%s"/*.pkg "%s"`, mountpoint, pkgdir))
-	if err == nil {
-		pathToPayload := ""
-		// fixme: find a better way
-		var payloadSize int64
-		for it := fileiter.New(pkgdir, fileiter.BreadthFirst()); it.Next(); {
-			if !it.IsDir() && it.Name() == "Payload" {
-				path := filepath.Join(it.Dir(), it.Name())
-				stat, err := os.Stat(path)
-				if err != nil {
-					return err
-				}
-				if payloadSize < stat.Size() { // pick largest (e.g. among javaappletplugin.pkg & jdk180191.pkg)
-					pathToPayload = path
-					payloadSize = stat.Size()
-				}
-			}
-		}
-		if pathToPayload != "" {
-			log.Info("Extracting " + pathToPayload)
-			err = sh(fmt.Sprintf(`mkdir -p "%s" && cd "%s" && gzip -dc "%s" | cpio -i`, dst, dst, pathToPayload))
-		}
-	}
-	return err
-}
-
 func installOnLinux(file string, fileType string, dst string) (err error) {
 	switch fileType {
-	case "bin":
-		err = installFromBin(file, dst)
-	case "ia":
-		err = installFromIa(file, dst)
 	case "tgz":
 		err = installFromTgz(file, dst)
 	case "tgx":
@@ -400,8 +347,6 @@ func installOnLinux(file string, fileType string, dst string) (err error) {
 
 func installOnWindows(file string, fileType string, dst string) (err error) {
 	switch fileType {
-	case "exe":
-		err = installFromExe(file, dst)
 	case "tgz":
 		err = installFromTgz(file, dst)
 	case "tgx":
@@ -418,42 +363,6 @@ func installOnWindows(file string, fileType string, dst string) (err error) {
 		os.RemoveAll(dst)
 	}
 	return
-}
-
-func installFromBin(src string, dst string) (err error) {
-	tmp, err := os.MkdirTemp("", "jabba-i-")
-	if err != nil {
-		return
-	}
-	defer os.RemoveAll(tmp)
-	err = sh("cp " + src + " " + tmp)
-	if err == nil {
-		log.Info("Extracting " + filepath.Join(tmp, filepath.Base(src)) + " to " + dst)
-		err = sh("cd " + tmp + " && echo | sh " + filepath.Base(src) + " && mv jdk*/ " + dst)
-	}
-	return
-}
-
-func installFromIa(src string, dst string) error {
-	tmp, err := os.MkdirTemp("", "jabba-i-")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmp)
-	err = sh("printf 'LICENSE_ACCEPTED=TRUE\\nUSER_INSTALL_DIR=" + dst + "' > " +
-		filepath.Join(tmp, "installer.properties"))
-	if err == nil {
-		log.Info("Extracting " + src + " to " + dst)
-		err = sh("echo | sh " + src + " -i silent -f " + filepath.Join(tmp, "installer.properties"))
-	}
-	return err
-}
-
-func installFromExe(src string, dst string) error {
-	log.Info("Unpacking " + src + " to " + dst)
-	// using ShellExecute instead of exec.Command so user could decide whether to trust the installer when UAC is active
-	return w32.ShellExecuteAndWait(w32.HWND(0), "open", src, "/s INSTALLDIR=\""+dst+
-		"\" STATIC=1 AUTO_UPDATE=0 WEB_JAVA=0 WEB_ANALYTICS=0 REBOOT=0", "", 3)
 }
 
 func installFromTgz(src string, dst string) error {
@@ -761,21 +670,6 @@ func unzip(src string, dst string, strip bool) error {
 				return err
 			}
 		}
-	}
-	return nil
-}
-
-func sh(cmd string) error {
-	var execArg []string
-	if runtime.GOOS == "windows" {
-		execArg = []string{"cmd", "/C"}
-	} else {
-		execArg = []string{"sh", "-c"}
-	}
-	out, err := exec.Command(execArg[0], execArg[1], cmd).CombinedOutput()
-	if err != nil {
-		log.Error(string(out))
-		return errors.New("'" + cmd + "' failed: " + err.Error())
 	}
 	return nil
 }
