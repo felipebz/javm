@@ -122,12 +122,8 @@ func Install(selector string, dst string) (string, error) {
 		deleteFileWhenFinnished = true
 	}
 	switch runtime.GOOS {
-	case "darwin":
-		err = installOnDarwin(file, fileType, dst)
-	case "linux":
-		err = installOnLinux(file, fileType, dst)
-	case "windows":
-		err = installOnWindows(file, fileType, dst)
+	case "darwin", "linux", "windows":
+		err = install(file, fileType, dst)
 	default:
 		err = errors.New(runtime.GOOS + " OS is not supported")
 	}
@@ -225,7 +221,7 @@ func download(url string, fileType string) (file string, err error) {
 	return
 }
 
-func installOnDarwin(file string, fileType string, dst string) (err error) {
+func install(file string, fileType string, dst string) (err error) {
 	switch fileType {
 	case "tgz":
 		err = installFromTgz(file, dst)
@@ -323,46 +319,6 @@ func assertJavaDistribution(dir string, goos string) error {
 			"(specify OS and command that was used)")
 	}
 	return err
-}
-
-func installOnLinux(file string, fileType string, dst string) (err error) {
-	switch fileType {
-	case "tgz":
-		err = installFromTgz(file, dst)
-	case "tgx":
-		err = installFromTgx(file, dst)
-	case "zip":
-		err = installFromZip(file, dst)
-	default:
-		return errors.New(fileType + " is not supported")
-	}
-	if err == nil {
-		err = normalizePathToBinJava(dst, runtime.GOOS)
-	}
-	if err != nil {
-		os.RemoveAll(dst)
-	}
-	return
-}
-
-func installOnWindows(file string, fileType string, dst string) (err error) {
-	switch fileType {
-	case "tgz":
-		err = installFromTgz(file, dst)
-	case "tgx":
-		err = installFromTgx(file, dst)
-	case "zip":
-		err = installFromZip(file, dst)
-	default:
-		return errors.New(fileType + " is not supported")
-	}
-	if err == nil {
-		err = normalizePathToBinJava(dst, runtime.GOOS)
-	}
-	if err != nil {
-		os.RemoveAll(dst)
-	}
-	return
 }
 
 func installFromTgz(src string, dst string) error {
