@@ -17,11 +17,3 @@ func Dir() string {
 	}
 	return filepath.Join(dir, ".jabba")
 }
-
-func Index() string {
-	registry := os.Getenv("JABBA_INDEX")
-	if registry == "" {
-		registry = "https://github.com/felipebz/javm/raw/master/index.json"
-	}
-	return registry
-}
