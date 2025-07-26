@@ -70,39 +70,6 @@ func main() {
 	}
 	whichCmd.Flags().BoolVar(&whichHome, "home", false,
 		"Account for platform differences so that value could be used as JAVA_HOME (e.g. append \"/Contents/Home\" on macOS)")
-	var customInstallDestination string
-	installCmd := &cobra.Command{
-		Use:   "install [version to install]",
-		Short: "Download and install JDK",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var ver string
-			if len(args) == 0 {
-				ver = rc().JDK
-				if ver == "" {
-					return pflag.ErrHelp
-				}
-			} else {
-				ver = args[0]
-			}
-			ver, err := command.Install(ver, customInstallDestination)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if customInstallDestination == "" {
-				if err := command.LinkLatest(); err != nil {
-					log.Fatal(err)
-				}
-				return use(ver)
-			} else {
-				return nil
-			}
-		},
-		Example: "  javm install 1.8\n" +
-			"  javm install ~1.8.73 # same as \">=1.8.73 <1.9.0\"\n" +
-			"  javm install 1.8.73=dmg+http://.../jdk-9-ea+110_osx-x64_bin.dmg",
-	}
-	installCmd.Flags().StringVarP(&customInstallDestination, "output", "o", "",
-		"Custom destination (any JDK outside of $JABBA_HOME/jdk is considered to be unmanaged, i.e. not available to javm ls, use, etc. (unless `javm link`ed))")
 	var trimTo string
 	lsCmd := &cobra.Command{
 		Use:   "ls",
@@ -138,7 +105,7 @@ func main() {
 	}
 	client := discoapi.NewClient()
 	rootCmd.AddCommand(
-		installCmd,
+		command.NewInstallCommand(client),
 		&cobra.Command{
 			Use:   "uninstall [version to uninstall]",
 			Short: "Uninstall JDK",

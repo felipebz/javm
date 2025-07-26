@@ -9,8 +9,11 @@ import (
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/command/fileiter"
 	"github.com/felipebz/javm/semver"
+	"github.com/goccy/go-yaml"
 	"github.com/schollz/progressbar/v3"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/ulikunitz/xz"
 	"io"
 	"net/http"
@@ -22,7 +25,47 @@ import (
 	"strings"
 )
 
-func Install(selector string, dst string) (string, error) {
+func NewInstallCommand(client PackagesClient) *cobra.Command {
+	var customInstallDestination string
+
+	cmd := &cobra.Command{
+		Use:   "install [version to install]",
+		Short: "Download and install JDK",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var ver string
+			if len(args) == 0 {
+				ver = rc().JDK
+				if ver == "" {
+					return pflag.ErrHelp
+				}
+			} else {
+				ver = args[0]
+			}
+			ver, err := runInstall(ver, customInstallDestination)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if customInstallDestination == "" {
+				if err := LinkLatest(); err != nil {
+					log.Fatal(err)
+				}
+				// TODO change to call the "use" command after it's refactored
+				//return use(ver)
+				return nil
+			} else {
+				return nil
+			}
+		},
+		Example: "  javm install 1.8\n" +
+			"  javm install ~1.8.73 # same as \">=1.8.73 <1.9.0\"\n" +
+			"  javm install 1.8.73=dmg+http://.../jdk-9-ea+110_osx-x64_bin.dmg",
+	}
+	cmd.Flags().StringVarP(&customInstallDestination, "output", "o", "",
+		"Custom destination (any JDK outside of $JABBA_HOME/jdk is considered to be unmanaged, i.e. not available to javm ls, use, etc. (unless `javm link`ed))")
+	return cmd
+}
+
+func runInstall(selector string, dst string) (string, error) {
 	var releaseMap map[*semver.Version]string
 	var ver *semver.Version
 	var err error
@@ -628,4 +671,26 @@ func unzip(src string, dst string, strip bool) error {
 		}
 	}
 	return nil
+}
+
+// TODO copied from javm.go, it should be moved to the config package
+type jabbarc struct {
+	JDK string
+}
+
+func rc() (rc jabbarc) {
+	b, err := os.ReadFile(".jabbarc")
+	if err != nil {
+		return
+	}
+	// content can be a string (jdk version)
+	err = yaml.Unmarshal(b, &rc.JDK)
+	if err != nil {
+		// or a struct
+		err = yaml.Unmarshal(b, &rc)
+		if err != nil {
+			log.Fatal(".jabbarc is not valid")
+		}
+	}
+	return
 }
