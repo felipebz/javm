@@ -36,13 +36,13 @@ func pre070Compat(version string) string {
 }
 
 type Range struct {
-	qualifier string
+	Qualifier string
 	raw       string
 	rng       *semver.Constraints
 }
 
 func (l *Range) Contains(r *Version) bool {
-	return (l.qualifier == r.qualifier || l.qualifier == "*" || l.qualifier == "") && l.rng.Check(r.ver)
+	return (l.Qualifier == r.qualifier || l.Qualifier == "*" || l.Qualifier == "") && l.rng.Check(r.ver)
 }
 
 func (t *Range) String() string {
@@ -54,7 +54,7 @@ func ParseRange(raw string) (*Range, error) {
 	p.raw = raw
 	// selector can be either <version> or <qualifier>@<version>
 	if strings.Contains(raw, "@") {
-		p.qualifier = raw[0:strings.Index(raw, "@")]
+		p.Qualifier = raw[0:strings.Index(raw, "@")]
 		raw = raw[strings.Index(raw, "@")+1:]
 		if raw == "" {
 			// `jabba ls-remote zulu@` convenience

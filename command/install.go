@@ -25,7 +25,7 @@ import (
 	"strings"
 )
 
-func NewInstallCommand(client PackagesClient) *cobra.Command {
+func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 	var customInstallDestination string
 
 	cmd := &cobra.Command{
@@ -41,7 +41,7 @@ func NewInstallCommand(client PackagesClient) *cobra.Command {
 			} else {
 				ver = args[0]
 			}
-			ver, err := runInstall(ver, customInstallDestination)
+			ver, err := runInstall(client, ver, customInstallDestination)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -65,7 +65,7 @@ func NewInstallCommand(client PackagesClient) *cobra.Command {
 	return cmd
 }
 
-func runInstall(selector string, dst string) (string, error) {
+func runInstall(client PackagesWithInfoClient, selector string, dst string) (string, error) {
 	var releaseMap map[*semver.Version]string
 	var ver *semver.Version
 	var err error
@@ -90,26 +90,42 @@ func runInstall(selector string, dst string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		//releaseMap, err = LsRemote(runtime.GOOS, runtime.GOARCH)
+		distribution := rng.Qualifier
+		if distribution == "" {
+			distribution = "temurin"
+		}
+		packageIndex, err := makePackageIndex(client, runtime.GOOS, runtime.GOARCH, distribution)
 		if err != nil {
 			return "", err
 		}
-		var vs = make([]*semver.Version, len(releaseMap))
-		var i = 0
-		for k := range releaseMap {
-			vs[i] = k
-			i++
-		}
-		sort.Sort(sort.Reverse(semver.VersionSlice(vs)))
-		for _, v := range vs {
+		sort.Sort(sort.Reverse(semver.VersionSlice(packageIndex.Sorted)))
+		for _, v := range packageIndex.Sorted {
 			if rng.Contains(v) {
 				ver = v
+				packageInfo, err := client.GetPackageInfo(packageIndex.ByVersion[ver].Id)
+				if err != nil {
+					return "", err
+				}
+
+				downloadUri := packageInfo.DirectDownloadUri
+				var qualifier string
+				if strings.HasSuffix(downloadUri, ".zip") {
+					qualifier = "zip"
+				} else if strings.HasSuffix(downloadUri, ".tar.gz") {
+					qualifier = "tgz"
+				} else if strings.HasSuffix(downloadUri, ".tar.xz") {
+					qualifier = "tgx"
+				} else {
+					return "", errors.New("Unsupported file type: " + downloadUri)
+				}
+
+				releaseMap = map[*semver.Version]string{ver: qualifier + "+" + downloadUri}
 				break
 			}
 		}
 		if ver == nil {
-			tt := make([]string, len(vs))
-			for i, v := range vs {
+			tt := make([]string, len(packageIndex.Sorted))
+			for i, v := range packageIndex.Sorted {
 				tt[i] = v.String()
 			}
 			return "", errors.New("No compatible version found for " + selector +

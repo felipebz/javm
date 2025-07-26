@@ -13,6 +13,11 @@ type PackagesClient interface {
 	GetPackages(os, arch, distribution, version string) ([]discoapi.Package, error)
 }
 
+type PackagesWithInfoClient interface {
+	GetPackages(os, arch, distribution, version string) ([]discoapi.Package, error)
+	GetPackageInfo(id string) (*discoapi.PackageInfo, error)
+}
+
 type packageIndex struct {
 	ByVersion map[*semver.Version]discoapi.Package
 	Sorted    []*semver.Version
