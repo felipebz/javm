@@ -19,3 +19,14 @@ type Package struct {
 type PackagesResponse struct {
 	Packages []Package `json:"result"`
 }
+
+type PackageInfo struct {
+	Filename          string `json:"filename"`
+	DirectDownloadUri string `json:"direct_download_uri"`
+	Checksum          string `json:"checksum"`
+	ChecksumType      string `json:"checksum_type"`
+}
+
+type PackageInfoResponse struct {
+	PackageInfo []PackageInfo `json:"result"`
+}

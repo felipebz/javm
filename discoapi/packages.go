@@ -44,3 +44,17 @@ func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package,
 
 	return resp.Packages, nil
 }
+
+func (c *Client) GetPackageInfo(id string) (*PackageInfo, error) {
+	data, err := c.fetch("ids/"+id, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch package info: %w", err)
+	}
+
+	var resp PackageInfoResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse package info: %w", err)
+	}
+
+	return &resp.PackageInfo[0], nil
+}
