@@ -1,4 +1,6 @@
-# javm 
+<p align="center">
+<img src="assets/logo.svg" alt="javm logo">
+</p>
 
 [![Build Status](https://github.com/felipebz/javm/workflows/Build/badge.svg)](https://github.com/felipebz/javm/actions)
 [![Quality Gate Status](https://sonarqube.felipebz.com/api/project_badges/measure?project=javm&metric=alert_status)](https://sonarqube.felipebz.com/dashboard?id=javm)
