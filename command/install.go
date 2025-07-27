@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -108,18 +107,7 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 				}
 
 				downloadUri := packageInfo.DirectDownloadUri
-				var qualifier string
-				if strings.HasSuffix(downloadUri, ".zip") {
-					qualifier = "zip"
-				} else if strings.HasSuffix(downloadUri, ".tar.gz") {
-					qualifier = "tgz"
-				} else if strings.HasSuffix(downloadUri, ".tar.xz") {
-					qualifier = "tgx"
-				} else {
-					return "", errors.New("Unsupported file type: " + downloadUri)
-				}
-
-				releaseMap = map[*semver.Version]string{ver: qualifier + "+" + downloadUri}
+				releaseMap = map[*semver.Version]string{ver: downloadUri}
 				break
 			}
 		}
@@ -145,9 +133,6 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 		}
 	}
 	url := releaseMap[ver]
-	if matched, _ := regexp.MatchString("^\\w+[+]\\w+://", url); !matched {
-		return "", errors.New("URL must contain qualifier, e.g. tgz+http://...")
-	}
 	if dst == "" {
 		dst = filepath.Join(cfg.Dir(), "jdk", ver.String())
 	} else {
@@ -162,7 +147,6 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 			}
 		}
 	}
-	var fileType = url[0:strings.Index(url, "+")]
 	url = url[strings.Index(url, "+")+1:]
 	var file string
 	var deleteFileWhenFinnished bool
@@ -174,7 +158,7 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 		}
 	} else {
 		log.Info("Downloading ", ver, " (", url, ")")
-		file, err = download(url, fileType)
+		file, err = download(url)
 		if err != nil {
 			return "", err
 		}
@@ -182,7 +166,7 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 	}
 	switch runtime.GOOS {
 	case "darwin", "linux", "windows":
-		err = install(file, fileType, dst)
+		err = install(file, dst)
 	default:
 		err = errors.New(runtime.GOOS + " OS is not supported")
 	}
@@ -220,24 +204,12 @@ func (self RedirectTracer) RoundTrip(req *http.Request) (resp *http.Response, er
 	return
 }
 
-func download(url string, fileType string) (file string, err error) {
-	tmp, err := os.CreateTemp("", "jabba-d-")
+func download(url string) (file string, err error) {
+
+	ext := getFileExtension(url)
+	tmp, err := os.CreateTemp("", "jabba-d-*"+ext)
 	if err != nil {
 		return
-	}
-	if fileType == "exe" {
-		err = tmp.Close()
-		if err != nil {
-			return
-		}
-		err = os.Rename(tmp.Name(), tmp.Name()+".exe")
-		if err != nil {
-			return
-		}
-		tmp, err = os.OpenFile(tmp.Name()+".exe", os.O_RDWR, 0600)
-		if err != nil {
-			return
-		}
 	}
 	defer tmp.Close()
 	file = tmp.Name()
@@ -280,16 +252,27 @@ func download(url string, fileType string) (file string, err error) {
 	return
 }
 
-func install(file string, fileType string, dst string) (err error) {
-	switch fileType {
-	case "tgz":
-		err = installFromTgz(file, dst)
-	case "tgx":
-		err = installFromTgx(file, dst)
-	case "zip":
+func getFileExtension(file string) string {
+	if strings.HasSuffix(file, ".tar.gz") {
+		return ".tar.gz"
+	}
+	if strings.HasSuffix(file, ".tar.xz") {
+		return ".tar.xz"
+	}
+	return filepath.Ext(file)
+}
+
+func install(file string, dst string) (err error) {
+	ext := getFileExtension(file)
+	switch ext {
+	case ".zip":
 		err = installFromZip(file, dst)
+	case ".tar.gz":
+		err = installFromTgz(file, dst)
+	case ".tar.xz":
+		err = installFromTgx(file, dst)
 	default:
-		return errors.New(fileType + " is not supported")
+		return errors.New("Unsupported file type: " + file)
 	}
 	if err == nil {
 		err = normalizePathToBinJava(dst, runtime.GOOS)

@@ -40,12 +40,7 @@ javm install zulu@~1.8.144          # same as zulu@>=1.8.144 <1.9.0
 javm install temurin@17             # Temurin 17 LTS
 javm install graalvm@21             # GraalVM
 javm install openjdk@21             # Upstream OpenJDK
-```
-
-Custom URL (qualifiers: `zip`, `tgz`, `tgx`):
-
-```sh
-javm install 1.8.0-custom=tgz+https://example.com/dist.tar.gz
+javm install 1.8.0-custom=https://example.com/dist.tar.gz
 ```
 
 ### Using / Switching
