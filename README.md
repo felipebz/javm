@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/felipebz/javm/workflows/Build/badge.svg)](https://github.com/felipebz/javm/actions)
 [![Quality Gate Status](https://sonarqube.felipebz.com/api/project_badges/measure?project=javm&metric=alert_status)](https://sonarqube.felipebz.com/dashboard?id=javm)
 
-**javm** is a fast, cross‑platform Java version manager (successor of [jabba](https://github.com/shyiko/jabba)) focused on a frictionless install 
+**javm** is a fast, cross‑platform Java version manager (fork of [jabba](https://github.com/shyiko/jabba)) focused on a frictionless install 
 and switch workflow for JDKs on Linux, macOS and Windows.
 
 ## Features
