@@ -205,37 +205,17 @@ func (self RedirectTracer) RoundTrip(req *http.Request) (resp *http.Response, er
 }
 
 func download(url string) (file string, err error) {
-
 	ext := getFileExtension(url)
 	tmp, err := os.CreateTemp("", "jabba-d-*"+ext)
 	if err != nil {
 		return
 	}
 	defer tmp.Close()
+
 	file = tmp.Name()
 	log.Debug("Saving ", url, " to ", file)
-	// todo: timeout
 	client := http.Client{Transport: RedirectTracer{}}
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if len(via) >= 10 {
-			return fmt.Errorf("too many redirects")
-		}
-		if len(via) != 0 {
-			// https://github.com/golang/go/issues/4800
-			for attr, val := range via[0].Header {
-				if _, ok := req.Header[attr]; !ok {
-					req.Header[attr] = val
-				}
-			}
-		}
-		return nil
-	}
-	req, err := http.NewRequest("GET", url, nil)
-	if strings.Contains(url, "zulu") {
-		req.Header.Set("Referer", "http://www.azul.com/downloads/zulu/")
-	}
-	req.Header.Set("Cookie", "oraclelicense=accept-securebackup-cookie")
-	res, err := client.Do(req)
+	res, err := client.Get(url)
 	if err != nil {
 		return
 	}
