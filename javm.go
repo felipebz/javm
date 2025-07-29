@@ -246,6 +246,7 @@ func main() {
 		},
 		command.NewLsDistributionsCommand(client),
 		whichCmd,
+		command.NewInitCommand(),
 	)
 	rootCmd.Flags().Bool("version", false, "version of javm")
 	rootCmd.PersistentFlags().String("fd3", "", "")
