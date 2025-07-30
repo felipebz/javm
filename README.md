@@ -26,6 +26,22 @@ TBD
 
 To enable javm in your shell, you need to evaluate the output of `javm init <shell>`.
 
+### Bash
+
+Add this to your `~/.bashrc` or ~/.zshrc:
+
+```bash
+eval "$(javm init bash)"
+```
+
+### Zsh
+
+Add this to your `~/.zshrc`:
+
+```zsh
+eval "$(javm init zsh)"
+```
+
 ### PowerShell
 
 Add the following to the end of your profile file:

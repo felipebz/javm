@@ -14,9 +14,14 @@ import (
 //go:embed shellscripts/javm.ps1
 var pwshInitScript string
 
+//go:embed shellscripts/javm.sh
+var bashInitScript string
+
 var shellScripts = map[string]string{
 	"powershell": pwshInitScript,
 	"pwsh":       pwshInitScript,
+	"bash":       bashInitScript,
+	"zsh":        bashInitScript,
 }
 
 func NewInitCommand() *cobra.Command {
