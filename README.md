@@ -22,9 +22,31 @@ and switch workflow for JDKs on Linux, macOS and Windows.
 
 TBD
 
+## Shell Setup
+
+To enable javm in your shell, you need to evaluate the output of `javm init <shell>`.
+
+### PowerShell
+
+Add the following to the end of your profile file:
+
+```powershell
+iex "$(javm init pwsh)" 
+```
+
+> [!TIP]
+> To check the path to your PowerShell profile file, run:
+> ```powershell
+> echo $PROFILE
+> ```
+
+## Post Setup
+
+After editing your profile or config, restart your shell or reload your profile to apply the changes.
+
 ## Usage
 
-### Listing & Searching
+### Listing / Searching
 
 ```sh
 javm ls-remote                      # list all available JDKs
