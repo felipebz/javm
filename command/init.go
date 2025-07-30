@@ -28,6 +28,9 @@ var shellScripts = map[string]string{
 	"fish":       fishInitScript,
 }
 
+var getExecutablePath = realGetExecutablePath
+var writePowerShellInitScript = realWritePowerShellInitScript
+
 func NewInitCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init [shell]",
@@ -65,7 +68,7 @@ func NewInitCommand() *cobra.Command {
 	}
 }
 
-func getExecutablePath() (string, error) {
+func realGetExecutablePath() (string, error) {
 	executable, err := os.Executable()
 	if err != nil {
 		return "", err
@@ -87,7 +90,7 @@ func sortedShells() []string {
 	return keys
 }
 
-func writePowerShellInitScript(script string) (string, error) {
+func realWritePowerShellInitScript(script string) (string, error) {
 	tempDir := os.TempDir()
 	scriptFile, err := os.CreateTemp(tempDir, "javm-init-*.ps1")
 	if err != nil {
