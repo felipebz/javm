@@ -42,9 +42,17 @@ Add this to your `~/.zshrc`:
 eval "$(javm init zsh)"
 ```
 
+### Fish
+
+Add this to your `~/.config/fish/config.fish`:
+
+```fish
+javm init fish | source
+```
+
 ### PowerShell
 
-Add the following to the end of your profile file:
+Add this to your profile file:
 
 ```powershell
 iex "$(javm init pwsh)" 

@@ -17,11 +17,15 @@ var pwshInitScript string
 //go:embed shellscripts/javm.sh
 var bashInitScript string
 
+//go:embed shellscripts/javm.fish
+var fishInitScript string
+
 var shellScripts = map[string]string{
 	"powershell": pwshInitScript,
 	"pwsh":       pwshInitScript,
 	"bash":       bashInitScript,
 	"zsh":        bashInitScript,
+	"fish":       fishInitScript,
 }
 
 func NewInitCommand() *cobra.Command {
