@@ -26,7 +26,24 @@ You can install `javm` using the provided install scripts. They automatically de
 - `nightly`: install the most recent development build
 - Specific version: e.g. `v0.1.0`
 
-### 🪟 Windows
+### Linux and macOS
+
+By default, installs the latest release to `~/.javm`.
+
+To install the latest release:
+
+```bash
+curl -sSf https://github.com/felipebz/javm/raw/main/install.sh | bash
+```
+
+To install a specific version or channel:
+
+```bash
+curl -sSf https://github.com/felipebz/javm/raw/main/install.sh | bash -s nightly
+curl -sSf https://github.com/felipebz/javm/raw/main/install.sh | bash -s v0.1.0
+```
+
+### Windows
 
 By default, installs the latest release to `%LOCALAPPDATA%\Programs\javm`.
 
