@@ -24,10 +24,8 @@ builds:
 archives:
   - formats: [tar.gz]
     name_template: >-
-      {{ .ProjectName }}_
-      {{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os | title }}{{ end }}_
+      {{ .ProjectName }}-{{ .Os }}-
       {{- if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
         formats: [zip]
