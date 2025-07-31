@@ -38,7 +38,7 @@ func (f *simpleFormatter) Format(entry *log.Entry) ([]byte, error) {
 func main() {
 	rootCmd = &cobra.Command{
 		Use:  "javm",
-		Long: "Java Version Manager (https://github.com/felipebz/javm).",
+		Long: "Java Version Manager (https://javm.dev).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if showVersion, _ := cmd.Flags().GetBool("version"); !showVersion {
 				return pflag.ErrHelp
