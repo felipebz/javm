@@ -20,7 +20,28 @@ and switch workflow for JDKs on Linux, macOS and Windows.
 
 ## Installation
 
-TBD
+You can install `javm` using the provided install scripts. They automatically detect your platform and architecture, and support different release channels:
+
+- `latest`: install from the latest GitHub Release (default)
+- `nightly`: install the most recent development build
+- Specific version: e.g. `v0.1.0`
+
+### 🪟 Windows
+
+By default, installs the latest release to `%LOCALAPPDATA%\Programs\javm`.
+
+To install the latest release:
+
+```powershell
+irm https://github.com/felipebz/javm/raw/main/install.ps1 | iex
+```
+
+To install a specific version or channel:
+
+```powershell
+iex "& { $(irm https://github.com/felipebz/javm/raw/main/install.ps1) } nightly"
+iex "& { $(irm https://github.com/felipebz/javm/raw/main/install.ps1) } v0.1.0"
+```
 
 ## Shell Setup
 
