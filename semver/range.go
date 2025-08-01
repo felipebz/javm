@@ -41,12 +41,12 @@ type Range struct {
 	rng       *semver.Constraints
 }
 
-func (l *Range) Contains(r *Version) bool {
-	return (l.Qualifier == r.qualifier || l.Qualifier == "*" || l.Qualifier == "") && l.rng.Check(r.ver)
+func (r *Range) Contains(v *Version) bool {
+	return (r.Qualifier == v.qualifier || r.Qualifier == "*" || r.Qualifier == "") && r.rng.Check(v.ver)
 }
 
-func (t *Range) String() string {
-	return t.raw
+func (r *Range) String() string {
+	return r.raw
 }
 
 func ParseRange(raw string) (*Range, error) {

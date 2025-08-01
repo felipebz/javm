@@ -13,51 +13,51 @@ type Version struct {
 	ver       *semver.Version
 }
 
-func (l *Version) LessThan(r *Version) bool {
-	if l.qualifier == r.qualifier {
-		return l.ver.LessThan(r.ver)
+func (v *Version) LessThan(other *Version) bool {
+	if v.qualifier == other.qualifier {
+		return v.ver.LessThan(other.ver)
 	}
-	return l.qualifier > r.qualifier
+	return v.qualifier > other.qualifier
 }
 
-func (l *Version) Equals(r *Version) bool {
-	return l.raw == r.raw
+func (v *Version) Equals(other *Version) bool {
+	return v.raw == other.raw
 }
 
-func (t *Version) String() string {
-	return t.raw
+func (v *Version) String() string {
+	return v.raw
 }
 
-func (t *Version) TrimTo(part VersionPart) string {
-	prefix := t.qualifier
+func (v *Version) TrimTo(part VersionPart) string {
+	prefix := v.qualifier
 	if prefix != "" {
 		prefix += "@"
 	}
 	switch part {
 	case VPMajor:
-		return fmt.Sprintf("%v%v", prefix, t.ver.Major())
+		return fmt.Sprintf("%v%v", prefix, v.ver.Major())
 	case VPMinor:
-		return fmt.Sprintf("%v%v.%v", prefix, t.ver.Major(), t.ver.Minor())
+		return fmt.Sprintf("%v%v.%v", prefix, v.ver.Major(), v.ver.Minor())
 	case VPPatch:
-		return fmt.Sprintf("%v%v.%v.%v", prefix, t.ver.Major(), t.ver.Minor(), t.ver.Patch())
+		return fmt.Sprintf("%v%v.%v.%v", prefix, v.ver.Major(), v.ver.Minor(), v.ver.Patch())
 	}
-	return t.raw
+	return v.raw
 }
 
-func (t *Version) Major() uint64 {
-	return t.ver.Major()
+func (v *Version) Major() uint64 {
+	return v.ver.Major()
 }
 
-func (t *Version) Minor() uint64 {
-	return t.ver.Minor()
+func (v *Version) Minor() uint64 {
+	return v.ver.Minor()
 }
 
-func (t *Version) Patch() uint64 {
-	return t.ver.Patch()
+func (v *Version) Patch() uint64 {
+	return v.ver.Patch()
 }
 
-func (t *Version) Prerelease() string {
-	return t.ver.Prerelease()
+func (v *Version) Prerelease() string {
+	return v.ver.Prerelease()
 }
 
 func ParseVersion(raw string) (*Version, error) {
@@ -80,14 +80,14 @@ type VersionSlice []*Version
 
 // impl sort.Interface:
 
-func (c VersionSlice) Len() int {
-	return len(c)
+func (s VersionSlice) Len() int {
+	return len(s)
 }
-func (c VersionSlice) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
+func (s VersionSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
-func (c VersionSlice) Less(i, j int) bool {
-	return c[i].LessThan(c[j])
+func (s VersionSlice) Less(i, j int) bool {
+	return s[i].LessThan(s[j])
 }
 
 type VersionPart int
@@ -98,9 +98,9 @@ const (
 	VPPatch
 )
 
-func (c VersionSlice) TrimTo(part VersionPart) VersionSlice {
+func (s VersionSlice) TrimTo(part VersionPart) VersionSlice {
 	latest := make(map[string]*Version)
-	for _, v := range c {
+	for _, v := range s {
 		key := versionTrimKey(v, part)
 		if prev, ok := latest[key]; !ok || v.ver.GreaterThan(prev.ver) {
 			latest[key] = v
