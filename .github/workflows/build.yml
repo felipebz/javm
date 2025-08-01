@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ ubuntu-24.04, windows-2025, macos-15 ]
 
     steps:
       - name: Checkout
@@ -35,7 +35,7 @@ jobs:
 
   build:
     name: Build snapshot
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
     steps:
     - name: Check out code
@@ -92,7 +92,7 @@ jobs:
 
   sonar:
     name: SonarQube analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
