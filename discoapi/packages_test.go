@@ -115,3 +115,82 @@ func TestGetPackages_QueryParams(t *testing.T) {
 		})
 	}
 }
+
+const mockPackageInfoResponse = `{
+  "result": [
+    {
+      "filename": "OpenJDK17U-jdk_x64_windows_hotspot_17.0.8_7.zip",
+      "direct_download_uri": "https://example.com/download/jdk17.zip",
+      "checksum": "abc123def456",
+      "checksum_type": "sha256"
+    }
+  ]
+}`
+
+func TestGetPackageInfo(t *testing.T) {
+	tests := []struct {
+		name         string
+		packageID    string
+		wantFilename string
+		wantError    bool
+	}{
+		{
+			name:         "successful response",
+			packageID:    "test-package-id",
+			wantFilename: "OpenJDK17U-jdk_x64_windows_hotspot_17.0.8_7.zip",
+			wantError:    false,
+		},
+		{
+			name:         "server error",
+			packageID:    "error-package-id",
+			wantFilename: "",
+			wantError:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/ids/error-package-id" {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				io.WriteString(w, mockPackageInfoResponse)
+			}))
+			defer server.Close()
+
+			client := &Client{
+				BaseURL:    server.URL,
+				HTTPClient: server.Client(),
+			}
+
+			packageInfo, err := client.GetPackageInfo(tc.packageID)
+
+			if (err != nil) != tc.wantError {
+				t.Fatalf("unexpected error condition: got error %v, wantError %v", err, tc.wantError)
+			}
+
+			if tc.wantError {
+				if packageInfo != nil {
+					t.Errorf("expected nil package info when error occurs, got %+v", packageInfo)
+				}
+				return
+			}
+
+			if packageInfo.Filename != tc.wantFilename {
+				t.Errorf("unexpected filename: got %q, want %q", packageInfo.Filename, tc.wantFilename)
+			}
+			if packageInfo.DirectDownloadUri != "https://example.com/download/jdk17.zip" {
+				t.Errorf("unexpected download URI: got %q, want %q", packageInfo.DirectDownloadUri, "https://example.com/download/jdk17.zip")
+			}
+			if packageInfo.Checksum != "abc123def456" {
+				t.Errorf("unexpected checksum: got %q, want %q", packageInfo.Checksum, "abc123def456")
+			}
+			if packageInfo.ChecksumType != "sha256" {
+				t.Errorf("unexpected checksum type: got %q, want %q", packageInfo.ChecksumType, "sha256")
+			}
+		})
+	}
+}
