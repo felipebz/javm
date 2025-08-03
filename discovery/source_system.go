@@ -18,10 +18,6 @@ func (s *SystemSource) Name() string {
 	return "system"
 }
 
-func (s *SystemSource) Enabled(config *Config) bool {
-	return config.IsSourceEnabled(s.Name())
-}
-
 func (s *SystemSource) getLocations() []string {
 	if len(s.locations) > 0 {
 		return s.locations

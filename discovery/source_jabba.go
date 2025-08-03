@@ -17,10 +17,6 @@ func (s *JabbaSource) Name() string {
 	return "jabba"
 }
 
-func (s *JabbaSource) Enabled(config *Config) bool {
-	return config.IsSourceEnabled(s.Name())
-}
-
 func (s *JabbaSource) Discover() ([]JDK, error) {
 	var locations []string
 

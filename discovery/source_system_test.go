@@ -11,18 +11,6 @@ func TestSystemSource_Name(t *testing.T) {
 	}
 }
 
-func TestSystemSource_Enabled(t *testing.T) {
-	src := NewSystemSource()
-	if !src.Enabled(&Config{
-		Enabled: true,
-		Sources: map[string]bool{
-			"system": true,
-		},
-	}) {
-		t.Errorf("expected Enabled to return true")
-	}
-}
-
 func TestSystemSource_Discover_FindsJDK(t *testing.T) {
 	tmpDir := t.TempDir()
 	jdkPath := createFakeJDK(t, tmpDir, "jdk-21")

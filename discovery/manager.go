@@ -64,7 +64,7 @@ func (d *Manager) DiscoverAll() ([]JDK, error) {
 	var allJDKs []JDK
 
 	for _, source := range d.sources {
-		if source.Enabled(d.Config) {
+		if d.Config.IsSourceEnabled(source.Name()) {
 			jdks, err := source.Discover()
 			if err != nil {
 				return nil, fmt.Errorf("failed to discover from %s: %w", source.Name(), err)

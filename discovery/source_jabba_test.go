@@ -18,18 +18,6 @@ func TestJabbaSource_Name(t *testing.T) {
 	}
 }
 
-func TestJabbaSource_Enabled(t *testing.T) {
-	src := NewJabbaSource()
-	if !src.Enabled(&Config{
-		Enabled: true,
-		Sources: map[string]bool{
-			"jabba": true,
-		},
-	}) {
-		t.Errorf("expected Enabled to return true")
-	}
-}
-
 func TestJabbaSource_getLocations_RealHome(t *testing.T) {
 	tmpHome := t.TempDir()
 
