@@ -1,9 +1,7 @@
 package discovery
 
 import (
-	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
@@ -25,17 +23,8 @@ func TestJabbaSource_getLocations_RealHome(t *testing.T) {
 	jdkPath := createFakeJDK(t, jabbaJdkDir, "openjdk-21")
 
 	// Save and override HOME / USERPROFILE for test
-	oldHome := os.Getenv("HOME")
-	oldUserProfile := os.Getenv("USERPROFILE")
-	t.Cleanup(func() {
-		_ = os.Setenv("HOME", oldHome)
-		_ = os.Setenv("USERPROFILE", oldUserProfile)
-	})
-	if runtime.GOOS == "windows" {
-		_ = os.Setenv("USERPROFILE", tmpHome)
-	} else {
-		_ = os.Setenv("HOME", tmpHome)
-	}
+	setEnvTemp(t, "HOME", tmpHome)
+	setEnvTemp(t, "USERPROFILE", tmpHome)
 
 	src := NewJabbaSource()
 

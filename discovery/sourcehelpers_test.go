@@ -30,3 +30,18 @@ IMPLEMENTOR="JDK"`
 	}
 	return jdkPath
 }
+
+func setEnvTemp(t *testing.T, key, value string) {
+	t.Helper()
+	oldVal, hadOld := os.LookupEnv(key)
+	if err := os.Setenv(key, value); err != nil {
+		t.Fatalf("failed to set env %s: %v", key, err)
+	}
+	t.Cleanup(func() {
+		if !hadOld {
+			_ = os.Unsetenv(key)
+		} else {
+			_ = os.Setenv(key, oldVal)
+		}
+	})
+}
