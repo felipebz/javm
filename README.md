@@ -33,14 +33,14 @@ By default, installs the latest release to `~/.javm`.
 To install the latest release:
 
 ```bash
-curl -sSf https://github.com/felipebz/javm/raw/main/install.sh | bash
+curl -fsSL https://javm.dev/install.sh | bash
 ```
 
 To install a specific version or channel:
 
 ```bash
-curl -sSf https://github.com/felipebz/javm/raw/main/install.sh | bash -s nightly
-curl -sSf https://github.com/felipebz/javm/raw/main/install.sh | bash -s v0.1.0
+curl -fsSL https://javm.dev/install.sh | bash -s nightly
+curl -fsSL https://javm.dev/install.sh | bash -s v0.1.0
 ```
 
 ### Windows
@@ -50,14 +50,14 @@ By default, installs the latest release to `%LOCALAPPDATA%\Programs\javm`.
 To install the latest release:
 
 ```powershell
-irm https://github.com/felipebz/javm/raw/main/install.ps1 | iex
+irm https://javm.dev/install.ps1 | iex
 ```
 
 To install a specific version or channel:
 
 ```powershell
-iex "& { $(irm https://github.com/felipebz/javm/raw/main/install.ps1) } nightly"
-iex "& { $(irm https://github.com/felipebz/javm/raw/main/install.ps1) } v0.1.0"
+iex "& { $(irm https://javm.dev/install.ps1) } nightly"
+iex "& { $(irm https://javm.dev/install.ps1) } v0.1.0"
 ```
 
 ## Shell Setup

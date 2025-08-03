@@ -15,7 +15,7 @@ case "$ARCH" in
   *) echo "Unsupported arch: $ARCH" && exit 1 ;;
 esac
 
-FILENAME="javm-${OS}-${ARCH}.zip"
+FILENAME="javm-${OS}-${ARCH}.tar.gz"
 TARGET_PATH="$INSTALL_DIR/$FILENAME"
 
 mkdir -p "$INSTALL_DIR"
@@ -41,7 +41,7 @@ download_release() {
 
 extract() {
   echo "Extracting..."
-  unzip -o "$FILENAME"
+  tar xvf "$FILENAME"
   echo "✅ Installed to $INSTALL_DIR"
 }
 
