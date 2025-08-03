@@ -38,6 +38,7 @@ func NewManagerWithAllSources(cacheFile string, cacheTTL time.Duration) *Manager
 		},
 		sources: []Source{
 			NewSystemSource(),
+			NewJabbaSource(),
 		},
 	}
 }
