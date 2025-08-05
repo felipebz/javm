@@ -9,7 +9,7 @@ import (
 const DefaultCacheTTL = 24 * time.Hour
 
 func GetDefaultCacheFile(configDir string) string {
-	return filepath.Join(configDir, "autodiscover", "cache.json")
+	return filepath.Join(configDir, "cache.json")
 }
 
 func CleanupVersionString(version string) string {

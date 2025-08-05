@@ -60,7 +60,7 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 			"  javm install 1.8.73=dmg+http://.../jdk-9-ea+110_osx-x64_bin.dmg",
 	}
 	cmd.Flags().StringVarP(&customInstallDestination, "output", "o", "",
-		"Custom destination (any JDK outside of $JABBA_HOME/jdk is considered to be unmanaged, i.e. not available to javm ls, use, etc. (unless `javm link`ed))")
+		"Custom destination (any JDK outside of $JAVM_HOME/jdk is considered to be unmanaged, i.e. not available to javm ls, use, etc. (unless `javm link`ed))")
 	return cmd
 }
 
