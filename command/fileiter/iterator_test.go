@@ -13,6 +13,9 @@ func TestDFS(t *testing.T) {
 		}
 	}
 	dir, err := os.MkdirTemp("", "fileiter_test")
+	t.Cleanup(func() {
+		_ = os.RemoveAll(dir)
+	})
 	ok(err)
 	ok(touch(dir, "a", "b", "c"))
 	ok(touch(dir, "b", "c"))
