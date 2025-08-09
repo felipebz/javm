@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 )
@@ -116,55 +115,17 @@ func ExtractMetadataFromReleaseFile(jdkPath string) (map[string]string, error) {
 
 func ExtractMetadataFromJavaVersion(javaPath string) (map[string]string, error) {
 	cmd := exec.Command(javaPath, "-version")
-	output, err := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("failed to run java -version: %w", err)
 	}
 
-	metadata := make(map[string]string)
-	outputStr := string(output)
+	md := ParseJavaVersionOutput(string(out))
 
-	// Extract version
-	versionRegex := regexp.MustCompile(`version "([^"]+)"`)
-	versionMatch := versionRegex.FindStringSubmatch(outputStr)
-	if len(versionMatch) > 1 {
-		metadata["version"] = versionMatch[1]
+	if md["version"] == "" {
+		return nil, fmt.Errorf("failed to extract metadata")
 	}
-
-	// Extract vendor
-	vendorRegex := regexp.MustCompile(`(OpenJDK|Java\(TM\)) .*?build`)
-	vendorMatch := vendorRegex.FindStringSubmatch(outputStr)
-	if len(vendorMatch) > 1 {
-		if vendorMatch[1] == "OpenJDK" {
-			metadata["vendor"] = "OpenJDK"
-		} else {
-			metadata["vendor"] = "Oracle"
-		}
-	}
-
-	// Extract implementation
-	if strings.Contains(outputStr, "JRE") {
-		metadata["implementation"] = "JRE"
-	} else {
-		metadata["implementation"] = "JDK"
-	}
-
-	// Extract architecture
-	if strings.Contains(outputStr, "64-Bit") {
-		if strings.Contains(outputStr, "aarch64") || strings.Contains(outputStr, "arm64") {
-			metadata["architecture"] = "arm64"
-		} else {
-			metadata["architecture"] = "x64"
-		}
-	} else {
-		if strings.Contains(outputStr, "arm") {
-			metadata["architecture"] = "arm"
-		} else {
-			metadata["architecture"] = "x86"
-		}
-	}
-
-	return metadata, nil
+	return md, nil
 }
 
 func DeduplicateJDKs(jdks []JDK) []JDK {
