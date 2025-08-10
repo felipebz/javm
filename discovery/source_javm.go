@@ -1,16 +1,19 @@
 package discovery
 
 import (
-	"path/filepath"
+	"io/fs"
+	"os"
+	"path"
 
 	"github.com/felipebz/javm/cfg"
 )
 
 type JavmSource struct {
+	vfs fs.FS
 }
 
 func NewJavmSource() *JavmSource {
-	return &JavmSource{}
+	return &JavmSource{vfs: os.DirFS("/")}
 }
 
 func (s *JavmSource) Name() string {
@@ -21,9 +24,9 @@ func (s *JavmSource) Discover() ([]JDK, error) {
 	var locations []string
 
 	javmDir := cfg.Dir()
-	jdksDir := filepath.Join(javmDir, "jdk")
+	jdksDir := path.Join(javmDir, "jdk")
 
 	locations = append(locations, jdksDir)
 
-	return ScanLocationsForJDKs(locations, s.Name())
+	return ScanLocationsForJDKs(s.vfs, locations, s.Name())
 }

@@ -1,47 +1,59 @@
 package discovery
 
 import (
+	"io/fs"
 	"os"
-	"path/filepath"
 	"runtime"
 )
 
 type SystemSource struct {
-	locations []string // Optional override for tests
+	vfs       fs.FS
+	locations []string
 }
 
 func NewSystemSource() *SystemSource {
-	return &SystemSource{}
+	return &SystemSource{vfs: os.DirFS("/")}
 }
 
-func (s *SystemSource) Name() string {
-	return "system"
-}
+func (s *SystemSource) Name() string { return "system" }
 
-func (s *SystemSource) getLocations() []string {
+func (s *SystemSource) Discover() ([]JDK, error) {
 	if len(s.locations) > 0 {
-		return s.locations
+		return ScanLocationsForJDKs(s.vfs, s.locations, s.Name())
 	}
+
+	type root struct {
+		vfs  fs.FS
+		path string
+	}
+	var roots []root
 
 	switch runtime.GOOS {
 	case "linux":
-		return []string{
-			"/usr/lib/jvm",
-			"/opt/java",
-		}
+		roots = append(roots,
+			root{vfs: os.DirFS("/"), path: "usr/lib/jvm"},
+			root{vfs: os.DirFS("/"), path: "opt/java"},
+		)
 	case "darwin":
-		return []string{
-			"/Library/Java/JavaVirtualMachines",
-		}
+		roots = append(roots,
+			root{vfs: os.DirFS("/"), path: "Library/Java/JavaVirtualMachines"},
+		)
 	case "windows":
-		return []string{
-			filepath.Join(os.Getenv("ProgramFiles"), "Java"),
-			filepath.Join(os.Getenv("ProgramFiles(x86)"), "Java"),
+		if pf := os.Getenv("ProgramFiles"); pf != "" {
+			roots = append(roots, root{vfs: os.DirFS(pf), path: "Java"})
+		}
+		if pf86 := os.Getenv("ProgramFiles(x86)"); pf86 != "" {
+			roots = append(roots, root{vfs: os.DirFS(pf86), path: "Java"})
 		}
 	}
-	return nil
-}
 
-func (s *SystemSource) Discover() ([]JDK, error) {
-	return ScanLocationsForJDKs(s.getLocations(), s.Name())
+	var all []JDK
+	for _, r := range roots {
+		jdks, err := ScanLocationsForJDKs(r.vfs, []string{r.path}, s.Name())
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, jdks...)
+	}
+	return all, nil
 }

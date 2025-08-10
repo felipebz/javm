@@ -1,34 +1,44 @@
 package discovery
 
 import (
+	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
 	"runtime"
 	"testing"
+	"testing/fstest"
 )
 
-func createFakeJDK(t *testing.T, baseDir, name string) string {
+func createFakeJDK(t *testing.T, vfs fstest.MapFS, baseDir, name string) string {
 	t.Helper()
-	jdkPath := filepath.Join(baseDir, name)
-	binDir := filepath.Join(jdkPath, "bin")
-	if err := os.MkdirAll(binDir, 0755); err != nil {
-		t.Fatalf("failed to create bin dir: %v", err)
-	}
-	javaExec := "java"
+
+	jdkDir := path.Join(baseDir, name)
+	binDir := path.Join(jdkDir, "bin")
+	java := "java"
 	if runtime.GOOS == "windows" {
-		javaExec = "java.exe"
+		java = "java.exe"
 	}
-	if err := os.WriteFile(filepath.Join(binDir, javaExec), []byte(""), 0755); err != nil {
-		t.Fatalf("failed to create java executable: %v", err)
+
+	vfs[path.Join(binDir, java)] = &fstest.MapFile{
+		Data: []byte(""),
+		Mode: fs.FileMode(0o755),
 	}
-	release := `JAVA_VERSION="21"
+
+	release := []byte(
+		`JAVA_VERSION="21"
 JAVA_VENDOR="TestVendor"
 OS_ARCH="x64"
-IMPLEMENTOR="JDK"`
-	if err := os.WriteFile(filepath.Join(jdkPath, "release"), []byte(release), 0644); err != nil {
-		t.Fatalf("failed to create release file: %v", err)
+IMPLEMENTOR="JDK"`,
+	)
+	vfs[path.Join(jdkDir, "release")] = &fstest.MapFile{
+		Data: release,
+		Mode: fs.FileMode(0o644),
 	}
-	return jdkPath
+
+	vfs[jdkDir] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
+	vfs[binDir] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
+
+	return jdkDir
 }
 
 func setEnvTemp(t *testing.T, key, value string) {

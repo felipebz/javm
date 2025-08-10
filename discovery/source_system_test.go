@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"testing"
+	"testing/fstest"
 )
 
 func TestSystemSource_Name(t *testing.T) {
@@ -12,11 +13,12 @@ func TestSystemSource_Name(t *testing.T) {
 }
 
 func TestSystemSource_Discover_FindsJDK(t *testing.T) {
-	tmpDir := t.TempDir()
-	jdkPath := createFakeJDK(t, tmpDir, "jdk-21")
+	vfs := fstest.MapFS{}
+	fakeJDK := createFakeJDK(t, vfs, ".", "jdk-21")
 
 	src := &SystemSource{
-		locations: []string{tmpDir},
+		vfs:       vfs,
+		locations: []string{fakeJDK},
 	}
 
 	jdks, err := src.Discover()
@@ -26,7 +28,7 @@ func TestSystemSource_Discover_FindsJDK(t *testing.T) {
 	if len(jdks) != 1 {
 		t.Fatalf("expected 1 JDK found, got %d", len(jdks))
 	}
-	if jdks[0].Path != jdkPath {
-		t.Errorf("expected path %q, got %q", jdkPath, jdks[0].Path)
+	if jdks[0].Path != fakeJDK {
+		t.Errorf("expected path %q, got %q", fakeJDK, jdks[0].Path)
 	}
 }

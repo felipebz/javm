@@ -1,8 +1,9 @@
 package discovery
 
 import (
-	"path/filepath"
+	"path"
 	"testing"
+	"testing/fstest"
 )
 
 type fakeConfig struct{}
@@ -17,16 +18,12 @@ func TestJabbaSource_Name(t *testing.T) {
 }
 
 func TestJabbaSource_getLocations_RealHome(t *testing.T) {
-	tmpHome := t.TempDir()
+	vfs := fstest.MapFS{}
 
-	jabbaJdkDir := filepath.Join(tmpHome, ".jabba", "jdk")
-	jdkPath := createFakeJDK(t, jabbaJdkDir, "openjdk-21")
+	jabbaJdkDir := path.Join(".jabba", "jdk")
+	jdkPath := createFakeJDK(t, vfs, jabbaJdkDir, "openjdk-21")
 
-	// Save and override HOME / USERPROFILE for test
-	setEnvTemp(t, "HOME", tmpHome)
-	setEnvTemp(t, "USERPROFILE", tmpHome)
-
-	src := NewJabbaSource()
+	src := &JabbaSource{vfs: vfs}
 
 	jdks, err := src.Discover()
 	if err != nil {

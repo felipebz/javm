@@ -1,17 +1,19 @@
 package discovery
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"testing/fstest"
 )
 
 func TestScanLocationsForJDKs_FindsValidJDK(t *testing.T) {
-	tmpDir := t.TempDir()
-	fakeJDK := createFakeJDK(t, tmpDir, "jdk-21")
+	vfs := fstest.MapFS{}
+	fakeJDK := createFakeJDK(t, vfs, ".", "jdk-21")
 
-	jdks, err := ScanLocationsForJDKs([]string{tmpDir}, "testsource")
+	jdks, err := ScanLocationsForJDKs(vfs, []string{"."}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -27,15 +29,11 @@ func TestScanLocationsForJDKs_FindsValidJDK(t *testing.T) {
 }
 
 func TestScanLocationsForJDKs_SkipsNonJDKDirs(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Create a directory without bin/java or release file
-	nonJDK := filepath.Join(tmpDir, "not-a-jdk")
-	if err := os.MkdirAll(nonJDK, 0755); err != nil {
-		t.Fatalf("failed to create dir: %v", err)
+	vfs := fstest.MapFS{
+		"not-a-jdk": &fstest.MapFile{Mode: fs.ModeDir},
 	}
 
-	jdks, err := ScanLocationsForJDKs([]string{tmpDir}, "testsource")
+	jdks, err := ScanLocationsForJDKs(vfs, []string{"."}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -45,9 +43,9 @@ func TestScanLocationsForJDKs_SkipsNonJDKDirs(t *testing.T) {
 }
 
 func TestScanLocationsForJDKs_IgnoresMissingLocations(t *testing.T) {
-	missingDir := filepath.Join(os.TempDir(), "definitely-not-there")
+	vfs := fstest.MapFS{}
 
-	jdks, err := ScanLocationsForJDKs([]string{missingDir}, "testsource")
+	jdks, err := ScanLocationsForJDKs(vfs, []string{"definitely-not-there"}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,14 +55,10 @@ func TestScanLocationsForJDKs_IgnoresMissingLocations(t *testing.T) {
 }
 
 func TestValidateJDK(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "javm-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	vfs := fstest.MapFS{}
 
-	// Test case 1: Invalid path (no bin/java)
-	jdk, ok, err := ValidateJDK(tempDir, "test")
+	// Invalid path (no bin/java)
+	jdk, ok, err := ValidateJDK(vfs, ".", "test")
 	if ok {
 		t.Error("Should return false for invalid JDK path")
 	}
@@ -75,53 +69,26 @@ func TestValidateJDK(t *testing.T) {
 		t.Error("Should return empty JDK for invalid path")
 	}
 
-	// Test case 2: Create a mock JDK structure
-	binDir := filepath.Join(tempDir, "bin")
-	err = os.MkdirAll(binDir, 0755)
-	if err != nil {
-		t.Fatalf("Failed to create bin directory: %v", err)
-	}
-
-	javaExe := "java"
-	if runtime.GOOS == "windows" {
-		javaExe = "java.exe"
-	}
-	javaPath := filepath.Join(binDir, javaExe)
-	err = os.WriteFile(javaPath, []byte("mock java executable"), 0755)
-	if err != nil {
-		t.Fatalf("Failed to create mock java executable: %v", err)
-	}
-
-	// Create a mock release file
-	releaseContent := `JAVA_VERSION="17.0.2"
-JAVA_VENDOR="Oracle Corporation"
-IMPLEMENTOR="Oracle"
-OS_ARCH="x64"
-`
-	err = os.WriteFile(filepath.Join(tempDir, "release"), []byte(releaseContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create mock release file: %v", err)
-	}
-
 	// Test with valid JDK path
-	jdk, ok, err = ValidateJDK(tempDir, "test-source")
+	jdkPath := createFakeJDK(t, vfs, ".", "openjdk-21")
+	jdk, ok, err = ValidateJDK(vfs, jdkPath, "test-source")
 	if !ok {
 		t.Error("Should return true for valid JDK path")
 	}
 	if err != nil {
 		t.Error("Should not return error for valid JDK path")
 	}
-	if jdk.Path != tempDir {
-		t.Errorf("Path = %v, want %v", jdk.Path, tempDir)
+	if jdk.Path != jdkPath {
+		t.Errorf("Path = %v, want %v", jdk.Path, jdkPath)
 	}
-	if jdk.Version != "17.0.2" {
-		t.Errorf("Version = %v, want 17.0.2", jdk.Version)
+	if jdk.Version != "21" {
+		t.Errorf("Version = %v, want 21", jdk.Version)
 	}
-	if jdk.Vendor != "Oracle Corporation" {
-		t.Errorf("Vendor = %v, want Oracle Corporation", jdk.Vendor)
+	if jdk.Vendor != "TestVendor" {
+		t.Errorf("Vendor = %v, want TestVendor", jdk.Vendor)
 	}
-	if jdk.Implementation != "Oracle" {
-		t.Errorf("Implementation = %v, want Oracle", jdk.Implementation)
+	if jdk.Implementation != "JDK" {
+		t.Errorf("Implementation = %v, want JDK", jdk.Implementation)
 	}
 	if jdk.Architecture != "x64" {
 		t.Errorf("Architecture = %v, want x64", jdk.Architecture)
@@ -132,14 +99,25 @@ OS_ARCH="x64"
 }
 
 func TestExtractMetadataFromReleaseFile(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "javm-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
+	vfs := fstest.MapFS{
+		"non-existent-release": &fstest.MapFile{Mode: fs.ModeDir},
+		"jdk/release": {
+			Data: []byte(`JAVA_VERSION="17.0.2"
+JAVA_VENDOR="Oracle Corporation"
+IMPLEMENTOR="Oracle"
+OS_ARCH="x64"`),
+			Mode: fs.FileMode(0o644),
+		},
+		"invalid-jdk/release": {
+			Data: []byte(`JAVA_VERSION 17.0.2
+JAVA_VENDOR=Oracle Corporation
+IMPLEMENTOR="Oracle"`),
+			Mode: fs.FileMode(0o644),
+		},
 	}
-	defer os.RemoveAll(tempDir)
 
 	// Test case 1: Non-existent release file
-	metadata, err := ExtractMetadataFromReleaseFile(tempDir)
+	metadata, err := ExtractMetadataFromReleaseFile(vfs, "non-existent-release")
 	if err == nil {
 		t.Error("Should return error for non-existent release file")
 	}
@@ -148,17 +126,7 @@ func TestExtractMetadataFromReleaseFile(t *testing.T) {
 	}
 
 	// Test case 2: Valid release file
-	releaseContent := `JAVA_VERSION="17.0.2"
-JAVA_VENDOR="Oracle Corporation"
-IMPLEMENTOR="Oracle"
-OS_ARCH="x64"
-`
-	err = os.WriteFile(filepath.Join(tempDir, "release"), []byte(releaseContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create mock release file: %v", err)
-	}
-
-	metadata, err = ExtractMetadataFromReleaseFile(tempDir)
+	metadata, err = ExtractMetadataFromReleaseFile(vfs, "jdk")
 	if err != nil {
 		t.Error("Should not return error for valid release file")
 	}
@@ -176,16 +144,7 @@ OS_ARCH="x64"
 	}
 
 	// Test case 3: Invalid format in release file
-	invalidContent := `JAVA_VERSION 17.0.2
-JAVA_VENDOR=Oracle Corporation
-IMPLEMENTOR="Oracle"
-`
-	err = os.WriteFile(filepath.Join(tempDir, "release"), []byte(invalidContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create mock release file: %v", err)
-	}
-
-	metadata, err = ExtractMetadataFromReleaseFile(tempDir)
+	metadata, err = ExtractMetadataFromReleaseFile(vfs, "invalid-jdk")
 	if err != nil {
 		t.Error("Should not return error for invalid format in release file")
 	}

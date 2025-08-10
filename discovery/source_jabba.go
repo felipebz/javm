@@ -1,34 +1,32 @@
 package discovery
 
 import (
-	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
 )
 
 type JabbaSource struct {
+	vfs fs.FS
 }
 
 func NewJabbaSource() *JabbaSource {
-	return &JabbaSource{}
+	return &JabbaSource{
+		vfs: os.DirFS(mustHome()),
+	}
 }
 
-func (s *JabbaSource) Name() string {
-	return "jabba"
-}
+func (s *JabbaSource) Name() string { return "jabba" }
 
 func (s *JabbaSource) Discover() ([]JDK, error) {
-	var locations []string
+	roots := []string{path.Join(".jabba", "jdk")}
+	return ScanLocationsForJDKs(s.vfs, roots, s.Name())
+}
 
-	homeDir, err := os.UserHomeDir()
+func mustHome() string {
+	h, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user home directory: %w", err)
+		panic(err)
 	}
-
-	jabbaJdkDir := filepath.Join(homeDir, ".jabba", "jdk")
-	if _, err := os.Stat(jabbaJdkDir); err == nil {
-		locations = append(locations, jabbaJdkDir)
-	}
-
-	return ScanLocationsForJDKs(locations, s.Name())
+	return h
 }

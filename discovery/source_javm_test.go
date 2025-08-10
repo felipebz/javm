@@ -1,9 +1,8 @@
 package discovery
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
+	"testing/fstest"
 )
 
 func TestJavmSource_Name(t *testing.T) {
@@ -14,14 +13,13 @@ func TestJavmSource_Name(t *testing.T) {
 }
 
 func TestJavmSource_Discover(t *testing.T) {
-	tmpDir := t.TempDir()
+	vfs := fstest.MapFS{}
 
-	setEnvTemp(t, "JAVM_HOME", tmpDir)
+	setEnvTemp(t, "JAVM_HOME", ".")
 
-	jdksDir := filepath.Join(tmpDir, "jdk")
-	jdkPath := createFakeJDK(t, jdksDir, "openjdk-21")
+	jdkPath := createFakeJDK(t, vfs, "jdk", "openjdk-21")
 
-	src := NewJavmSource()
+	src := &JavmSource{vfs: vfs}
 
 	jdks, err := src.Discover()
 	if err != nil {
@@ -39,17 +37,13 @@ func TestJavmSource_Discover(t *testing.T) {
 }
 
 func TestJavmSource_Discover_NoJDKs(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	setEnvTemp(t, "JAVM_HOME", tmpDir)
-
-	jdksDir := filepath.Join(tmpDir, "jdk")
-	if err := os.MkdirAll(jdksDir, 0755); err != nil {
-		t.Fatalf("failed to create jdk dir: %v", err)
+	vfs := fstest.MapFS{
+		"jdk/": &fstest.MapFile{},
 	}
 
-	// Create the source and test discovery
-	src := NewJavmSource()
+	setEnvTemp(t, "JAVM_HOME", "jdk")
+
+	src := &JavmSource{vfs: vfs}
 
 	jdks, err := src.Discover()
 	if err != nil {
@@ -61,11 +55,11 @@ func TestJavmSource_Discover_NoJDKs(t *testing.T) {
 }
 
 func TestJavmSource_Discover_DirectoryDoesNotExist(t *testing.T) {
-	tmpDir := t.TempDir()
+	vfs := fstest.MapFS{}
 
-	setEnvTemp(t, "JAVM_HOME", tmpDir)
+	setEnvTemp(t, "JAVM_HOME", "does-not-exist")
 
-	src := NewJavmSource()
+	src := &JavmSource{vfs: vfs}
 
 	jdks, err := src.Discover()
 	if err != nil {

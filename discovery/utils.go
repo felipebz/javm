@@ -3,35 +3,35 @@ package discovery
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"io/fs"
 	"os/exec"
-	"path/filepath"
+	"path"
 	"runtime"
 	"strings"
 )
 
-func ScanLocationsForJDKs(locations []string, sourceName string) ([]JDK, error) {
+func ScanLocationsForJDKs(vfs fs.FS, locations []string, sourceName string) ([]JDK, error) {
 	var jdks []JDK
 
 	for _, location := range locations {
-		if _, err := os.Stat(location); os.IsNotExist(err) {
+		if _, err := fs.Stat(vfs, location); err != nil {
 			continue
 		}
 
-		err := filepath.Walk(location, func(path string, info os.FileInfo, err error) error {
+		err := fs.WalkDir(vfs, location, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return nil // Skip this path on error
 			}
-			if !info.IsDir() {
+			if !d.IsDir() {
 				return nil
 			}
-			jdk, ok, err := ValidateJDK(path, sourceName)
+			jdk, ok, err := ValidateJDK(vfs, p, sourceName)
 			if err != nil {
 				return nil // Skip this path on error
 			}
 			if ok {
 				jdks = append(jdks, jdk)
-				return filepath.SkipDir
+				return fs.SkipDir
 			}
 			return nil
 		})
@@ -44,73 +44,64 @@ func ScanLocationsForJDKs(locations []string, sourceName string) ([]JDK, error) 
 	return jdks, nil
 }
 
-func ValidateJDK(path string, source string) (JDK, bool, error) {
+func ValidateJDK(vfs fs.FS, p, source string) (JDK, bool, error) {
 	javaExe := "java"
 	if runtime.GOOS == "windows" {
 		javaExe = "java.exe"
 	}
-	javaPath := filepath.Join(path, "bin", javaExe)
-	if _, err := os.Stat(javaPath); os.IsNotExist(err) {
+	javaPath := path.Join(p, "bin", javaExe)
+	if _, err := fs.Stat(vfs, javaPath); err != nil {
 		return JDK{}, false, nil
 	}
 
-	metadata, err := ExtractMetadataFromReleaseFile(path)
+	md, err := ExtractMetadataFromReleaseFile(vfs, p)
 	if err == nil {
 		return JDK{
-			Path:           path,
-			Version:        metadata["JAVA_VERSION"],
-			Vendor:         metadata["JAVA_VENDOR"],
-			Implementation: metadata["IMPLEMENTOR"],
-			Architecture:   metadata["OS_ARCH"],
+			Path:           p,
+			Version:        md["JAVA_VERSION"],
+			Vendor:         md["JAVA_VENDOR"],
+			Implementation: md["IMPLEMENTOR"],
+			Architecture:   md["OS_ARCH"],
 			Source:         source,
 		}, true, nil
 	}
 
-	metadata, err = ExtractMetadataFromJavaVersion(javaPath)
+	md, err = ExtractMetadataFromJavaVersion(javaPath)
 	if err != nil {
 		return JDK{}, false, fmt.Errorf("failed to extract metadata: %w", err)
 	}
 
 	return JDK{
-		Path:           path,
-		Version:        metadata["version"],
-		Vendor:         metadata["vendor"],
-		Implementation: metadata["implementation"],
-		Architecture:   metadata["architecture"],
+		Path:           p,
+		Version:        md["version"],
+		Vendor:         md["vendor"],
+		Implementation: md["implementation"],
+		Architecture:   md["architecture"],
 		Source:         source,
 	}, true, nil
 }
 
-func ExtractMetadataFromReleaseFile(jdkPath string) (map[string]string, error) {
-	releaseFile := filepath.Join(jdkPath, "release")
-	if _, err := os.Stat(releaseFile); os.IsNotExist(err) {
-		return nil, fmt.Errorf("release file not found")
-	}
-
-	file, err := os.Open(releaseFile)
+func ExtractMetadataFromReleaseFile(vfs fs.FS, jdkDir string) (map[string]string, error) {
+	b, err := fs.ReadFile(vfs, path.Join(jdkDir, "release"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to open release file: %w", err)
+		return nil, err
 	}
-	defer file.Close()
-
-	metadata := make(map[string]string)
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
+	md := make(map[string]string)
+	sc := bufio.NewScanner(strings.NewReader(string(b)))
+	for sc.Scan() {
+		line := sc.Text()
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
 			continue
 		}
 		key := strings.TrimSpace(parts[0])
-		value := strings.Trim(strings.TrimSpace(parts[1]), "\"")
-		metadata[key] = value
+		val := strings.Trim(strings.TrimSpace(parts[1]), "\"")
+		md[key] = val
 	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read release file: %w", err)
+	if err := sc.Err(); err != nil {
+		return nil, err
 	}
-
-	return metadata, nil
+	return md, nil
 }
 
 func ExtractMetadataFromJavaVersion(javaPath string) (map[string]string, error) {
