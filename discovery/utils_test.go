@@ -3,8 +3,6 @@ package discovery
 import (
 	"io/fs"
 	"os"
-	"path/filepath"
-	"runtime"
 	"testing"
 	"testing/fstest"
 )
@@ -13,7 +11,7 @@ func TestScanLocationsForJDKs_FindsValidJDK(t *testing.T) {
 	vfs := fstest.MapFS{}
 	fakeJDK := createFakeJDK(t, vfs, ".", "jdk-21")
 
-	jdks, err := ScanLocationsForJDKs(vfs, []string{"."}, "testsource")
+	jdks, err := ScanLocationsForJDKs(vfs, fakeRunner{}, []string{"."}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -33,7 +31,7 @@ func TestScanLocationsForJDKs_SkipsNonJDKDirs(t *testing.T) {
 		"not-a-jdk": &fstest.MapFile{Mode: fs.ModeDir},
 	}
 
-	jdks, err := ScanLocationsForJDKs(vfs, []string{"."}, "testsource")
+	jdks, err := ScanLocationsForJDKs(vfs, fakeRunner{}, []string{"."}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -45,7 +43,7 @@ func TestScanLocationsForJDKs_SkipsNonJDKDirs(t *testing.T) {
 func TestScanLocationsForJDKs_IgnoresMissingLocations(t *testing.T) {
 	vfs := fstest.MapFS{}
 
-	jdks, err := ScanLocationsForJDKs(vfs, []string{"definitely-not-there"}, "testsource")
+	jdks, err := ScanLocationsForJDKs(vfs, fakeRunner{}, []string{"definitely-not-there"}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -58,7 +56,7 @@ func TestValidateJDK(t *testing.T) {
 	vfs := fstest.MapFS{}
 
 	// Invalid path (no bin/java)
-	jdk, ok, err := ValidateJDK(vfs, ".", "test")
+	jdk, ok, err := ValidateJDK(vfs, fakeRunner{}, ".", "test")
 	if ok {
 		t.Error("Should return false for invalid JDK path")
 	}
@@ -71,7 +69,7 @@ func TestValidateJDK(t *testing.T) {
 
 	// Test with valid JDK path
 	jdkPath := createFakeJDK(t, vfs, ".", "openjdk-21")
-	jdk, ok, err = ValidateJDK(vfs, jdkPath, "test-source")
+	jdk, ok, err = ValidateJDK(vfs, fakeRunner{}, jdkPath, "test-source")
 	if !ok {
 		t.Error("Should return true for valid JDK path")
 	}
@@ -163,66 +161,26 @@ func TestExtractMetadataFromJavaVersion(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	if runtime.GOOS == "windows" {
-		// On Windows, we can't easily create executable files for testing
-		// So we'll create a batch file that outputs the expected java -version output
-		mockJavaContent := `@echo off
-echo java version "17.0.2" 2>&1
-echo OpenJDK Runtime Environment (build 17.0.2+8) 2>&1
-echo OpenJDK 64-Bit Server VM (build 17.0.2+8, mixed mode) 2>&1
-`
-		mockJavaPath := filepath.Join(tempDir, "java.bat")
-		err = os.WriteFile(mockJavaPath, []byte(mockJavaContent), 0644)
-		if err != nil {
-			t.Fatalf("Failed to create mock java batch file: %v", err)
-		}
+	mockJavaVersion := `java version "17.0.2"
+OpenJDK Runtime Environment (build 17.0.2+8)
+OpenJDK 64-Bit Server VM (build 17.0.2+8, mixed mode)`
 
-		metadata, err := ExtractMetadataFromJavaVersion(mockJavaPath)
-		if err != nil {
-			t.Errorf("Should not return error for mock java executable: %v", err)
-		}
+	metadata, err := ExtractMetadataFromJavaVersion(fakeRunner{out: mockJavaVersion}, "java")
+	if err != nil {
+		t.Errorf("Should not return error for mock java executable: %v", err)
+	}
 
-		if got := metadata["version"]; got != "17.0.2" {
-			t.Errorf("version = %v, want 17.0.2", got)
-		}
-		if got := metadata["vendor"]; got != "OpenJDK" {
-			t.Errorf("vendor = %v, want OpenJDK", got)
-		}
-		if got := metadata["implementation"]; got != "JDK" {
-			t.Errorf("implementation = %v, want JDK", got)
-		}
-		if got := metadata["architecture"]; got != "x64" {
-			t.Errorf("architecture = %v, want x64", got)
-		}
-	} else {
-		// On Unix-like systems, we can create a shell script
-		mockJavaContent := `#!/bin/sh
-echo 'java version "17.0.2"' >&2
-echo 'OpenJDK Runtime Environment (build 17.0.2+8)' >&2
-echo 'OpenJDK 64-Bit Server VM (build 17.0.2+8, mixed mode)' >&2
-`
-		mockJavaPath := filepath.Join(tempDir, "java")
-		err = os.WriteFile(mockJavaPath, []byte(mockJavaContent), 0755)
-		if err != nil {
-			t.Fatalf("Failed to create mock java script: %v", err)
-		}
-
-		metadata, err := ExtractMetadataFromJavaVersion(mockJavaPath)
-		if err != nil {
-			t.Errorf("Should not return error for mock java executable: %v", err)
-		}
-		if got := metadata["version"]; got != "17.0.2" {
-			t.Errorf("version = %v, want 17.0.2", got)
-		}
-		if got := metadata["vendor"]; got != "OpenJDK" {
-			t.Errorf("vendor = %v, want OpenJDK", got)
-		}
-		if got := metadata["implementation"]; got != "JDK" {
-			t.Errorf("implementation = %v, want JDK", got)
-		}
-		if got := metadata["architecture"]; got != "x64" {
-			t.Errorf("architecture = %v, want x64", got)
-		}
+	if got := metadata["version"]; got != "17.0.2" {
+		t.Errorf("version = %v, want 17.0.2", got)
+	}
+	if got := metadata["vendor"]; got != "OpenJDK" {
+		t.Errorf("vendor = %v, want OpenJDK", got)
+	}
+	if got := metadata["implementation"]; got != "JDK" {
+		t.Errorf("implementation = %v, want JDK", got)
+	}
+	if got := metadata["architecture"]; got != "x64" {
+		t.Errorf("architecture = %v, want x64", got)
 	}
 }
 

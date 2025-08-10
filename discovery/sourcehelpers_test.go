@@ -9,6 +9,15 @@ import (
 	"testing/fstest"
 )
 
+type fakeRunner struct {
+	out string
+	err error
+}
+
+func (f fakeRunner) CombinedOutput(name string, args ...string) ([]byte, error) {
+	return []byte(f.out), f.err
+}
+
 func createFakeJDK(t *testing.T, vfs fstest.MapFS, baseDir, name string) string {
 	t.Helper()
 

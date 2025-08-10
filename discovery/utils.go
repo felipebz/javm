@@ -4,13 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"io/fs"
-	"os/exec"
 	"path"
 	"runtime"
 	"strings"
 )
 
-func ScanLocationsForJDKs(vfs fs.FS, locations []string, sourceName string) ([]JDK, error) {
+func ScanLocationsForJDKs(vfs fs.FS, runner Runner, locations []string, sourceName string) ([]JDK, error) {
 	var jdks []JDK
 
 	for _, location := range locations {
@@ -25,7 +24,7 @@ func ScanLocationsForJDKs(vfs fs.FS, locations []string, sourceName string) ([]J
 			if !d.IsDir() {
 				return nil
 			}
-			jdk, ok, err := ValidateJDK(vfs, p, sourceName)
+			jdk, ok, err := ValidateJDK(vfs, runner, p, sourceName)
 			if err != nil {
 				return nil // Skip this path on error
 			}
@@ -44,7 +43,7 @@ func ScanLocationsForJDKs(vfs fs.FS, locations []string, sourceName string) ([]J
 	return jdks, nil
 }
 
-func ValidateJDK(vfs fs.FS, p, source string) (JDK, bool, error) {
+func ValidateJDK(vfs fs.FS, runner Runner, p, source string) (JDK, bool, error) {
 	javaExe := "java"
 	if runtime.GOOS == "windows" {
 		javaExe = "java.exe"
@@ -66,7 +65,7 @@ func ValidateJDK(vfs fs.FS, p, source string) (JDK, bool, error) {
 		}, true, nil
 	}
 
-	md, err = ExtractMetadataFromJavaVersion(javaPath)
+	md, err = ExtractMetadataFromJavaVersion(runner, javaPath)
 	if err != nil {
 		return JDK{}, false, fmt.Errorf("failed to extract metadata: %w", err)
 	}
@@ -104,9 +103,8 @@ func ExtractMetadataFromReleaseFile(vfs fs.FS, jdkDir string) (map[string]string
 	return md, nil
 }
 
-func ExtractMetadataFromJavaVersion(javaPath string) (map[string]string, error) {
-	cmd := exec.Command(javaPath, "-version")
-	out, err := cmd.CombinedOutput()
+func ExtractMetadataFromJavaVersion(runner Runner, javaPath string) (map[string]string, error) {
+	out, err := runner.CombinedOutput(javaPath, "-version")
 	if err != nil {
 		return nil, fmt.Errorf("failed to run java -version: %w", err)
 	}
