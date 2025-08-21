@@ -40,6 +40,7 @@ func NewManagerWithAllSources(cacheFile string, cacheTTL time.Duration) *Manager
 			NewSystemSource(),
 			NewJabbaSource(),
 			NewGradleSource(),
+			NewIntelliJSource(),
 			NewJavmSource(),
 		},
 	}
