@@ -9,7 +9,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
-	github.com/ulikunitz/xz v0.5.12
+	github.com/ulikunitz/xz v0.5.13
 )
 
 require (
