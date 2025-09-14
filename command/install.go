@@ -206,7 +206,7 @@ func (self RedirectTracer) RoundTrip(req *http.Request) (resp *http.Response, er
 
 func download(url string) (file string, err error) {
 	ext := getFileExtension(url)
-	tmp, err := os.CreateTemp("", "jabba-d-*"+ext)
+	tmp, err := os.CreateTemp("", "javm-d-*"+ext)
 	if err != nil {
 		return
 	}
