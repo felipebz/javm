@@ -6,15 +6,6 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"github.com/felipebz/javm/cfg"
-	"github.com/felipebz/javm/command/fileiter"
-	"github.com/felipebz/javm/semver"
-	"github.com/goccy/go-yaml"
-	"github.com/schollz/progressbar/v3"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"github.com/ulikunitz/xz"
 	"io"
 	"net/http"
 	"os"
@@ -22,6 +13,15 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/command/fileiter"
+	"github.com/felipebz/javm/semver"
+	"github.com/schollz/progressbar/v3"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/ulikunitz/xz"
 )
 
 func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
@@ -33,7 +33,7 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
 			if len(args) == 0 {
-				ver = rc().JDK
+				ver = cfg.ReadJavaVersion()
 				if ver == "" {
 					return pflag.ErrHelp
 				}
@@ -650,26 +650,4 @@ func unzip(src string, dst string, strip bool) error {
 		}
 	}
 	return nil
-}
-
-// TODO copied from javm.go, it should be moved to the config package
-type jabbarc struct {
-	JDK string
-}
-
-func rc() (rc jabbarc) {
-	b, err := os.ReadFile(".jabbarc")
-	if err != nil {
-		return
-	}
-	// content can be a string (jdk version)
-	err = yaml.Unmarshal(b, &rc.JDK)
-	if err != nil {
-		// or a struct
-		err = yaml.Unmarshal(b, &rc)
-		if err != nil {
-			log.Fatal(".jabbarc is not valid")
-		}
-	}
-	return
 }

@@ -11,7 +11,7 @@ and switch workflow for JDKs on Linux, macOS and Windows.
 ## Features
 
 - Install & switch between multiple JDK distributions (Zulu, OpenJDK, GraalVM, Temurin, etc.) using semver ranges
-- Per‑project JDK via `.javmrc` (checked into VCS)
+- Per‑project JDK via `.java-version`
 - Remote discovery (DiscoAPI integration) + custom URLs
 - Supports semantic version ranges (`1.8.x`, `~17.0.2`, `>=21 <22`)
 - Clean removal (`uninstall`, `deactivate`) without touching system JDK
@@ -136,24 +136,18 @@ javm use temurin@17
 javm deactivate                      # restore previous JAVA_HOME / PATH
 ```
 
-### Per‑Project Version (`.javmrc`)
+### Per‑Project Version (`.java-version`)
 
-Create a `.javmrc` in your project root:
+Create a `.java-version` in your project root:
 
-```yaml
-jdk: 17
 ```
-
-or just:
-
-```yaml
 17
 ```
 
 Then:
 
 ```sh
-javm use   # picks version from .javmrc
+javm use   # picks version from .java-version
 ```
 
 ### Aliases
@@ -174,12 +168,6 @@ javm link system@1.8.72 /Library/Java/JavaVirtualMachines/jdk1.8.0_72.jdk
 ```sh
 javm uninstall zulu@1.8
 ```
-
-
-> `.javmrc` has to be a valid YAML file. JDK version can be specified as `jdk: 1.8` or simply as `1.8` 
-(same as `~1.8`, `1.8.x` `">=1.8.0 <1.9.0"` (mind the quotes)).
-
-For more information see `javm --help`.  
 
 ## Development
 
@@ -202,7 +190,7 @@ No. `javm use` adjusts your shell `PATH` and `JAVA_HOME` *in that session*.
 Run `javm deactivate` or open a new shell (if no default alias points elsewhere).
 
 **Q: Can I pin a project JDK?**\
-Yes: `.javmrc` with `jdk: <range>` then `javm use` inside that directory.
+Yes: Create a `.java-version` with the JDK version then `javm use` inside that directory.
 
 **Q: Why not install “globally”?**\
 Global changes (e.g. system alternatives, registry edits) vary by OS and often require sudo/admin; javm keeps things user‑scoped and portable.

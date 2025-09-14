@@ -3,15 +3,16 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"strings"
+
+	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/command"
 	"github.com/felipebz/javm/discoapi"
 	"github.com/felipebz/javm/semver"
-	"github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
-	"strings"
 )
 
 var version string
@@ -54,7 +55,7 @@ func main() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
 			if len(args) == 0 {
-				ver = rc().JDK
+				ver = cfg.ReadJavaVersion()
 				if ver == "" {
 					return pflag.ErrHelp
 				}
@@ -170,7 +171,7 @@ func main() {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				var ver string
 				if len(args) == 0 {
-					ver = rc().JDK
+					ver = cfg.ReadJavaVersion()
 					if ver == "" {
 						return pflag.ErrHelp
 					}
@@ -269,27 +270,6 @@ func parseTrimTo(value string) semver.VersionPart {
 		log.Fatal("Unexpected value of --latest (must be either \"major\", \"minor\" or \"patch\")")
 		return -1
 	}
-}
-
-type jabbarc struct {
-	JDK string
-}
-
-func rc() (rc jabbarc) {
-	b, err := os.ReadFile(".jabbarc")
-	if err != nil {
-		return
-	}
-	// content can be a string (jdk version)
-	err = yaml.Unmarshal(b, &rc.JDK)
-	if err != nil {
-		// or a struct
-		err = yaml.Unmarshal(b, &rc)
-		if err != nil {
-			log.Fatal(".jabbarc is not valid")
-		}
-	}
-	return
 }
 
 func use(ver string) error {
