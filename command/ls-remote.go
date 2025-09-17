@@ -2,10 +2,11 @@ package command
 
 import (
 	"fmt"
-	"github.com/felipebz/javm/semver"
-	"github.com/spf13/cobra"
 	"io"
 	"runtime"
+
+	"github.com/felipebz/javm/semver"
+	"github.com/spf13/cobra"
 )
 
 func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
@@ -35,7 +36,7 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&osFlag, "os", runtime.GOOS, "Operating System (macos, linux, windows)")
 	cmd.Flags().StringVar(&archFlag, "arch", runtime.GOARCH, "Architecture (amd64, arm64)")
-	cmd.Flags().StringVar(&distributionFlag, "distribution", "temurin", "Java distribution (e.g. temurin, zulu, corretto)")
+	cmd.Flags().StringVar(&distributionFlag, "distribution", "temurin", "Java distribution (e.g. temurin, zulu, corretto). Use \"all\" to list all distributions")
 	cmd.Flags().StringVar(&trimTo, "latest", "major",
 		"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
 	return cmd
@@ -55,6 +56,9 @@ func runLsRemote(
 		}
 	}
 
+	if distributionFlag == "all" {
+		distributionFlag = ""
+	}
 	packageIndex, err := makePackageIndex(client, osFlag, archFlag, distributionFlag)
 	if err != nil {
 		return err
