@@ -147,7 +147,6 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 			}
 		}
 	}
-	url = url[strings.Index(url, "+")+1:]
 	var file string
 	var deleteFileWhenFinnished bool
 	if strings.HasPrefix(url, "file://") {
