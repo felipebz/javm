@@ -3,7 +3,7 @@ javm() {
     local fd3
     fd3=$(mktemp)
 
-    "$javm_executable" "$@" --fd3 "$fd3"
+    "$javm_executable" --fd3 "$fd3" "$@"
 
     if [ -s "$fd3" ]; then
         . "$fd3"

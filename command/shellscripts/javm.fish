@@ -1,7 +1,7 @@
 function javm
     set -l javm_executable "::JAVM::"
     set -l fd3 (mktemp)
-    $javm_executable $argv --fd3 $fd3
+    $javm_executable --fd3 $fd3 $argv
 
     if test -s $fd3
         source $fd3

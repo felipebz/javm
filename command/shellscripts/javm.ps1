@@ -2,7 +2,7 @@ function global:javm
 {
     $javmExecutable = '::JAVM::'
     $fd3 = [System.IO.Path]::GetTempFileName()
-    & $javmExecutable $args --fd3 "$fd3"
+    & $javmExecutable --fd3 "$fd3" @args
     $fd3content = Get-Content $fd3
     if ($fd3content)
     {
