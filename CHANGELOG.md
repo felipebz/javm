@@ -1,0 +1,39 @@
+# Changelog
+
+## [0.1.0](https://github.com/felipebz/javm/compare/v0.0.1...v0.1.0) (2025-10-09)
+
+
+### Features
+
+* add "all" option for listing all distributions in ls-remote command ([4d7de4c](https://github.com/felipebz/javm/commit/4d7de4cbd85a519cc2b54842cb01fce50ffb70aa))
+* add `ls-distributions` command to list available Java distributions (closes [#6](https://github.com/felipebz/javm/issues/6)) ([d9e04ca](https://github.com/felipebz/javm/commit/d9e04cac4b97894c5b95e1b8da6899d6510d36b7))
+* add bash and zsh support for the init command (closes [#13](https://github.com/felipebz/javm/issues/13)) ([de2af0d](https://github.com/felipebz/javm/commit/de2af0d936a47095b26193d8d2955de5b220317b))
+* add discoapi/client ([#5](https://github.com/felipebz/javm/issues/5)) ([443ed0f](https://github.com/felipebz/javm/commit/443ed0ff69323b291a1e595ab766acca3648fa46))
+* add discoapi/distributions ([#5](https://github.com/felipebz/javm/issues/5)) ([67730f3](https://github.com/felipebz/javm/commit/67730f34ec1fc4bdb1911b7f8776078812c4888b))
+* add discoapi/packages ([#5](https://github.com/felipebz/javm/issues/5)) ([3b79f16](https://github.com/felipebz/javm/commit/3b79f168a3c2626c27e1817f402f87253875b52b))
+* add fish support for the init command (closes [#15](https://github.com/felipebz/javm/issues/15)) ([25b20ec](https://github.com/felipebz/javm/commit/25b20ece0ed7bcf4127e4d624f4e80427c27e865))
+* add Gradle source for JDK discovery ([#16](https://github.com/felipebz/javm/issues/16)) ([d8616b2](https://github.com/felipebz/javm/commit/d8616b2be28ebd28200b7160b59c5336c7eda346))
+* add initial GitHub Actions workflow for automated release creation and publishing ([94ea209](https://github.com/felipebz/javm/commit/94ea2099b71435854ae513e0257fe0fa787a626b))
+* add installation script for Linux/macOS (closes [#18](https://github.com/felipebz/javm/issues/18)) ([fee3c26](https://github.com/felipebz/javm/commit/fee3c268675d86bdc65f5e64f44b8b2542425c07))
+* add IntelliJ source for JDK discovery ([#16](https://github.com/felipebz/javm/issues/16)) ([f3bf0a3](https://github.com/felipebz/javm/commit/f3bf0a3ed38aaa511d12114042686092baf87337))
+* add Jabba source for JDK discovery ([#16](https://github.com/felipebz/javm/issues/16)) ([e9db518](https://github.com/felipebz/javm/commit/e9db5183505b8b94670a27bceca157fb21c76ccb))
+* add javm source for JDK discovery ([#16](https://github.com/felipebz/javm/issues/16)) ([4fb84da](https://github.com/felipebz/javm/commit/4fb84da60a293d303c49e62008c95d377744a948))
+* add PowerShell installer script ([#19](https://github.com/felipebz/javm/issues/19)) ([b7b1654](https://github.com/felipebz/javm/commit/b7b16541caa19e4be3ca62c662429a5a9da193ec))
+* adjust archive type and libc settings based on OS in package requests ([a5fd9a2](https://github.com/felipebz/javm/commit/a5fd9a2c4f1fb95e21ca335cf148ee6aaab33344))
+* complete release workflow with SBOM generation and asset attestation ([72b41ce](https://github.com/felipebz/javm/commit/72b41ced00a34175b20abc99a70080ee7f54c5ee))
+* configure release-please with manifest file ([19d3116](https://github.com/felipebz/javm/commit/19d31164ac3e37e0a36000384f08ba7fe1f09310))
+* implement initial prototype of the init command ([#12](https://github.com/felipebz/javm/issues/12), [#14](https://github.com/felipebz/javm/issues/14)) ([d5a3581](https://github.com/felipebz/javm/commit/d5a358183b5e66fbc7281bf3959887cb153bc9fe))
+* introduce JDK discovery mechanism ([#16](https://github.com/felipebz/javm/issues/16)) ([84b93a2](https://github.com/felipebz/javm/commit/84b93a2d6cb87e240bc15099c69c4671c80fcbdc))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/spf13/cobra to v1.10.1 ([89e39f4](https://github.com/felipebz/javm/commit/89e39f483959347cd0b9b028751371ca89ddaa66))
+* **deps:** update module github.com/spf13/cobra to v1.10.1 ([3d87144](https://github.com/felipebz/javm/commit/3d87144ec85f198abc0823f5143e5d32a0e11fd3))
+* **deps:** update module github.com/spf13/pflag to v1.0.10 ([#25](https://github.com/felipebz/javm/issues/25)) ([a4b72b5](https://github.com/felipebz/javm/commit/a4b72b5d0f1b30cfd9bf11c97cc90fbbb5a5274a))
+* **deps:** update module github.com/ulikunitz/xz to v0.5.13 ([#24](https://github.com/felipebz/javm/issues/24)) ([4f6c7d4](https://github.com/felipebz/javm/commit/4f6c7d42c9cc958578fa0fbf89df2d0ca846cc3b))
+* **deps:** update module github.com/ulikunitz/xz to v0.5.15 ([#26](https://github.com/felipebz/javm/issues/26)) ([3979f36](https://github.com/felipebz/javm/commit/3979f36c2e6a56597fda7b0cce6ee18052b8db5c))
+* **deps:** update module gopkg.in/yaml.v2 to v3 ([7109416](https://github.com/felipebz/javm/commit/71094165f9b32b4c58d6bea7afb4503e11f38e85))
+* **deps:** update module gopkg.in/yaml.v2 to v3 ([31cc07c](https://github.com/felipebz/javm/commit/31cc07c431f3cd1ad7af6ac5e7e93fc3bb55f98b))
+* Fix flaky tests on Windows ([52b7ade](https://github.com/felipebz/javm/commit/52b7ade1cbcc8e9a26fbb30d2aecbea9154ec5e8))
+* update temp file prefix ([4403ad4](https://github.com/felipebz/javm/commit/4403ad4f7e1d6c9b7582ff0742c03c4c240623f2))
