@@ -40,13 +40,9 @@ jobs:
           go-version: '1.25.x'
           cache: true
 
-      - name: Generate SBOM (syft)
-        if: ${{ steps.release.outputs.release_created == 'true' }}
-        uses: anchore/sbom-action@v0
-        with:
-          path: .
-          artifact-name: sbom.spdx.json
-          format: spdx-json
+      - name: Install Syft
+        if: ${{ steps.rp.outputs.release_created == 'true' }}
+        uses: anchore/sbom-action/download-syft@v0
 
       - name: GoReleaser (publish)
         if: ${{ steps.release.outputs.release_created == 'true' }}

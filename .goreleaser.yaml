@@ -20,6 +20,10 @@ builds:
     goarch:
       - amd64
       - arm64
+      -
+sboms:
+  - id: default
+    artifacts: archive
 
 archives:
   - formats: [tar.gz]

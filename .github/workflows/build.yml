@@ -49,6 +49,9 @@ jobs:
         go-version: 1.25.x
         cache: true
 
+    - name: Install Syft
+      uses: anchore/sbom-action/download-syft@v0
+
     - uses: goreleaser/goreleaser-action@v6
       with:
         version: "~> v2"
