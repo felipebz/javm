@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/felipebz/javm/compare/v0.1.0...v0.2.0) (2025-10-10)
+
+
+### Features
+
+* integrate SBOM generation with GoReleaser ([1c48854](https://github.com/felipebz/javm/commit/1c488546fd1486f02a2147ae8f616c03ced14c7c))
+
+
+### Bug Fixes
+
+* **shellscripts:** correct argument order for `--fd3` in javm scripts ([a908e64](https://github.com/felipebz/javm/commit/a908e64cf22d2fd66851984975d36ba8d2ed8937))
+
 ## [0.1.0](https://github.com/felipebz/javm/compare/v0.0.1...v0.1.0) (2025-10-09)
 
 
