@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/felipebz/javm/compare/v0.2.0...v0.2.1) (2025-10-10)
+
+
+### Bug Fixes
+
+* **ci:** correct conditional for Syft installation step in release workflow ([95a022f](https://github.com/felipebz/javm/commit/95a022f805ba1edb8ef2348561c013751cba2965))
+
 ## [0.2.0](https://github.com/felipebz/javm/compare/v0.1.0...v0.2.0) (2025-10-10)
 
 
