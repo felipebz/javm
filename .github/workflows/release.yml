@@ -41,7 +41,7 @@ jobs:
           cache: true
 
       - name: Install Syft
-        if: ${{ steps.rp.outputs.release_created == 'true' }}
+        if: ${{ steps.release.outputs.release_created == 'true' }}
         uses: anchore/sbom-action/download-syft@v0
 
       - name: GoReleaser (publish)
