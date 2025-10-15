@@ -47,29 +47,6 @@ func main() {
 			return nil
 		},
 	}
-	var whichHome bool
-	whichCmd := &cobra.Command{
-		Use:   "which [version]",
-		Short: "Display path to installed JDK",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var ver string
-			if len(args) == 0 {
-				ver = cfg.ReadJavaVersion()
-				if ver == "" {
-					return pflag.ErrHelp
-				}
-			} else {
-				ver = args[0]
-			}
-			dir, _ := command.Which(ver, whichHome)
-			if dir != "" {
-				fmt.Println(dir)
-			}
-			return nil
-		},
-	}
-	whichCmd.Flags().BoolVar(&whichHome, "home", false,
-		"Account for platform differences so that value could be used as JAVA_HOME (e.g. append \"/Contents/Home\" on macOS)")
 	client := discoapi.NewClient()
 	rootCmd.AddCommand(
 		command.NewInstallCommand(client),
@@ -212,7 +189,7 @@ func main() {
 			},
 		},
 		command.NewLsDistributionsCommand(client),
-		whichCmd,
+		command.NewWhichCommand(),
 		command.NewInitCommand(),
 		command.NewDiscoverCommand(),
 	)
