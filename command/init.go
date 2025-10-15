@@ -4,10 +4,12 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 
+	"github.com/felipebz/javm/cfg"
 	"github.com/spf13/cobra"
 )
 
@@ -52,6 +54,14 @@ func NewInitCommand() *cobra.Command {
 			}
 
 			script = strings.NewReplacer("::JAVM::", executable).Replace(script)
+
+			defaultFile := filepath.Join(cfg.Dir(), "default-version")
+			if data, err := os.ReadFile(defaultFile); err == nil {
+				ver := strings.TrimSpace(string(data))
+				if ver != "" {
+					script += "\n" + "javm use " + ver + "\n"
+				}
+			}
 
 			if shell == "pwsh" || shell == "powershell" {
 				scriptPath, err := writePowerShellInitScript(script)

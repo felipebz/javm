@@ -18,6 +18,16 @@ func init() {
 }
 
 func TestInitCommand_Bash(t *testing.T) {
+	// Isolate from any real user config by pointing JAVM_HOME to a temp dir
+	tmp := t.TempDir()
+	oldHome, had := os.LookupEnv("JAVM_HOME")
+	os.Setenv("JAVM_HOME", tmp)
+	if had {
+		t.Cleanup(func() { os.Setenv("JAVM_HOME", oldHome) })
+	} else {
+		t.Cleanup(func() { os.Unsetenv("JAVM_HOME") })
+	}
+
 	cmd := NewInitCommand()
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
@@ -36,6 +46,16 @@ func TestInitCommand_Bash(t *testing.T) {
 }
 
 func TestInitCommand_PowerShell(t *testing.T) {
+	// Isolate from any real user config by pointing JAVM_HOME to a temp dir
+	tmp := t.TempDir()
+	oldHome, had := os.LookupEnv("JAVM_HOME")
+	os.Setenv("JAVM_HOME", tmp)
+	if had {
+		t.Cleanup(func() { os.Setenv("JAVM_HOME", oldHome) })
+	} else {
+		t.Cleanup(func() { os.Unsetenv("JAVM_HOME") })
+	}
+
 	cmd := NewInitCommand()
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)

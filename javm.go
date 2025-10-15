@@ -192,6 +192,7 @@ func main() {
 		command.NewWhichCommand(),
 		command.NewInitCommand(),
 		command.NewDiscoverCommand(),
+		command.NewDefaultCommand(),
 	)
 	rootCmd.Flags().Bool("version", false, "version of javm")
 	rootCmd.PersistentFlags().String("fd3", "", "")
