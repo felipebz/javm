@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/felipebz/javm/compare/v0.2.1...v0.3.0) (2025-10-15)
+
+
+### Features
+
+* **default:** add command `default` for setting a default Java version ([b09bf92](https://github.com/felipebz/javm/commit/b09bf92d7d6746612345533c2875208fa02c47c3))
+
 ## [0.2.1](https://github.com/felipebz/javm/compare/v0.2.0...v0.2.1) (2025-10-10)
 
 
