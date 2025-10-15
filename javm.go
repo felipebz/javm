@@ -9,7 +9,6 @@ import (
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/command"
 	"github.com/felipebz/javm/discoapi"
-	"github.com/felipebz/javm/semver"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -71,39 +70,6 @@ func main() {
 	}
 	whichCmd.Flags().BoolVar(&whichHome, "home", false,
 		"Account for platform differences so that value could be used as JAVA_HOME (e.g. append \"/Contents/Home\" on macOS)")
-	var trimTo string
-	lsCmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List installed versions",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var r *semver.Range
-			if len(args) > 0 {
-				var err error
-				r, err = semver.ParseRange(args[0])
-				if err != nil {
-					log.Fatal(err)
-				}
-			}
-			vs, err := command.Ls()
-			if err != nil {
-				log.Fatal(err)
-			}
-			if trimTo != "" {
-				vs = semver.VersionSlice(vs).TrimTo(parseTrimTo(trimTo))
-			}
-			for _, v := range vs {
-				if r != nil && !r.Contains(v) {
-					continue
-				}
-				fmt.Println(v)
-			}
-			return nil
-		},
-	}
-	for _, cmd := range []*cobra.Command{lsCmd} {
-		cmd.Flags().StringVar(&trimTo, "latest", "",
-			"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
-	}
 	client := discoapi.NewClient()
 	rootCmd.AddCommand(
 		command.NewInstallCommand(client),
@@ -193,7 +159,7 @@ func main() {
 				}
 			},
 		},
-		lsCmd,
+		command.NewLsCommand(),
 		command.NewLsRemoteCommand(client),
 		&cobra.Command{
 			Use:   "deactivate",
@@ -255,20 +221,6 @@ func main() {
 	rootCmd.PersistentFlags().MarkHidden("fd3")
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(-1)
-	}
-}
-
-func parseTrimTo(value string) semver.VersionPart {
-	switch strings.ToLower(value) {
-	case "major":
-		return semver.VPMajor
-	case "minor":
-		return semver.VPMinor
-	case "patch":
-		return semver.VPPatch
-	default:
-		log.Fatal("Unexpected value of --latest (must be either \"major\", \"minor\" or \"patch\")")
-		return -1
 	}
 }
 
