@@ -55,6 +55,6 @@ jobs:
 
       - name: Attest Release Assets
         if: ${{ steps.release.outputs.release_created == 'true' }}
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-path: "dist/**"
