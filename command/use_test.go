@@ -54,9 +54,9 @@ func TestUse(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	expected := []string{
-		"export PATH=\"" + javaPath + sep + "/usr/local/bin" + sep + "/usr/bin\"",
-		"export JAVA_HOME=\"" + javaHome + "\"",
-		"export JAVA_HOME_BEFORE_JABBA=\"/system-jdk\"",
+		"SET\tPATH\t" + javaPath + sep + "/usr/local/bin" + sep + "/usr/bin",
+		"SET\tJAVA_HOME\t" + javaHome,
+		"SET\tJAVA_HOME_BEFORE_JABBA\t" + "/system-jdk",
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("actual: %v != expected: %v", actual, expected)

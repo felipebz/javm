@@ -1,11 +1,12 @@
 package command
 
 import (
-	"github.com/felipebz/javm/cfg"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+
+	"github.com/felipebz/javm/cfg"
 )
 
 func Use(selector string) ([]string, error) {
@@ -38,8 +39,8 @@ func usePath(path string) ([]string, error) {
 		systemJavaHome, _ = os.LookupEnv("JAVA_HOME")
 	}
 	return []string{
-		"export PATH=\"" + filepath.Join(path, "bin") + string(os.PathListSeparator) + pth + "\"",
-		"export JAVA_HOME=\"" + path + "\"",
-		"export JAVA_HOME_BEFORE_JABBA=\"" + systemJavaHome + "\"",
+		"SET\tPATH\t" + filepath.Join(path, "bin") + string(os.PathListSeparator) + pth,
+		"SET\tJAVA_HOME\t" + path,
+		"SET\tJAVA_HOME_BEFORE_JABBA\t" + systemJavaHome,
 	}, nil
 }

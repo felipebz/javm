@@ -1,10 +1,11 @@
 package command
 
 import (
-	"github.com/felipebz/javm/cfg"
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"github.com/felipebz/javm/cfg"
 )
 
 func Deactivate() ([]string, error) {
@@ -18,8 +19,8 @@ func Deactivate() ([]string, error) {
 		javaHome, _ = os.LookupEnv("JAVA_HOME")
 	}
 	return []string{
-		"export PATH=\"" + pth + "\"",
-		"export JAVA_HOME=\"" + javaHome + "\"",
-		"unset JAVA_HOME_BEFORE_JABBA",
+		"SET\tPATH\t" + pth,
+		"SET\tJAVA_HOME\t" + javaHome,
+		"UNSET\tJAVA_HOME_BEFORE_JABBA",
 	}, nil
 }

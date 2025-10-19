@@ -22,9 +22,9 @@ func TestDeactivate(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	expected := []string{
-		"export PATH=\"/usr/local/bin" + sep + "/system-jdk/bin" + sep + "/usr/bin\"",
-		"export JAVA_HOME=\"/system-jdk\"",
-		"unset JAVA_HOME_BEFORE_JABBA",
+		"SET\tPATH\t" + "/usr/local/bin" + sep + "/system-jdk/bin" + sep + "/usr/bin",
+		"SET\tJAVA_HOME\t" + "/system-jdk",
+		"UNSET\tJAVA_HOME_BEFORE_JABBA",
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("actual: %v != expected: %v", actual, expected)
@@ -42,9 +42,9 @@ func TestDeactivateInUnusedEnv(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	expected := []string{
-		"export PATH=\"/usr/local/bin:/system-jdk/bin:/usr/bin\"",
-		"export JAVA_HOME=\"/system-jdk\"",
-		"unset JAVA_HOME_BEFORE_JABBA",
+		"SET\tPATH\t" + "/usr/local/bin:/system-jdk/bin:/usr/bin",
+		"SET\tJAVA_HOME\t" + "/system-jdk",
+		"UNSET\tJAVA_HOME_BEFORE_JABBA",
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("actual: %v != expected: %v", actual, expected)

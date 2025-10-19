@@ -6,7 +6,10 @@ javm() {
     "$javm_executable" --fd3 "$fd3" "$@"
 
     if [ -s "$fd3" ]; then
-        . "$fd3"
+        while IFS=$'\t' read -r op key val; do
+            [ "$op" = "SET" ] && export "$key=$val"
+            [ "$op" = "UNSET" ] && unset "$key"
+        done < "$fd3"
     fi
 
     rm -f "$fd3"
