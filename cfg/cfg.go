@@ -1,7 +1,6 @@
 package cfg
 
 import (
-	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,7 +14,8 @@ func Dir() string {
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal(err)
+		// Fallback to a temporary directory to avoid exiting the process from library code
+		homeDir = os.TempDir()
 	}
 
 	switch runtime.GOOS {

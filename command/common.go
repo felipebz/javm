@@ -2,11 +2,11 @@ package command
 
 import (
 	"fmt"
-	"github.com/felipebz/javm/discoapi"
-	"github.com/felipebz/javm/semver"
-	log "github.com/sirupsen/logrus"
 	"sort"
 	"strings"
+
+	"github.com/felipebz/javm/discoapi"
+	"github.com/felipebz/javm/semver"
 )
 
 type PackagesClient interface {
@@ -62,7 +62,6 @@ func parseTrimTo(value string) semver.VersionPart {
 	case "patch":
 		return semver.VPPatch
 	default:
-		log.Fatal("Unexpected value of --latest (must be either \"major\", \"minor\" or \"patch\")")
 		return -1
 	}
 }

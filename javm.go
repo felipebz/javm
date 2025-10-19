@@ -19,7 +19,6 @@ var rootCmd *cobra.Command
 
 func init() {
 	log.SetFormatter(&simpleFormatter{})
-	// todo: make it configurable through the command line
 	log.SetLevel(log.InfoLevel)
 }
 
@@ -58,15 +57,13 @@ func main() {
 					return pflag.ErrHelp
 				}
 				if strings.HasPrefix(args[0], "system@") {
-					log.Fatal("Link to system JDK can only be removed with 'unlink'" +
-						" (e.g. 'javm unlink " + args[0] + "')")
+					return fmt.Errorf("Link to system JDK can only be removed with 'unlink' (e.g. 'javm unlink %s')", args[0])
 				}
-				err := command.Uninstall(args[0])
-				if err != nil {
-					log.Fatal(err)
+				if err := command.Uninstall(args[0]); err != nil {
+					return err
 				}
 				if err := command.LinkLatest(); err != nil {
-					log.Fatal(err)
+					return err
 				}
 				return nil
 			},
@@ -78,7 +75,7 @@ func main() {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				if len(args) == 0 {
 					if err := command.LinkLatest(); err != nil {
-						log.Fatal(err)
+						return err
 					}
 					return nil
 				}
@@ -87,7 +84,7 @@ func main() {
 						fmt.Println(value)
 					}
 				} else if err := command.Link(args[0], args[1]); err != nil {
-					log.Fatal(err)
+					return err
 				}
 				return nil
 			},
@@ -102,7 +99,7 @@ func main() {
 					return pflag.ErrHelp
 				}
 				if err := command.Link(args[0], ""); err != nil {
-					log.Fatal(err)
+					return err
 				}
 				return nil
 			},
@@ -144,7 +141,7 @@ func main() {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				out, err := command.Deactivate()
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
 				printForShellToEval(out)
 				return nil
@@ -165,10 +162,10 @@ func main() {
 					return nil
 				}
 				if err := command.SetAlias(name, args[1]); err != nil {
-					log.Fatal(err)
+					return err
 				}
 				if err := command.LinkAlias(name); err != nil {
-					log.Fatal(err)
+					return err
 				}
 				return nil
 			},
@@ -183,7 +180,7 @@ func main() {
 					return pflag.ErrHelp
 				}
 				if err := command.SetAlias(args[0], ""); err != nil {
-					log.Fatal(err)
+					return err
 				}
 				return nil
 			},
@@ -197,6 +194,16 @@ func main() {
 	rootCmd.Flags().Bool("version", false, "version of javm")
 	rootCmd.PersistentFlags().String("fd3", "", "")
 	rootCmd.PersistentFlags().MarkHidden("fd3")
+	rootCmd.PersistentFlags().Bool("debug", false, "enable verbose debug logging")
+	rootCmd.PersistentFlags().Bool("quiet", false, "suppress non-error logs")
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if dbg, _ := cmd.Flags().GetBool("debug"); dbg {
+			log.SetLevel(log.DebugLevel)
+		} else if q, _ := cmd.Flags().GetBool("quiet"); q {
+			log.SetLevel(log.WarnLevel)
+		}
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(-1)
 	}
@@ -205,7 +212,7 @@ func main() {
 func use(ver string) error {
 	out, err := command.Use(ver)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	printForShellToEval(out)
 	return nil

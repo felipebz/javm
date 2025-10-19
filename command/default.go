@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/felipebz/javm/cfg"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -22,7 +21,7 @@ func NewDefaultCommand() *cobra.Command {
 			}
 			ver := args[0]
 			if err := SetDefaultVersion(ver); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "Default Java version set to %s\n", ver)
 			return nil
