@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/felipebz/javm/compare/v0.3.0...v0.4.0) (2025-10-19)
+
+
+### Features
+
+* **core:** harden env propagation via neutral SET/UNSET protocol ([65aee9b](https://github.com/felipebz/javm/commit/65aee9b150ffa2a3777205113fa502fa6716347e))
+* **logging:** add --debug and --quiet flags ([40ca68e](https://github.com/felipebz/javm/commit/40ca68ed8ac460069798e21c27d4c01fa33a2b3f))
+
 ## [0.3.0](https://github.com/felipebz/javm/compare/v0.2.1...v0.3.0) (2025-10-15)
 
 
