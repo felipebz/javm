@@ -4,6 +4,7 @@ javm() {
     fd3=$(mktemp)
 
     "$javm_executable" --fd3 "$fd3" "$@"
+    local rc=$?
 
     if [ -s "$fd3" ]; then
         while IFS=$'\t' read -r op key val; do
@@ -13,4 +14,5 @@ javm() {
     fi
 
     rm -f "$fd3"
+    return $rc
 }

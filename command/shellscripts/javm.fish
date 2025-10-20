@@ -2,6 +2,7 @@ function javm
     set -l javm_executable "::JAVM::"
     set -l fd3 (mktemp)
     $javm_executable --fd3 $fd3 $argv
+    set -l exit_code $status
 
     if test -s $fd3
         while read -l line
@@ -20,4 +21,5 @@ function javm
     end
 
     rm -f $fd3
+    return $exit_code
 end
