@@ -65,7 +65,8 @@ case "$MODE" in
     ;;
   latest)
     # Get the latest release tag
-    TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | jq -r .tag_name)
+    TAG=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
+      | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
     if [[ -z "$TAG" || "$TAG" == "null" ]]; then
       echo "Could not determine latest release tag" >&2
       exit 1
