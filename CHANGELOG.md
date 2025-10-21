@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.0](https://github.com/felipebz/javm/compare/v0.4.0...v0.5.0) (2025-10-21)
+
+
+### Features
+
+* **commands:** scope --fd3 flag to use/deactivate commands and update shell wrappers ([c92ef21](https://github.com/felipebz/javm/commit/c92ef211b255902911b67229d44b1c2124c5f7cf))
+* **packages:** support musl-based Linux distributions (closes [#9](https://github.com/felipebz/javm/issues/9)) ([1a9b1df](https://github.com/felipebz/javm/commit/1a9b1df47fc547d3307758e2745ccdb3a8a8cae7))
+* **shellscripts:** propagate exit code from javm executable across all shell scripts ([ab2d8d0](https://github.com/felipebz/javm/commit/ab2d8d0f14ccf947856bd97a6f0bfaf277716b7f))
+
 ## [0.4.0](https://github.com/felipebz/javm/compare/v0.3.0...v0.4.0) (2025-10-19)
 
 
