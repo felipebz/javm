@@ -47,6 +47,44 @@ func main() {
 		},
 	}
 	client := discoapi.NewClient()
+
+	useCmd := &cobra.Command{
+		Use:   "use [version to use]",
+		Short: "Modify PATH & JAVA_HOME to use specific JDK",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var ver string
+			if len(args) == 0 {
+				ver = cfg.ReadJavaVersion()
+				if ver == "" {
+					return pflag.ErrHelp
+				}
+			} else {
+				ver = args[0]
+			}
+			fd3, _ := cmd.Flags().GetString("fd3")
+			return use(ver, fd3)
+		},
+		Example: "  javm use 1.8\n" +
+			"  javm use ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
+	}
+	useCmd.Flags().String("fd3", "", "")
+	useCmd.Flags().MarkHidden("fd3")
+
+	deactivateCmd := &cobra.Command{
+		Use:   "deactivate",
+		Short: "Undo effects of `javm` on current shell",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			out, err := command.Deactivate()
+			if err != nil {
+				return err
+			}
+			fd3, _ := cmd.Flags().GetString("fd3")
+			printForShellToEval(out, fd3)
+			return nil
+		},
+	}
+	deactivateCmd.Flags().String("fd3", "", "")
+	deactivateCmd.Flags().MarkHidden("fd3")
 	rootCmd.AddCommand(
 		command.NewInstallCommand(client),
 		&cobra.Command{
@@ -105,24 +143,7 @@ func main() {
 			},
 			Example: "  javm unlink system@1.8.20",
 		},
-		&cobra.Command{
-			Use:   "use [version to use]",
-			Short: "Modify PATH & JAVA_HOME to use specific JDK",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				var ver string
-				if len(args) == 0 {
-					ver = cfg.ReadJavaVersion()
-					if ver == "" {
-						return pflag.ErrHelp
-					}
-				} else {
-					ver = args[0]
-				}
-				return use(ver)
-			},
-			Example: "  javm use 1.8\n" +
-				"  javm use ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
-		},
+		useCmd,
 		&cobra.Command{
 			Use:   "current",
 			Short: "Display currently 'use'ed version",
@@ -135,18 +156,7 @@ func main() {
 		},
 		command.NewLsCommand(),
 		command.NewLsRemoteCommand(client),
-		&cobra.Command{
-			Use:   "deactivate",
-			Short: "Undo effects of `javm` on current shell",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				out, err := command.Deactivate()
-				if err != nil {
-					return err
-				}
-				printForShellToEval(out)
-				return nil
-			},
-		},
+		deactivateCmd,
 		&cobra.Command{
 			Use:   "alias [name] [version]",
 			Short: "Resolve or update an alias",
@@ -192,8 +202,6 @@ func main() {
 		command.NewDefaultCommand(),
 	)
 	rootCmd.Flags().Bool("version", false, "version of javm")
-	rootCmd.PersistentFlags().String("fd3", "", "")
-	rootCmd.PersistentFlags().MarkHidden("fd3")
 	rootCmd.PersistentFlags().Bool("debug", false, "enable verbose debug logging")
 	rootCmd.PersistentFlags().Bool("quiet", false, "suppress non-error logs")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -209,23 +217,22 @@ func main() {
 	}
 }
 
-func use(ver string) error {
+func use(ver string, fd3 string) error {
 	out, err := command.Use(ver)
 	if err != nil {
 		return err
 	}
-	printForShellToEval(out)
+	printForShellToEval(out, fd3)
 	return nil
 }
 
-func printForShellToEval(out []string) {
-	fd3, _ := rootCmd.Flags().GetString("fd3")
+func printForShellToEval(out []string, fd3 string) {
 	if fd3 != "" {
 		os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0666)
 	} else {
-		fd3 := os.NewFile(3, "fd3")
+		fd := os.NewFile(3, "fd3")
 		for _, line := range out {
-			fmt.Fprintln(fd3, line)
+			fmt.Fprintln(fd, line)
 		}
 	}
 }
