@@ -1,0 +1,64 @@
+name: Integration Test (Install & Use javm)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-tests-javm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    env:
+      JAVA_VERSION: "25"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+
+      - name: Install zsh & fish
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y zsh fish
+
+      - name: Install javm (once)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./install.sh nightly
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          javm --version
+          javm install 25
+
+      - name: Test bash
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          eval "$(javm init bash)"
+          . .github/scripts/javm_integration_common.sh
+
+      - name: Test zsh
+        shell: 'zsh {0}'
+        run: |
+          set -euxo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          eval "$(javm init zsh)"
+          . .github/scripts/javm_integration_common.sh
+
+      - name: Test fish
+        shell: 'fish {0}'
+        run: |
+          set -e
+          set -gx PATH "$HOME/.local/bin" $PATH
+          eval (javm init fish)
+          source .github/scripts/javm_integration_common.fish
