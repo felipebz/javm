@@ -62,5 +62,5 @@ jobs:
       - name: Test fish
         shell: 'fish {0}'
         run: |
-          eval (javm init fish)
+          javm init fish | source
           source .github/scripts/integration_test.fish
