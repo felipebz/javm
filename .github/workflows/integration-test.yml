@@ -29,6 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          sudo rm -f /var/lib/man-db/auto-update
           sudo apt-get update
           sudo apt-get install -y zsh fish
 
@@ -50,7 +51,7 @@ jobs:
           set -euxo pipefail
           export PATH="$HOME/.local/bin:$PATH"
           eval "$(javm init bash)"
-          . .github/scripts/javm_integration_common.sh
+          . .github/scripts/integration_test.sh
 
       - name: Test zsh
         shell: 'zsh {0}'
@@ -58,7 +59,7 @@ jobs:
           set -euxo pipefail
           export PATH="$HOME/.local/bin:$PATH"
           eval "$(javm init zsh)"
-          . .github/scripts/javm_integration_common.sh
+          . .github/scripts/integration_test.sh
 
       - name: Test fish
         shell: 'fish {0}'
@@ -66,4 +67,4 @@ jobs:
           set -e
           set -gx PATH "$HOME/.local/bin" $PATH
           eval (javm init fish)
-          source .github/scripts/javm_integration_common.fish
+          source .github/scripts/integration_test.fish
