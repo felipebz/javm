@@ -49,7 +49,6 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          export PATH="$HOME/.local/bin:$PATH"
           eval "$(javm init bash)"
           . .github/scripts/integration_test.sh
 
@@ -57,14 +56,11 @@ jobs:
         shell: 'zsh {0}'
         run: |
           set -euxo pipefail
-          export PATH="$HOME/.local/bin:$PATH"
           eval "$(javm init zsh)"
           . .github/scripts/integration_test.sh
 
       - name: Test fish
         shell: 'fish {0}'
         run: |
-          set -e
-          set -gx PATH "$HOME/.local/bin" $PATH
           eval (javm init fish)
           source .github/scripts/integration_test.fish
