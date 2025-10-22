@@ -47,7 +47,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
           javm --version
-          javm install "$JAVA_VERSION"
+          javm install "$JAVA_VERSION" --debug
 
       - name: Test bash
         shell: bash
@@ -92,7 +92,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
           javm --version
-          javm install "$JAVA_VERSION"
+          javm install "$JAVA_VERSION" --debug
 
       - name: Test zsh
         shell: 'zsh {0}'
