@@ -68,3 +68,35 @@ jobs:
         run: |
           javm init fish | source
           source .github/scripts/integration_test.fish
+
+  macos:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: macos-15
+    concurrency:
+      group: integration-tests-javm-${{ github.ref }}-macos
+      cancel-in-progress: true
+    env:
+      JAVA_VERSION: "25"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+
+      - name: Install javm (once)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          ./install.sh nightly
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          javm --version
+          javm install "$JAVA_VERSION"
+
+      - name: Test zsh
+        shell: 'zsh {0}'
+        run: |
+          set -euxo pipefail
+          eval "$(javm init zsh)"
+          . .github/scripts/integration_test.sh
