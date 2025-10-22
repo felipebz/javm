@@ -11,10 +11,6 @@ permissions:
   actions: read
   contents: read
 
-concurrency:
-  group: integration-tests-javm-${{ github.ref }}-${{ matrix.os || 'manual' }}
-  cancel-in-progress: true
-
 jobs:
   linux:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
@@ -23,6 +19,9 @@ jobs:
       matrix:
         os: [ ubuntu-24.04, ubuntu-24.04-arm ]
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: integration-tests-javm-${{ github.ref }}-${{ matrix.os || 'manual' }}
+      cancel-in-progress: true
     env:
       JAVA_VERSION: "25"
     steps:
