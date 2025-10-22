@@ -30,11 +30,14 @@ func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package,
 		params.Set("lib_c_type", "c_std_lib")
 	} else {
 		params.Set("archive_type", "tar.gz")
-		// Default to glibc for non-Windows, override to musl when detected at runtime on Linux
+
 		libc := "glibc"
 		if os == "linux" && isMuslLibc() {
 			libc = "musl"
+		} else if os == "darwin" {
+			libc = "libc"
 		}
+
 		log.Debugf("OS is %s, libc is %s", os, libc)
 		params.Set("lib_c_type", libc)
 	}
