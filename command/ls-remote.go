@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"strings"
 
 	"github.com/felipebz/javm/semver"
 	"github.com/spf13/cobra"
@@ -23,10 +24,12 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 			if len(args) > 0 {
 				rangeArg = args[0]
 			}
+
+			normalizedOS := normalizeOS(osFlag)
 			return runLsRemote(
 				cmd.OutOrStdout(),
 				client,
-				osFlag,
+				normalizedOS,
 				archFlag,
 				distributionFlag,
 				trimTo,
@@ -88,5 +91,16 @@ func printVersions(out io.Writer, versions []*semver.Version, packageIndex *pack
 		}
 
 		fmt.Fprintf(out, "%-20s %-15s %s %s\n", v.TrimTo(value), pkg.JavaVersion, pkg.Distribution, pkg.DistributionVersion)
+	}
+}
+
+func normalizeOS(os string) string {
+	switch strings.ToLower(os) {
+	case "macos", "osx", "mac", "macosx":
+		return "darwin"
+	case "win":
+		return "windows"
+	default:
+		return os
 	}
 }
