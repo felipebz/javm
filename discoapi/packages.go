@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"os/exec"
-	"runtime"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -33,10 +32,10 @@ func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package,
 		params.Set("archive_type", "tar.gz")
 		// Default to glibc for non-Windows, override to musl when detected at runtime on Linux
 		libc := "glibc"
-		if runtime.GOOS == "linux" && isMuslLibc() {
+		if os == "linux" && isMuslLibc() {
 			libc = "musl"
 		}
-		log.Debugf("OS is %s, libc is %s", runtime.GOOS, libc)
+		log.Debugf("OS is %s, libc is %s", os, libc)
 		params.Set("lib_c_type", libc)
 	}
 
