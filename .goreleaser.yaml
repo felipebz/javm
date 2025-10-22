@@ -20,7 +20,7 @@ builds:
     goarch:
       - amd64
       - arm64
-      -
+
 sboms:
   - id: default
     artifacts: archive
@@ -45,8 +45,6 @@ changelog:
       - "^chore:"
 
 release:
-  footer: >-
-
-    ---
-
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+  extra_files:
+    - glob: install.sh
+    - glob: install.ps1
