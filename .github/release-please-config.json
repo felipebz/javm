@@ -5,7 +5,10 @@
     ".": {
       "release-type": "go",
       "extra-files": [
-        "sonar-project.properties"
+        {
+          "type": "generic",
+          "path": "sonar-project.properties"
+        }
       ]
     }
   }
