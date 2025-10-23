@@ -36,7 +36,7 @@ echo "java on PATH: $JAVA_PATH"
 java --version
 
 # Check internal mapping
-set -l EXPECT_HOME (javm which $JAVA_VERSION)
+set -l EXPECT_HOME (javm which $JAVA_VERSION --home)
 if test "$JAVA_HOME" != "$EXPECT_HOME"
     echo "ERROR: JAVA_HOME ($JAVA_HOME) != javm which ($EXPECT_HOME)"
     exit 1
