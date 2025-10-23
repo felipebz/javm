@@ -32,7 +32,7 @@ jobs:
       - name: Install zsh & fish
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           sudo rm -f /var/lib/man-db/auto-update
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends zsh fish
@@ -42,7 +42,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           ./install.sh nightly
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
@@ -52,14 +52,14 @@ jobs:
       - name: Test bash
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           eval "$(javm init bash)"
           . .github/scripts/integration_test.sh
 
       - name: Test zsh
         shell: 'zsh {0}'
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           eval "$(javm init zsh)"
           . .github/scripts/integration_test.sh
 
@@ -87,7 +87,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           ./install.sh nightly
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
@@ -97,6 +97,6 @@ jobs:
       - name: Test zsh
         shell: 'zsh {0}'
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           eval "$(javm init zsh)"
           . .github/scripts/integration_test.sh
