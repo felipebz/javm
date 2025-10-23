@@ -3,7 +3,10 @@
   "bootstrap-sha": "c8b9f6f6d23b77a219a487440849dd70b2d2a3b9",
   "packages": {
     ".": {
-      "release-type": "go"
+      "release-type": "go",
+      "extra-files": [
+        "sonar-project.properties"
+      ]
     }
   }
 }
