@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.6.0](https://github.com/felipebz/javm/compare/v0.5.0...v0.6.0) (2025-10-23)
+
+
+### Features
+
+* **tests:** add integration tests for javm installation and usage across Bash, Zsh, and Fish ([395fdb8](https://github.com/felipebz/javm/commit/395fdb851ad282615320a161d2994225612005aa))
+* **workflows:** add macOS job to integration tests ([172b3bb](https://github.com/felipebz/javm/commit/172b3bb010e11d7a17b43f8eefd5096f42f4f091))
+* **workflows:** trigger integration tests on completion of build workflow and add token for installation step ([afbec4e](https://github.com/felipebz/javm/commit/afbec4e206888a56c197bb9e57cd4eb346f871ee))
+
+
+### Bug Fixes
+
+* **command:** normalize OS values for ls-remote command ([f43693e](https://github.com/felipebz/javm/commit/f43693e055fbe99ab3b14e4850739afa1775e0f5))
+* **install:** replace `jq` with `sed` to parse JSON response for tag retrieval ([5abf0f7](https://github.com/felipebz/javm/commit/5abf0f74f5b2442c74818f17336cfd118baddc08))
+* **packages:** fix lib_c_type used to search macOS packages ([8e3a684](https://github.com/felipebz/javm/commit/8e3a6845d4c325d79ff2317235ba11f5dc211443))
+* **packages:** replace runtime.GOOS with os argument ([ea61e7c](https://github.com/felipebz/javm/commit/ea61e7cb8114cb0b18fe40d93a6b57a72e017455))
+* **workflows:** add ARM support for integration tests ([cf050ee](https://github.com/felipebz/javm/commit/cf050ee7a153e68d58ef1e96bec836bffc693421))
+* **workflows:** enable debug flag for Java installation in integration tests ([7481d18](https://github.com/felipebz/javm/commit/7481d18ce8d3fb84dbb0a71ccebe360be0dc4fdc))
+* **workflows:** move concurrency settings into job-level configuration ([bcf28dc](https://github.com/felipebz/javm/commit/bcf28dc7d57842dae09d675f7beadb7650d36b52))
+* **workflows:** optimize apt-get and use JAVA_VERSION on install ([1d34444](https://github.com/felipebz/javm/commit/1d3444445f2844c440e9d5b688a6d8b27d7d3490))
+* **workflows:** remove redundant PATH export from integration test scripts ([fbd3185](https://github.com/felipebz/javm/commit/fbd318535dbba92f69d1f87534e68d051e149696))
+* **workflows:** remove x option from shell to limit verbose output in integration tests ([059a187](https://github.com/felipebz/javm/commit/059a187396659659f5a30d383de3ed6ff220618a))
+* **workflows:** update Fish shell integration test to use correct initialization syntax ([052b533](https://github.com/felipebz/javm/commit/052b533de9844b3981aa5d9239ffef0570d94127))
+* **workflows:** update integration test scripts and prevent `man-db` auto-update issues ([37a218c](https://github.com/felipebz/javm/commit/37a218c1b7194fea4d1f4dba87d16d61227ed32a))
+* **workflows:** update javm which command to use --home flag in integration tests ([daf19cf](https://github.com/felipebz/javm/commit/daf19cfa2b5cd18cc3c12775d73bd7fde977814e))
+
 ## [0.5.0](https://github.com/felipebz/javm/compare/v0.4.0...v0.5.0) (2025-10-21)
 
 
