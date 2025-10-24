@@ -85,9 +85,6 @@ func TestValidateJDK(t *testing.T) {
 	if jdk.Vendor != "TestVendor" {
 		t.Errorf("Vendor = %v, want TestVendor", jdk.Vendor)
 	}
-	if jdk.Implementation != "JDK" {
-		t.Errorf("Implementation = %v, want JDK", jdk.Implementation)
-	}
 	if jdk.Architecture != "x64" {
 		t.Errorf("Architecture = %v, want x64", jdk.Architecture)
 	}
@@ -161,9 +158,9 @@ func TestExtractMetadataFromJavaVersion(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	mockJavaVersion := `java version "17.0.2"
-OpenJDK Runtime Environment (build 17.0.2+8)
-OpenJDK 64-Bit Server VM (build 17.0.2+8, mixed mode)`
+	mockJavaVersion := `java.vendor=OpenJDK
+java.version=17.0.2
+os.arch=x64`
 
 	metadata, err := ExtractMetadataFromJavaVersion(fakeRunner{out: mockJavaVersion}, "java")
 	if err != nil {
@@ -176,9 +173,6 @@ OpenJDK 64-Bit Server VM (build 17.0.2+8, mixed mode)`
 	if got := metadata["vendor"]; got != "OpenJDK" {
 		t.Errorf("vendor = %v, want OpenJDK", got)
 	}
-	if got := metadata["implementation"]; got != "JDK" {
-		t.Errorf("implementation = %v, want JDK", got)
-	}
 	if got := metadata["architecture"]; got != "x64" {
 		t.Errorf("architecture = %v, want x64", got)
 	}
@@ -186,30 +180,27 @@ OpenJDK 64-Bit Server VM (build 17.0.2+8, mixed mode)`
 
 func TestDeduplicateJDKs(t *testing.T) {
 	jdk1 := JDK{
-		Path:           "/path/to/jdk1",
-		Version:        "17.0.2",
-		Vendor:         "Oracle",
-		Implementation: "JDK",
-		Architecture:   "x64",
-		Source:         "test",
+		Path:         "/path/to/jdk1",
+		Version:      "17.0.2",
+		Vendor:       "Oracle",
+		Architecture: "x64",
+		Source:       "test",
 	}
 
 	jdk2 := JDK{
-		Path:           "/path/to/jdk2",
-		Version:        "11.0.14",
-		Vendor:         "OpenJDK",
-		Implementation: "JDK",
-		Architecture:   "x64",
-		Source:         "test",
+		Path:         "/path/to/jdk2",
+		Version:      "11.0.14",
+		Vendor:       "OpenJDK",
+		Architecture: "x64",
+		Source:       "test",
 	}
 
 	jdk3 := JDK{
-		Path:           "/path/to/jdk1", // Duplicate path
-		Version:        "17.0.2",
-		Vendor:         "Oracle",
-		Implementation: "JDK",
-		Architecture:   "x64",
-		Source:         "another-source", // Different source
+		Path:         "/path/to/jdk1", // Duplicate path
+		Version:      "17.0.2",
+		Vendor:       "Oracle",
+		Architecture: "x64",
+		Source:       "another-source", // Different source
 	}
 
 	// Test case 1: No duplicates

@@ -21,20 +21,18 @@ func TestDiscoveryCache_SaveAndLoadCache(t *testing.T) {
 		LastUpdated: now,
 		JDKs: []JDK{
 			{
-				Path:           "/path/to/jdk1",
-				Version:        "17.0.2",
-				Vendor:         "Oracle",
-				Implementation: "JDK",
-				Architecture:   "x64",
-				Source:         "test",
+				Path:         "/path/to/jdk1",
+				Version:      "17.0.2",
+				Vendor:       "Oracle",
+				Architecture: "x64",
+				Source:       "test",
 			},
 			{
-				Path:           "/path/to/jdk2",
-				Version:        "11.0.14",
-				Vendor:         "OpenJDK",
-				Implementation: "JDK",
-				Architecture:   "x64",
-				Source:         "test",
+				Path:         "/path/to/jdk2",
+				Version:      "11.0.14",
+				Vendor:       "OpenJDK",
+				Architecture: "x64",
+				Source:       "test",
 			},
 		},
 	}
@@ -65,9 +63,6 @@ func TestDiscoveryCache_SaveAndLoadCache(t *testing.T) {
 	}
 	if cache.JDKs[0].Vendor != loadedCache.JDKs[0].Vendor {
 		t.Error("Vendor should match")
-	}
-	if cache.JDKs[0].Implementation != loadedCache.JDKs[0].Implementation {
-		t.Error("Implementation should match")
 	}
 	if cache.JDKs[0].Architecture != loadedCache.JDKs[0].Architecture {
 		t.Error("Architecture should match")

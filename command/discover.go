@@ -2,12 +2,13 @@ package command
 
 import (
 	"fmt"
-	"github.com/felipebz/javm/cfg"
-	"github.com/felipebz/javm/discovery"
-	"github.com/spf13/cobra"
 	"sort"
 	"text/tabwriter"
 	"time"
+
+	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/discovery"
+	"github.com/spf13/cobra"
 )
 
 type discoverRunner interface {
@@ -81,13 +82,12 @@ func newDiscoverListCommand() *cobra.Command {
 
 			if showDetails {
 				w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-				fmt.Fprintln(w, "SOURCE\tVERSION\tVENDOR\tIMPLEMENTATION\tARCHITECTURE\tPATH")
+				fmt.Fprintln(w, "SOURCE\tVERSION\tVENDOR\tARCHITECTURE\tPATH")
 				for _, jdk := range jdks {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 						jdk.Source,
 						jdk.Version,
 						jdk.Vendor,
-						jdk.Implementation,
 						jdk.Architecture,
 						jdk.Path,
 					)

@@ -2,10 +2,11 @@ package command
 
 import (
 	"bytes"
-	"github.com/felipebz/javm/discovery"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/felipebz/javm/discovery"
 )
 
 type fakeManager struct {
@@ -65,12 +66,11 @@ func TestDiscoverListCommand_SimpleOutput(t *testing.T) {
 func TestDiscoverListCommand_DetailsFlag(t *testing.T) {
 	jdks := []discovery.JDK{
 		{
-			Source:         "system",
-			Version:        "21.0.1",
-			Vendor:         "Temurin",
-			Implementation: "JDK",
-			Architecture:   "x64",
-			Path:           "/opt/jdk21",
+			Source:       "system",
+			Version:      "21.0.1",
+			Vendor:       "Temurin",
+			Architecture: "x64",
+			Path:         "/opt/jdk21",
 		},
 	}
 	newManagerWithAllSources = func(cacheFile string, ttl time.Duration) discoverRunner {
@@ -87,10 +87,10 @@ func TestDiscoverListCommand_DetailsFlag(t *testing.T) {
 	}
 	got := out.String()
 
-	if !strings.Contains(got, "SOURCE  VERSION  VENDOR   IMPLEMENTATION  ARCHITECTURE  PATH") {
+	if !strings.Contains(got, "SOURCE  VERSION  VENDOR   ARCHITECTURE  PATH") {
 		t.Errorf("expected table header, got: %s", got)
 	}
-	if !strings.Contains(got, "system  21.0.1   Temurin  JDK             x64           /opt/jdk21") {
+	if !strings.Contains(got, "system  21.0.1   Temurin  x64           /opt/jdk21") {
 		t.Errorf("expected detailed system entry, got: %s", got)
 	}
 }

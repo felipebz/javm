@@ -126,28 +126,25 @@ func TestManager_DiscoverAll(t *testing.T) {
 	}
 
 	jdk1 := JDK{
-		Path:           "/path/to/jdk1",
-		Version:        "17.0.2",
-		Vendor:         "Oracle",
-		Implementation: "JDK",
-		Architecture:   "x64",
-		Source:         "Mock1",
+		Path:         "/path/to/jdk1",
+		Version:      "17.0.2",
+		Vendor:       "Oracle",
+		Architecture: "x64",
+		Source:       "Mock1",
 	}
 	jdk2 := JDK{
-		Path:           "/path/to/jdk2",
-		Version:        "11.0.14",
-		Vendor:         "OpenJDK",
-		Implementation: "JDK",
-		Architecture:   "x64",
-		Source:         "Mock2",
+		Path:         "/path/to/jdk2",
+		Version:      "11.0.14",
+		Vendor:       "OpenJDK",
+		Architecture: "x64",
+		Source:       "Mock2",
 	}
 	jdk3 := JDK{
-		Path:           "/path/to/jdk1", // Duplicate path
-		Version:        "17.0.2",
-		Vendor:         "Oracle",
-		Implementation: "JDK",
-		Architecture:   "x64",
-		Source:         "Mock3",
+		Path:         "/path/to/jdk1", // Duplicate path
+		Version:      "17.0.2",
+		Vendor:       "Oracle",
+		Architecture: "x64",
+		Source:       "Mock3",
 	}
 
 	d.RegisterSource(&mockSource{
@@ -189,9 +186,6 @@ func TestManager_DiscoverAll(t *testing.T) {
 			if jdk.Vendor != "Oracle" {
 				t.Error("Vendor should match")
 			}
-			if jdk.Implementation != "JDK" {
-				t.Error("Implementation should match")
-			}
 			if jdk.Architecture != "x64" {
 				t.Error("Architecture should match")
 			}
@@ -205,9 +199,6 @@ func TestManager_DiscoverAll(t *testing.T) {
 			}
 			if jdk.Vendor != "OpenJDK" {
 				t.Error("Vendor should match")
-			}
-			if jdk.Implementation != "JDK" {
-				t.Error("Implementation should match")
 			}
 			if jdk.Architecture != "x64" {
 				t.Error("Architecture should match")

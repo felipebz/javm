@@ -8,12 +8,11 @@ import (
 )
 
 type JDK struct {
-	Path           string `json:"path"`
-	Version        string `json:"version"`
-	Vendor         string `json:"vendor"`
-	Implementation string `json:"implementation"`
-	Architecture   string `json:"architecture"`
-	Source         string `json:"source"`
+	Path         string `json:"path"`
+	Version      string `json:"version"`
+	Vendor       string `json:"vendor"`
+	Architecture string `json:"architecture"`
+	Source       string `json:"source"`
 }
 
 type Cache struct {

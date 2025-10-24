@@ -54,30 +54,33 @@ func ValidateJDK(vfs fs.FS, runner Runner, p, source string) (JDK, bool, error) 
 	}
 
 	md, err := ExtractMetadataFromReleaseFile(vfs, p)
-	if err == nil {
-		return JDK{
-			Path:           p,
-			Version:        md["JAVA_VERSION"],
-			Vendor:         md["JAVA_VENDOR"],
-			Implementation: md["IMPLEMENTOR"],
-			Architecture:   md["OS_ARCH"],
-			Source:         source,
-		}, true, nil
+
+	result := JDK{
+		Path:         p,
+		Version:      md["JAVA_VERSION"],
+		Vendor:       md["JAVA_VENDOR"],
+		Architecture: md["OS_ARCH"],
+		Source:       source,
 	}
 
-	md, err = ExtractMetadataFromJavaVersion(runner, javaPath)
-	if err != nil {
-		return JDK{}, false, fmt.Errorf("failed to extract metadata: %w", err)
+	if result.Version == "" || result.Vendor == "" || result.Architecture == "" {
+		md, err = ExtractMetadataFromJavaVersion(runner, javaPath)
+		if err != nil {
+			return JDK{}, false, fmt.Errorf("failed to extract metadata: %w", err)
+		}
+
+		if result.Version == "" {
+			result.Version = md["version"]
+		}
+		if result.Vendor == "" {
+			result.Vendor = md["vendor"]
+		}
+		if result.Architecture == "" {
+			result.Architecture = md["architecture"]
+		}
 	}
 
-	return JDK{
-		Path:           p,
-		Version:        md["version"],
-		Vendor:         md["vendor"],
-		Implementation: md["implementation"],
-		Architecture:   md["architecture"],
-		Source:         source,
-	}, true, nil
+	return result, true, nil
 }
 
 func ExtractMetadataFromReleaseFile(vfs fs.FS, jdkDir string) (map[string]string, error) {
@@ -104,7 +107,7 @@ func ExtractMetadataFromReleaseFile(vfs fs.FS, jdkDir string) (map[string]string
 }
 
 func ExtractMetadataFromJavaVersion(runner Runner, javaPath string) (map[string]string, error) {
-	out, err := runner.CombinedOutput(javaPath, "-version")
+	out, err := runner.CombinedOutput(javaPath, "-XshowSettings:properties", "-version")
 	if err != nil {
 		return nil, fmt.Errorf("failed to run java -version: %w", err)
 	}
