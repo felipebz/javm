@@ -109,7 +109,7 @@ jobs:
         os: [ windows-2025, windows-11-arm ]
     runs-on: ${{ matrix.os }}
     concurrency:
-      group: integration-tests-javm-${{ github.ref }}-windows
+      group: integration-tests-javm-${{ github.ref }}-${{ matrix.os || 'manual' }}
       cancel-in-progress: true
     env:
       JAVA_VERSION: "21" # use Java 21 for testing because Temurin 25 is not yet available on Windows ARM
