@@ -1,5 +1,5 @@
 #!/usr/bin/env fish
-# Intended to be *sourced* after: eval (javm init fish)
+# Intended to be *sourced* after: javm init fish | source
 # Example:
 #   set -gx PATH "$HOME/.local/bin" $PATH
 #   eval (javm init fish)
