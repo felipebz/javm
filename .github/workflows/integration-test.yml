@@ -112,7 +112,7 @@ jobs:
       group: integration-tests-javm-${{ github.ref }}-windows
       cancel-in-progress: true
     env:
-      JAVA_VERSION: "25"
+      JAVA_VERSION: "21" # use Java 21 for testing because Temurin 25 is not yet available on Windows ARM
     steps:
       - name: Checkout
         uses: actions/checkout@v4
