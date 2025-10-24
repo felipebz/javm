@@ -37,12 +37,13 @@ $expectHome = javm which "$javaVersion" --home
 if ($env:JAVA_HOME -ne $expectHome) { Write-Error "JAVA_HOME ($env:JAVA_HOME) != javm which ($expectHome)"; exit 1 }
 
 # Ensure java on PATH points to current JAVA_HOME
-$javaPathLower = $javaPath.ToLowerInvariant()
-$javaHomeLower = ($env:JAVA_HOME + '\\').ToLowerInvariant()
-if ($javaPathLower.StartsWith($javaHomeLower)) {
+$javaPathNorm = [System.IO.Path]::GetFullPath($javaPath)
+$javaHomeNorm = [System.IO.Path]::GetFullPath($env:JAVA_HOME)
+
+if ($javaPathNorm.StartsWith($javaHomeNorm, [StringComparison]::OrdinalIgnoreCase)) {
   Write-Host 'OK: java on PATH matches JAVA_HOME'
 } else {
-  Write-Error "java on PATH ($javaPath) does not match JAVA_HOME ($env:JAVA_HOME)"
+  Write-Error "java on PATH ($javaPathNorm) does not match JAVA_HOME ($javaHomeNorm)"
   exit 1
 }
 
