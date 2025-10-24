@@ -14,7 +14,7 @@ $javaVersion = if ($env:JAVA_VERSION -and $env:JAVA_VERSION -ne '') { $env:JAVA_
 
 Write-Host '>>> Exercising discovery/ls-remote'
 javm ls-remote 21
-javm discover list
+javm discover list --details
 
 Write-Host ">>> Installing JDK $javaVersion (idempotent)"
 javm install "$javaVersion"
