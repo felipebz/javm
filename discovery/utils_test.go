@@ -11,7 +11,7 @@ func TestScanLocationsForJDKs_FindsValidJDK(t *testing.T) {
 	vfs := fstest.MapFS{}
 	fakeJDK := createFakeJDK(t, vfs, ".", "jdk-21")
 
-	jdks, err := ScanLocationsForJDKs(vfs, fakeRunner{}, []string{"."}, "testsource")
+	jdks, err := ScanLocationsForJDKs("", vfs, fakeRunner{}, []string{"."}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestScanLocationsForJDKs_SkipsNonJDKDirs(t *testing.T) {
 		"not-a-jdk": &fstest.MapFile{Mode: fs.ModeDir},
 	}
 
-	jdks, err := ScanLocationsForJDKs(vfs, fakeRunner{}, []string{"."}, "testsource")
+	jdks, err := ScanLocationsForJDKs("", vfs, fakeRunner{}, []string{"."}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestScanLocationsForJDKs_SkipsNonJDKDirs(t *testing.T) {
 func TestScanLocationsForJDKs_IgnoresMissingLocations(t *testing.T) {
 	vfs := fstest.MapFS{}
 
-	jdks, err := ScanLocationsForJDKs(vfs, fakeRunner{}, []string{"definitely-not-there"}, "testsource")
+	jdks, err := ScanLocationsForJDKs("", vfs, fakeRunner{}, []string{"definitely-not-there"}, "testsource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestValidateJDK(t *testing.T) {
 	vfs := fstest.MapFS{}
 
 	// Invalid path (no bin/java)
-	jdk, ok, err := ValidateJDK(vfs, fakeRunner{}, ".", "test")
+	jdk, ok, err := ValidateJDK(vfs, fakeRunner{}, "", ".", "test")
 	if ok {
 		t.Error("Should return false for invalid JDK path")
 	}
@@ -69,7 +69,7 @@ func TestValidateJDK(t *testing.T) {
 
 	// Test with valid JDK path
 	jdkPath := createFakeJDK(t, vfs, ".", "openjdk-21")
-	jdk, ok, err = ValidateJDK(vfs, fakeRunner{}, jdkPath, "test-source")
+	jdk, ok, err = ValidateJDK(vfs, fakeRunner{}, "", jdkPath, "test-source")
 	if !ok {
 		t.Error("Should return true for valid JDK path")
 	}

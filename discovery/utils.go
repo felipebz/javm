@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
 
-func ScanLocationsForJDKs(vfs fs.FS, runner Runner, locations []string, sourceName string) ([]JDK, error) {
+func ScanLocationsForJDKs(root string, vfs fs.FS, runner Runner, locations []string, sourceName string) ([]JDK, error) {
 	var jdks []JDK
 
 	for _, location := range locations {
@@ -24,7 +25,7 @@ func ScanLocationsForJDKs(vfs fs.FS, runner Runner, locations []string, sourceNa
 			if !d.IsDir() {
 				return nil
 			}
-			jdk, ok, err := ValidateJDK(vfs, runner, p, sourceName)
+			jdk, ok, err := ValidateJDK(vfs, runner, root, p, sourceName)
 			if err != nil {
 				return nil // Skip this path on error
 			}
@@ -43,7 +44,7 @@ func ScanLocationsForJDKs(vfs fs.FS, runner Runner, locations []string, sourceNa
 	return jdks, nil
 }
 
-func ValidateJDK(vfs fs.FS, runner Runner, p, source string) (JDK, bool, error) {
+func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, error) {
 	javaExe := "java"
 	if runtime.GOOS == "windows" {
 		javaExe = "java.exe"
@@ -56,7 +57,7 @@ func ValidateJDK(vfs fs.FS, runner Runner, p, source string) (JDK, bool, error) 
 	md, err := ExtractMetadataFromReleaseFile(vfs, p)
 
 	result := JDK{
-		Path:         p,
+		Path:         filepath.Join(root, p),
 		Version:      md["JAVA_VERSION"],
 		Vendor:       md["JAVA_VENDOR"],
 		Architecture: md["OS_ARCH"],
@@ -64,7 +65,7 @@ func ValidateJDK(vfs fs.FS, runner Runner, p, source string) (JDK, bool, error) 
 	}
 
 	if result.Version == "" || result.Vendor == "" || result.Architecture == "" {
-		md, err = ExtractMetadataFromJavaVersion(runner, javaPath)
+		md, err = ExtractMetadataFromJavaVersion(runner, filepath.Join(root, javaPath))
 		if err != nil {
 			return JDK{}, false, fmt.Errorf("failed to extract metadata: %w", err)
 		}

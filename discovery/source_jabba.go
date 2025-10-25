@@ -7,13 +7,16 @@ import (
 )
 
 type JabbaSource struct {
+	root   string
 	vfs    fs.FS
 	runner Runner
 }
 
 func NewJabbaSource() *JabbaSource {
+	home := mustHome()
 	return &JabbaSource{
-		vfs:    os.DirFS(mustHome()),
+		root:   home,
+		vfs:    os.DirFS(home),
 		runner: ExecRunner{},
 	}
 }
@@ -22,7 +25,7 @@ func (s *JabbaSource) Name() string { return "jabba" }
 
 func (s *JabbaSource) Discover() ([]JDK, error) {
 	roots := []string{path.Join(".jabba", "jdk")}
-	return ScanLocationsForJDKs(s.vfs, s.runner, roots, s.Name())
+	return ScanLocationsForJDKs(s.root, s.vfs, s.runner, roots, s.Name())
 }
 
 func mustHome() string {

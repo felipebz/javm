@@ -7,6 +7,7 @@ import (
 )
 
 type GradleSource struct {
+	root   string
 	vfs    fs.FS
 	runner Runner
 }
@@ -14,12 +15,15 @@ type GradleSource struct {
 func NewGradleSource() *GradleSource {
 	if gh := os.Getenv("GRADLE_USER_HOME"); gh != "" {
 		return &GradleSource{
+			root:   gh,
 			vfs:    os.DirFS(gh),
 			runner: ExecRunner{},
 		}
 	}
+	home := mustHome()
 	return &GradleSource{
-		vfs:    os.DirFS(mustHome()),
+		root:   home,
+		vfs:    os.DirFS(home),
 		runner: ExecRunner{},
 	}
 }
@@ -31,5 +35,5 @@ func (s *GradleSource) Discover() ([]JDK, error) {
 		"jdks",
 		path.Join(".gradle", "jdks"),
 	}
-	return ScanLocationsForJDKs(s.vfs, s.runner, locations, s.Name())
+	return ScanLocationsForJDKs(s.root, s.vfs, s.runner, locations, s.Name())
 }

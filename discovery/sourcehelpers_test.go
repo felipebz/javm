@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"testing/fstest"
@@ -47,7 +48,7 @@ IMPLEMENTOR="JDK"`,
 	vfs[jdkDir] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
 	vfs[binDir] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
 
-	return jdkDir
+	return filepath.Clean(jdkDir)
 }
 
 func setEnvTemp(t *testing.T, key, value string) {

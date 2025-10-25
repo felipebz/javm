@@ -8,13 +8,16 @@ import (
 )
 
 type IntelliJSource struct {
+	root   string
 	vfs    fs.FS
 	runner Runner
 }
 
 func NewIntelliJSource() *IntelliJSource {
+	home := mustHome()
 	return &IntelliJSource{
-		vfs:    os.DirFS(mustHome()),
+		root:   home,
+		vfs:    os.DirFS(home),
 		runner: ExecRunner{},
 	}
 }
@@ -28,5 +31,5 @@ func (s *IntelliJSource) Discover() ([]JDK, error) {
 	} else {
 		locations = append(locations, ".jdks")
 	}
-	return ScanLocationsForJDKs(s.vfs, s.runner, locations, s.Name())
+	return ScanLocationsForJDKs(s.root, s.vfs, s.runner, locations, s.Name())
 }

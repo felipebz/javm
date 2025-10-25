@@ -8,13 +8,16 @@ import (
 )
 
 type JavmSource struct {
+	root   string
 	vfs    fs.FS
 	runner Runner
 }
 
 func NewJavmSource() *JavmSource {
+	dir := cfg.Dir()
 	return &JavmSource{
-		vfs:    os.DirFS(cfg.Dir()),
+		root:   dir,
+		vfs:    os.DirFS(dir),
 		runner: ExecRunner{},
 	}
 }
@@ -24,5 +27,5 @@ func (s *JavmSource) Name() string {
 }
 
 func (s *JavmSource) Discover() ([]JDK, error) {
-	return ScanLocationsForJDKs(s.vfs, s.runner, []string{"jdk"}, s.Name())
+	return ScanLocationsForJDKs(s.root, s.vfs, s.runner, []string{"jdk"}, s.Name())
 }
