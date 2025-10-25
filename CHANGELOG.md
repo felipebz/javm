@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/felipebz/javm/compare/v0.6.0...v0.7.0) (2025-10-25)
+
+
+### Features
+
+* **discovery:** refactor JDK discovery to include root paths ([e93172d](https://github.com/felipebz/javm/commit/e93172d0df9f28eb6a164bb1d31a55c770eaa7f5))
+* **discovery:** simplify JDK struct and metadata extraction logic ([1416a1e](https://github.com/felipebz/javm/commit/1416a1ed2c80f5aaf07e83c9ea6c92fe60767b4b))
+
 ## [0.6.0](https://github.com/felipebz/javm/compare/v0.5.0...v0.6.0) (2025-10-23)
 
 
