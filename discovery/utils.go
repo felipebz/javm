@@ -60,7 +60,7 @@ func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, e
 		Path:         filepath.Join(root, p),
 		Version:      md["JAVA_VERSION"],
 		Vendor:       md["JAVA_VENDOR"],
-		Architecture: md["OS_ARCH"],
+		Architecture: normalizeArchitecture(md["OS_ARCH"]),
 		Source:       source,
 	}
 
@@ -77,7 +77,7 @@ func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, e
 			result.Vendor = md["vendor"]
 		}
 		if result.Architecture == "" {
-			result.Architecture = md["architecture"]
+			result.Architecture = normalizeArchitecture(md["architecture"])
 		}
 	}
 
@@ -133,4 +133,11 @@ func DeduplicateJDKs(jdks []JDK) []JDK {
 	}
 
 	return result
+}
+
+func normalizeArchitecture(arch string) string {
+	if arch == "x86_64" || arch == "amd64" {
+		return "x64"
+	}
+	return arch
 }
