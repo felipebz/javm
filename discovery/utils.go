@@ -18,23 +18,7 @@ func ScanLocationsForJDKs(root string, vfs fs.FS, runner Runner, locations []str
 			continue
 		}
 
-		err := fs.WalkDir(vfs, location, func(p string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil // Skip this path on error
-			}
-			if !d.IsDir() {
-				return nil
-			}
-			jdk, ok, err := ValidateJDK(vfs, runner, root, p, sourceName)
-			if err != nil {
-				return nil // Skip this path on error
-			}
-			if ok {
-				jdks = append(jdks, jdk)
-				return fs.SkipDir
-			}
-			return nil
-		})
+		err := fs.WalkDir(vfs, location, makeJDKWalkFunc(vfs, runner, root, sourceName, &jdks))
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to walk directory %s: %w", location, err)
@@ -42,6 +26,26 @@ func ScanLocationsForJDKs(root string, vfs fs.FS, runner Runner, locations []str
 	}
 
 	return jdks, nil
+}
+
+func makeJDKWalkFunc(vfs fs.FS, runner Runner, root, sourceName string, jdks *[]JDK) fs.WalkDirFunc {
+	return func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // Skip this path on error
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		jdk, ok, err := ValidateJDK(vfs, runner, root, p, sourceName)
+		if err != nil {
+			return nil // Skip this path on error
+		}
+		if ok {
+			*jdks = append(*jdks, jdk)
+			return fs.SkipDir
+		}
+		return nil
+	}
 }
 
 func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, error) {
