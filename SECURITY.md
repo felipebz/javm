@@ -169,6 +169,24 @@ Security best practices for reviewers:
 * Check that `javm` does not follow unexpected symlinks when moving/renaming.
 * Check for predictable filenames in world-writable locations.
 
+## Release integrity and attestation
+
+Official `javm` releases are built by a controlled CI workflow in this repository. For each tagged release we publish:
+
+* the release artifacts (binaries/archives),
+* checksums,
+* a provenance/attestation document (SLSA-style) that states which repository/workflow/ref built those artifacts,
+* and an SBOM (software bill of materials).
+
+You can verify that a binary you downloaded:
+
+1. Matches the published checksum.
+2. Has an attestation saying it was built by this repository’s release workflow (not a random laptop / fork).
+3. Reports version/commit info (via `javm --version`) that lines up with that release.
+
+Full details on how to verify a release, and what guarantees you get from the attestation, are documented in
+`ATTESTATION.md`.
+
 ## Hardening recommendations for people running `javm`
 
 You can reduce risk by doing the following:
