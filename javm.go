@@ -15,6 +15,8 @@ import (
 )
 
 var version string
+var commit string
+var date string
 var rootCmd *cobra.Command
 
 func init() {
@@ -42,7 +44,18 @@ func main() {
 			if showVersion, _ := cmd.Flags().GetBool("version"); !showVersion {
 				return pflag.ErrHelp
 			}
-			fmt.Println(version)
+			msg := version
+			details := make([]string, 0, 2)
+			if commit != "" {
+				details = append(details, "commit "+commit)
+			}
+			if date != "" {
+				details = append(details, "built at "+date)
+			}
+			if len(details) > 0 {
+				msg = fmt.Sprintf("%s (%s)", version, strings.Join(details, ", "))
+			}
+			fmt.Println(msg)
 			return nil
 		},
 	}
