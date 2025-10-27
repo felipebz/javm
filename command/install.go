@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 
@@ -126,10 +127,8 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 		if err != nil {
 			return "", err
 		}
-		for _, v := range local {
-			if ver.Equals(v) {
-				return ver.String(), nil
-			}
+		if slices.ContainsFunc(local, ver.Equals) {
+			return ver.String(), nil
 		}
 	}
 	url := releaseMap[ver]
@@ -149,8 +148,8 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 	}
 	var file string
 	var deleteFileWhenFinnished bool
-	if strings.HasPrefix(url, "file://") {
-		file = strings.TrimPrefix(url, "file://")
+	if after, ok := strings.CutPrefix(url, "file://"); ok {
+		file = after
 		if runtime.GOOS == "windows" {
 			// file:///C:/path/...
 			file = strings.Replace(strings.TrimPrefix(file, "/"), "/", "\\", -1)

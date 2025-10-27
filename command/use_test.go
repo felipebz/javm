@@ -26,7 +26,7 @@ func (f FileInfoMock) Size() int64        { return 0 }
 func (f FileInfoMock) Mode() os.FileMode  { return os.FileMode(0) }
 func (f FileInfoMock) ModTime() time.Time { return time.Time{} }
 func (f FileInfoMock) IsDir() bool        { return true }
-func (f FileInfoMock) Sys() interface{}   { return nil }
+func (f FileInfoMock) Sys() any           { return nil }
 
 func TestUse(t *testing.T) {
 	prevPath := os.Getenv("PATH")

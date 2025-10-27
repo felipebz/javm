@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -86,13 +87,7 @@ func TestSortedShells(t *testing.T) {
 	keys := sortedShells()
 	want := []string{"bash", "fish", "powershell", "pwsh", "zsh"}
 	for _, k := range want {
-		found := false
-		for _, v := range keys {
-			if v == k {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(keys, k)
 		if !found {
 			t.Errorf("sortedShells() missing: %s", k)
 		}

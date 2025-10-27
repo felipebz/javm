@@ -75,7 +75,6 @@ func TestGetPackages_QueryParams(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			var gotParams url.Values
 
@@ -149,7 +148,6 @@ func TestGetPackageInfo(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/ids/error-package-id" {

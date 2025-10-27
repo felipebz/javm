@@ -29,7 +29,7 @@ func ParseJavaVersionOutput(out string) map[string]string {
 
 func parseProps(s string) map[string]string {
 	m := make(map[string]string, 64)
-	for _, line := range strings.Split(s, "\n") {
+	for line := range strings.SplitSeq(s, "\n") {
 		line = strings.TrimRight(line, "\r")
 		if line == "" || strings.HasSuffix(line, ":") {
 			continue
