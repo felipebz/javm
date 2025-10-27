@@ -58,37 +58,37 @@ jobs:
         args: release --snapshot --clean
 
     - name: Upload artifacts javm-linux-arm64
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: javm-linux-arm64
         path: dist/javm-linux-arm64.tar.gz
 
     - name: Upload artifact javm-linux-x86_64
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: javm-linux-x86_64
         path: dist/javm-linux-x86_64.tar.gz
 
     - name: Upload artifact javm-darwin-arm64
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: javm-darwin-arm64
         path: dist/javm-darwin-arm64.tar.gz
 
     - name: Upload artifact javm-darwin-x86_64
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: javm-darwin-x86_64
         path: dist/javm-darwin-x86_64.tar.gz
 
     - name: Upload artifact javm-windows-x86_64
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: javm-windows-x86_64
         path: dist/javm-windows-x86_64.zip
 
     - name: Upload artifact javm-windows-arm64
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: javm-windows-arm64
         path: dist/javm-windows-arm64.zip
