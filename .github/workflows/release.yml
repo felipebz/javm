@@ -57,4 +57,7 @@ jobs:
         if: ${{ steps.release.outputs.release_created == 'true' }}
         uses: actions/attest-build-provenance@v3
         with:
-          subject-path: "dist/**"
+          subject-path: |
+            dist/**
+            install.sh
+            install.ps1

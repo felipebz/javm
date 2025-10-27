@@ -44,6 +44,11 @@ changelog:
       - "^test:"
       - "^chore:"
 
+checksum:
+  extra_files:
+    - glob: install.sh
+    - glob: install.ps1
+
 release:
   extra_files:
     - glob: install.sh
