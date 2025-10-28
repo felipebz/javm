@@ -1,11 +1,9 @@
 package discoapi
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"os/exec"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -57,14 +55,6 @@ func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package,
 	}
 
 	return resp.Packages, nil
-}
-
-// isMuslLibc attempts to detect musl-based Linux by inspecting `ldd --version` output.
-// It best-effort returns false if the command is unavailable or any error occurs.
-func isMuslLibc() bool {
-	cmd := exec.Command("ldd", "--version")
-	out, _ := cmd.CombinedOutput()
-	return bytes.Contains(out, []byte("musl"))
 }
 
 func (c *Client) GetPackageInfo(id string) (*PackageInfo, error) {
