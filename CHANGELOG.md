@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/felipebz/javm/compare/v0.6.0...v0.7.0) (2025-10-28)
+
+
+### Features
+
+* **cli:** enhance version flag output with commit hash and build date ([4220479](https://github.com/felipebz/javm/commit/422047946b0364c9842ae55e8cd5927a8927363b))
+* **discovery:** normalize architecture strings in JDK metadata ([8fba5cb](https://github.com/felipebz/javm/commit/8fba5cb57317304593978fa98673fa86c14bb82b))
+* **discovery:** refactor JDK discovery to include root paths ([e93172d](https://github.com/felipebz/javm/commit/e93172d0df9f28eb6a164bb1d31a55c770eaa7f5))
+* **discovery:** simplify JDK struct and metadata extraction logic ([1416a1e](https://github.com/felipebz/javm/commit/1416a1ed2c80f5aaf07e83c9ea6c92fe60767b4b))
+* **install:** enhance install scripts with checksum verification and provenance validation ([f78180d](https://github.com/felipebz/javm/commit/f78180d64d63b9c088b5b05f92b6288555d618b4))
+* **runtimeinfo:** harden musl/glibc detection ([cea0450](https://github.com/felipebz/javm/commit/cea04503dea31a113e71ee7488e329c46b2fb5f8))
+
 ## [0.6.0](https://github.com/felipebz/javm/compare/v0.5.0...v0.6.0) (2025-10-23)
 
 
