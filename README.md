@@ -2,6 +2,10 @@
 <img src="assets/logo.svg" alt="javm logo">
 </p>
 
+[![GitHub release](https://img.shields.io/github/v/release/felipebz/javm)](https://github.com/felipebz/javm/releases)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](README.md)
+
 [![Build Status](https://github.com/felipebz/javm/workflows/Build/badge.svg)](https://github.com/felipebz/javm/actions)
 [![Quality Gate Status](https://sonarqube.felipebz.com/api/project_badges/measure?project=javm&metric=alert_status)](https://sonarqube.felipebz.com/dashboard?id=javm)
 
@@ -16,7 +20,6 @@ and switch workflow for JDKs on Linux, macOS and Windows.
 - Supports semantic version ranges (`1.8.x`, `~17.0.2`, `>=21 <22`)
 - Clean removal (`uninstall`, `deactivate`) without touching system JDK
 - Static Go binary: fast cold start and no additional dependency
-
 
 ## Installation
 
