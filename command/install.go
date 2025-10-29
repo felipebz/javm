@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"crypto/sha1"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -69,6 +71,8 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 	var releaseMap map[*semver.Version]string
 	var ver *semver.Version
 	var err error
+	var expectedChecksum string
+	var checksumType string
 	// selector can be in form of <version>=<url>
 	if strings.Contains(selector, "=") && strings.Contains(selector, "://") {
 		split := strings.SplitN(selector, "=", 2)
@@ -108,6 +112,8 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 				}
 
 				downloadUri := packageInfo.DirectDownloadUri
+				expectedChecksum = packageInfo.Checksum
+				checksumType = packageInfo.ChecksumType
 				releaseMap = map[*semver.Version]string{ver: downloadUri}
 				break
 			}
@@ -161,6 +167,15 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 			return "", err
 		}
 		deleteFileWhenFinnished = true
+		// Validate checksum when provided by DiscoAPI
+		if expectedChecksum != "" && checksumType != "" {
+			if err := validateChecksum(file, expectedChecksum, checksumType); err != nil {
+				os.Remove(file)
+				return "", err
+			}
+		} else {
+			log.Warn("No checksum provided by DiscoAPI for this artifact; skipping integrity verification")
+		}
 	}
 	switch runtime.GOOS {
 	case "darwin", "linux", "windows":
@@ -228,6 +243,42 @@ func download(url string) (file string, err error) {
 		return
 	}
 	return
+}
+
+func validateChecksum(path string, expected string, algo string) error {
+	algo = strings.ToLower(strings.TrimSpace(algo))
+	expected = strings.ToLower(strings.TrimSpace(expected))
+
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var h io.Writer
+	var sumFunc func() string
+	switch algo {
+	case "sha256":
+		sha := sha256.New()
+		h = sha
+		sumFunc = func() string { return fmt.Sprintf("%x", sha.Sum(nil)) }
+	case "sha1":
+		sha := sha1.New()
+		h = sha
+		sumFunc = func() string { return fmt.Sprintf("%x", sha.Sum(nil)) }
+	default:
+		return fmt.Errorf("unsupported checksum type: %s", algo)
+	}
+
+	if _, err := io.Copy(h.(io.Writer), f); err != nil { // write file to hash
+		return err
+	}
+	actual := sumFunc()
+	if actual != expected {
+		return fmt.Errorf("checksum mismatch: expected %s (%s), got %s", expected, algo, actual)
+	}
+	log.Debugf("Checksum verified with %s: %s", algo, actual)
+	return nil
 }
 
 func getFileExtension(file string) string {
