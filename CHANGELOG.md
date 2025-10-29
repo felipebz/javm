@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/felipebz/javm/compare/v0.7.0...v0.8.0) (2025-10-29)
+
+
+### Features
+
+* **install:** add checksum validation for artifact integrity ([ec277e0](https://github.com/felipebz/javm/commit/ec277e0757bbf0d3588eebc6a6ff550c6942391e))
+
 ## [0.7.0](https://github.com/felipebz/javm/compare/v0.6.0...v0.7.0) (2025-10-28)
 
 
