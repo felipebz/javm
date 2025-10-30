@@ -73,62 +73,46 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 	var err error
 	var expectedChecksum string
 	var checksumType string
-	// selector can be in form of <version>=<url>
-	if strings.Contains(selector, "=") && strings.Contains(selector, "://") {
-		split := strings.SplitN(selector, "=", 2)
-		selector = split[0]
-		// <version> has to be valid per semver
-		ver, err = semver.ParseVersion(selector)
-		if err != nil {
-			return "", err
-		}
-		releaseMap = map[*semver.Version]string{ver: split[1]}
-	} else {
-		// ... or a version (range will be tried over remote targets)
-		ver, _ = semver.ParseVersion(selector)
-	}
-	// ... apparently it's not
-	if releaseMap == nil {
-		ver = nil
-		rng, err := semver.ParseRange(selector)
-		if err != nil {
-			return "", err
-		}
-		distribution := rng.Qualifier
-		if distribution == "" {
-			distribution = "temurin"
-		}
-		packageIndex, err := makePackageIndex(client, runtime.GOOS, runtime.GOARCH, distribution)
-		if err != nil {
-			return "", err
-		}
-		sort.Sort(sort.Reverse(semver.VersionSlice(packageIndex.Sorted)))
-		for _, v := range packageIndex.Sorted {
-			if rng.Contains(v) {
-				ver = v
-				packageInfo, err := client.GetPackageInfo(packageIndex.ByVersion[ver].Id)
-				if err != nil {
-					return "", err
-				}
 
-				downloadUri := packageInfo.DirectDownloadUri
-				expectedChecksum = packageInfo.Checksum
-				checksumType = packageInfo.ChecksumType
-				releaseMap = map[*semver.Version]string{ver: downloadUri}
-				break
+	rng, err := semver.ParseRange(selector)
+	if err != nil {
+		return "", err
+	}
+	distribution := rng.Qualifier
+	if distribution == "" {
+		distribution = "temurin"
+	}
+	packageIndex, err := makePackageIndex(client, runtime.GOOS, runtime.GOARCH, distribution)
+	if err != nil {
+		return "", err
+	}
+	sort.Sort(sort.Reverse(semver.VersionSlice(packageIndex.Sorted)))
+	for _, v := range packageIndex.Sorted {
+		if rng.Contains(v) {
+			ver = v
+			packageInfo, err := client.GetPackageInfo(packageIndex.ByVersion[ver].Id)
+			if err != nil {
+				return "", err
 			}
-		}
-		if ver == nil {
-			tt := make([]string, len(packageIndex.Sorted))
-			for i, v := range packageIndex.Sorted {
-				tt[i] = v.String()
-			}
-			return "", errors.New("No compatible version found for " + selector +
-				"\nValid install targets: " + strings.Join(tt, ", "))
+
+			downloadUri := packageInfo.DirectDownloadUri
+			expectedChecksum = packageInfo.Checksum
+			checksumType = packageInfo.ChecksumType
+			releaseMap = map[*semver.Version]string{ver: downloadUri}
+			break
 		}
 	}
+	if ver == nil {
+		tt := make([]string, len(packageIndex.Sorted))
+		for i, v := range packageIndex.Sorted {
+			tt[i] = v.String()
+		}
+		return "", errors.New("No compatible version found for " + selector +
+			"\nValid install targets: " + strings.Join(tt, ", "))
+	}
+
 	// check whether requested version is already installed
-	if ver != nil && dst == "" {
+	if dst == "" {
 		local, err := Ls()
 		if err != nil {
 			return "", err
