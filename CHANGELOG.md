@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/felipebz/javm/compare/v0.8.0...v0.9.0) (2025-10-30)
+
+
+### Features
+
+* **install:** enforce HTTPS-only for download URLs ([e375a1e](https://github.com/felipebz/javm/commit/e375a1e70bc814aba6a3764b5a0bfa0a6004ac15))
+* **install:** remove custom URL support ([afe2f33](https://github.com/felipebz/javm/commit/afe2f33e879985de4eb0e1fc7902fea03d57bcbb))
+
 ## [0.8.0](https://github.com/felipebz/javm/compare/v0.7.0...v0.8.0) (2025-10-29)
 
 
