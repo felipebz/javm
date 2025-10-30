@@ -202,6 +202,10 @@ func (self RedirectTracer) RoundTrip(req *http.Request) (resp *http.Response, er
 }
 
 func download(url string) (file string, err error) {
+	if !strings.HasPrefix(url, "https://") {
+		return "", fmt.Errorf("insecure download URL: only HTTPS is allowed, got: %s", url)
+	}
+
 	ext := getFileExtension(url)
 	tmp, err := os.CreateTemp("", "javm-d-*"+ext)
 	if err != nil {
@@ -211,7 +215,15 @@ func download(url string) (file string, err error) {
 
 	file = tmp.Name()
 	log.Debug("Saving ", url, " to ", file)
-	client := http.Client{Transport: RedirectTracer{}}
+	client := http.Client{
+		Transport: RedirectTracer{},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if req.URL == nil || strings.ToLower(req.URL.Scheme) != "https" {
+				return fmt.Errorf("insecure redirect to non-HTTPS URL: %v", req.URL)
+			}
+			return nil
+		},
+	}
 	res, err := client.Get(url)
 	if err != nil {
 		return
