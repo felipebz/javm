@@ -80,7 +80,11 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 	}
 	distribution := rng.Qualifier
 	if distribution == "" {
-		distribution = "temurin"
+		var derr error
+		distribution, derr = cfg.EffectiveValue("java.default_distribution")
+		if derr != nil {
+			return "", derr
+		}
 	}
 	packageIndex, err := makePackageIndex(client, runtime.GOOS, runtime.GOARCH, distribution)
 	if err != nil {

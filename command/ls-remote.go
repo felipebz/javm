@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/semver"
 	"github.com/spf13/cobra"
 )
@@ -15,6 +16,8 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 	var osFlag string
 	var archFlag string
 	var distributionFlag string
+
+	defaultDistribution, _ := cfg.EffectiveValue("java.default_distribution")
 
 	cmd := &cobra.Command{
 		Use:   "ls-remote",
@@ -39,7 +42,7 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&osFlag, "os", runtime.GOOS, "Operating System (macos, linux, windows)")
 	cmd.Flags().StringVar(&archFlag, "arch", runtime.GOARCH, "Architecture (amd64, arm64)")
-	cmd.Flags().StringVar(&distributionFlag, "distribution", "temurin", "Java distribution (e.g. temurin, zulu, corretto). Use \"all\" to list all distributions")
+	cmd.Flags().StringVar(&distributionFlag, "distribution", defaultDistribution, "Java distribution (e.g. temurin, zulu, corretto). Use \"all\" to list all distributions")
 	cmd.Flags().StringVar(&trimTo, "latest", "major",
 		"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
 	return cmd

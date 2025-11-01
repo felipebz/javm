@@ -213,6 +213,7 @@ func main() {
 		command.NewInitCommand(),
 		command.NewDiscoverCommand(),
 		command.NewDefaultCommand(),
+		command.NewConfigCommand(),
 	)
 	rootCmd.Flags().Bool("version", false, "version of javm")
 	rootCmd.PersistentFlags().Bool("debug", false, "enable verbose debug logging")
