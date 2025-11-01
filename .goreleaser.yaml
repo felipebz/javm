@@ -24,6 +24,8 @@ builds:
 sboms:
   - id: default
     artifacts: archive
+  - id: source
+    artifacts: source
 
 archives:
   - formats: [tar.gz]
