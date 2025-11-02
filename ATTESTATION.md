@@ -110,6 +110,6 @@ If you believe:
 * an attestation references an unexpected workflow or ref,
 * or an attacker is impersonating an official release,
 
-please report it privately using the process in `SECURITY.md` instead of opening a public issue with full details.
+please report it privately using the process in [`SECURITY.md`](SECURITY.md) instead of opening a public issue with full details.
 
 This helps us confirm and fix the problem without giving attackers a head start.

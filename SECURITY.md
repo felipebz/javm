@@ -185,7 +185,7 @@ You can verify that a binary you downloaded:
 3. Reports version/commit info (via `javm --version`) that lines up with that release.
 
 Full details on how to verify a release, and what guarantees you get from the attestation, are documented in
-`ATTESTATION.md`.
+[`ATTESTATION.md`](ATTESTATION.md).
 
 ## Hardening recommendations for people running `javm`
 
