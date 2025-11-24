@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/felipebz/javm/compare/v0.9.0...v0.10.0) (2025-11-24)
+
+
+### Features
+
+* **config:** add configuration management with defaults and user overrides ([3791d92](https://github.com/felipebz/javm/commit/3791d9253f8ccfac6eccc975a20ce1ef9404ec3d))
+
 ## [0.9.0](https://github.com/felipebz/javm/compare/v0.8.0...v0.9.0) (2025-10-30)
 
 
