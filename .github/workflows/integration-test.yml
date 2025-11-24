@@ -26,7 +26,7 @@ jobs:
       JAVA_VERSION: "25"
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with: { fetch-depth: 1 }
 
       - name: Install zsh & fish
@@ -79,7 +79,7 @@ jobs:
       JAVA_VERSION: "25"
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with: { fetch-depth: 1 }
 
       - name: Install javm (once)
@@ -115,7 +115,7 @@ jobs:
       JAVA_VERSION: "21" # use Java 21 for testing because Temurin 25 is not yet available on Windows ARM
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with: { fetch-depth: 1 }
 
       - name: Install javm (once)
