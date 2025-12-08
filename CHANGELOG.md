@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/felipebz/javm/compare/v0.9.0...v0.10.0) (2025-12-08)
+
+
+### Features
+
+* **config:** add configuration management with defaults and user overrides ([3791d92](https://github.com/felipebz/javm/commit/3791d9253f8ccfac6eccc975a20ce1ef9404ec3d))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/spf13/cobra to v1.10.2 ([#46](https://github.com/felipebz/javm/issues/46)) ([2e23a85](https://github.com/felipebz/javm/commit/2e23a85e5d2dc42b7ded48390fa113d1933767ce))
+
 ## [0.9.0](https://github.com/felipebz/javm/compare/v0.8.0...v0.9.0) (2025-10-30)
 
 
