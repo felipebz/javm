@@ -393,7 +393,7 @@ func assertJavaDistribution(dir string, goos string) error {
 }
 
 func installFromTgz(src string, dst string) error {
-	log.Info("Extracting " + src + " to " + dst)
+	log.Debug("Extracting " + src + " to " + dst)
 	return untgz(src, dst, true)
 }
 
@@ -506,7 +506,7 @@ func untgz(src string, dst string, strip bool) error {
 }
 
 func installFromTgx(src string, dst string) error {
-	log.Info("Extracting " + src + " to " + dst)
+	log.Debug("Extracting " + src + " to " + dst)
 	return untgx(src, dst, true)
 }
 
@@ -617,7 +617,7 @@ func untgx(src string, dst string, strip bool) error {
 }
 
 func installFromZip(src string, dst string) error {
-	log.Info("Extracting " + src + " to " + dst)
+	log.Debug("Extracting " + src + " to " + dst)
 	return unzip(src, dst, true)
 }
 
