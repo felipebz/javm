@@ -2,15 +2,18 @@
 <img src="assets/logo.svg" alt="javm logo">
 </p>
 
-[![GitHub release](https://img.shields.io/github/v/release/felipebz/javm)](https://github.com/felipebz/javm/releases)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](README.md)
-
-[![Build Status](https://github.com/felipebz/javm/workflows/Build/badge.svg)](https://github.com/felipebz/javm/actions)
-[![Quality Gate Status](https://sonarqube.felipebz.com/api/project_badges/measure?project=javm&metric=alert_status)](https://sonarqube.felipebz.com/dashboard?id=javm)
+<p align="center">
+  <a href="https://github.com/felipebz/javm/releases"><img src="https://img.shields.io/github/v/release/felipebz/javm" alt="GitHub release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="README.md"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue" alt="Platform"></a>
+</p>
 
 **javm** is a fast, cross‑platform Java version manager (fork of [jabba](https://github.com/shyiko/jabba)) focused on a frictionless install 
 and switch workflow for JDKs on Linux, macOS and Windows.
+
+<p align="center">
+  <img src="assets/demo.gif" alt="javm demonstration" width="1200">
+</p>
 
 ## Features
 
