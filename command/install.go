@@ -149,7 +149,8 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 			file = strings.Replace(strings.TrimPrefix(file, "/"), "/", "\\", -1)
 		}
 	} else {
-		log.Info("Downloading ", ver, " (", url, ")")
+		log.Info("Downloading ", ver)
+		log.Debug("URL: ", url)
 		file, err = download(url)
 		if err != nil {
 			return "", err
