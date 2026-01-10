@@ -2,13 +2,14 @@ package command
 
 import (
 	"errors"
-	"github.com/felipebz/javm/cfg"
-	"github.com/felipebz/javm/semver"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/semver"
+	log "github.com/sirupsen/logrus"
 )
 
 func Link(selector string, dir string) error {
@@ -69,7 +70,7 @@ func LinkLatest() error {
 		target := filepath.Join(cfg.Dir(), "jdk", v.String())
 		if v.Prerelease() == "" && cache[sourceVersion] != target && !strings.HasPrefix(sourceVersion, "system@") {
 			source := filepath.Join(cfg.Dir(), "jdk", sourceVersion)
-			log.Info(sourceVersion + " -> " + target)
+			log.Info(v.String() + " -> " + target)
 			os.Remove(source)
 			if err := os.Symlink(target, source); err != nil {
 				return err
