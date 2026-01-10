@@ -11,6 +11,8 @@ builds:
   - ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
       - -extldflags "-static"
+    flags:
+      - -trimpath
     env:
       - CGO_ENABLED=0
     goos:
