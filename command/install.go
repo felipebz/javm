@@ -532,76 +532,95 @@ func unzip(src string, dst string, strip bool) error {
 		return err
 	}
 	defer r.Close()
-	var prefixToStrip string
-	if strip {
-		var prefix []string
-		for _, f := range r.File {
-			var dir string
-			if !f.Mode().IsDir() {
-				dir = filepath.Dir(f.Name)
-			} else {
-				continue
-			}
-			if prefix != nil {
-				dirSplit := strings.Split(dir, string(filepath.Separator))
-				i, e, dse := 0, len(prefix), len(dirSplit)
-				if dse < e {
-					e = dse
-				}
-				for i < e {
-					if prefix[i] != dirSplit[i] {
-						prefix = prefix[0:i]
-						break
-					}
-					i++
-				}
-			} else {
-				prefix = strings.Split(dir, string(filepath.Separator))
-			}
-		}
-		prefixToStrip = strings.Join(prefix, string(filepath.Separator))
-	}
-	dirCache := make(map[string]bool) // todo: radix tree would perform better here
-	if err := os.MkdirAll(dst, 0755); err != nil {
-		return err
-	}
+
+	dirCache := make(map[string]bool)
+	var rootPrefix string
+
 	for _, f := range r.File {
-		var dir string
-		if !f.Mode().IsDir() {
-			dir = filepath.Dir(f.Name)
-		} else {
-			dir = filepath.Clean(f.Name)
-			if !strings.HasPrefix(dir, prefixToStrip) {
+		name := f.Name
+
+		if strip {
+			if rootPrefix == "" {
+				parts := strings.Split(strings.Trim(name, "/"), "/")
+				if len(parts) > 0 {
+					rootPrefix = parts[0] + "/"
+				}
+			}
+
+			if strings.HasPrefix(name, rootPrefix) {
+				name = strings.TrimPrefix(name, rootPrefix)
+			} else {
 				continue
 			}
 		}
-		dir = strings.TrimPrefix(dir, prefixToStrip)
-		if dir != "" && dir != "." {
-			cached := dirCache[dir]
-			if !cached {
-				if err := os.MkdirAll(filepath.Join(dst, dir), 0755); err != nil {
+
+		if name == "" || name == "/" {
+			continue
+		}
+
+		target := filepath.Join(dst, name)
+		if !strings.HasPrefix(target, filepath.Clean(dst)+string(os.PathSeparator)) {
+			return fmt.Errorf("path traversal detected: %s", target)
+		}
+
+		fi := f.FileInfo()
+		mode := fi.Mode()
+
+		if mode.IsDir() {
+			if !dirCache[target] {
+				if err := os.MkdirAll(target, 0755); err != nil {
 					return err
 				}
-				dirCache[dir] = true
+				dirCache[target] = true
 			}
+			continue
 		}
-		if !f.Mode().IsDir() {
-			name := filepath.Base(f.Name)
-			fr, err := f.Open()
-			if err != nil {
+
+		parent := filepath.Dir(target)
+		if !dirCache[parent] {
+			if err := os.MkdirAll(parent, 0755); err != nil {
 				return err
 			}
-			d, err := os.OpenFile(filepath.Join(dst, dir, name),
-				os.O_WRONLY|os.O_CREATE|os.O_TRUNC, (f.Mode()|0600)&0777)
-			if err != nil {
-				return err
-			}
-			_, err = io.Copy(d, fr)
-			d.Close()
-			if err != nil {
-				return err
-			}
+			dirCache[parent] = true
 		}
+
+		if mode&os.ModeSymlink != 0 {
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			linkTarget, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				return err
+			}
+
+			if err := os.Symlink(string(linkTarget), target); err != nil {
+				return err
+			}
+			continue
+		}
+
+		fFile, err := f.Open()
+		if err != nil {
+			return err
+		}
+
+		dFile, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode&0777|0600)
+		if err != nil {
+			fFile.Close()
+			return err
+		}
+
+		if _, err := io.Copy(dFile, fFile); err != nil {
+			dFile.Close()
+			fFile.Close()
+			return err
+		}
+
+		dFile.Close()
+		fFile.Close()
 	}
+
 	return nil
 }
