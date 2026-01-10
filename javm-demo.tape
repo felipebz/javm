@@ -13,7 +13,7 @@ Hide
 Type 'eval "$(javm init bash)"'
 Enter
 Hide
-Type 'javm use 21'
+Type 'javm use 8'
 Enter
 Ctrl+L
 Show
@@ -21,15 +21,14 @@ Show
 # Run
 Type "java -version"
 Enter
-Sleep 300ms
+Wait
 
 Type "javm install 25"
 Enter
-Sleep 7s
+Wait
 
 Type "javm use 25"
 Enter
-Sleep 300ms
 
 Type "java -version"
 Enter
