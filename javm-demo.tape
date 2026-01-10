@@ -21,7 +21,7 @@ Show
 # Run
 Type "java -version"
 Enter
-Sleep 1s
+Sleep 300ms
 
 Type "javm install 25"
 Enter
@@ -29,7 +29,7 @@ Sleep 7s
 
 Type "javm use 25"
 Enter
-Sleep 1s
+Sleep 300ms
 
 Type "java -version"
 Enter
