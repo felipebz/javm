@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.10.0](https://github.com/felipebz/javm/compare/v0.9.0...v0.10.0) (2026-01-10)
+
+
+### Features
+
+* **config:** add configuration management with defaults and user overrides ([3791d92](https://github.com/felipebz/javm/commit/3791d9253f8ccfac6eccc975a20ce1ef9404ec3d))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/schollz/progressbar/v3 to v3.19.0 ([197925a](https://github.com/felipebz/javm/commit/197925a20e852f0217260819460f48ce27e2375b))
+* **deps:** update module github.com/schollz/progressbar/v3 to v3.19.0 ([a302962](https://github.com/felipebz/javm/commit/a302962d112f80c52b3e6d73e1f4253e29701f5b))
+* **deps:** update module github.com/spf13/cobra to v1.10.2 ([#46](https://github.com/felipebz/javm/issues/46)) ([2e23a85](https://github.com/felipebz/javm/commit/2e23a85e5d2dc42b7ded48390fa113d1933767ce))
+* **install:** split version and URL logging into info and debug levels ([359ffff](https://github.com/felipebz/javm/commit/359ffff8e40a64264308f18b6695075ebb035d2d))
+* **unzip:** optimize zip extraction and handle Zip Slip ([ebed190](https://github.com/felipebz/javm/commit/ebed190b88b9cacc620c01ade7d53191df93e0dd))
+
+
+### Performance Improvements
+
+* **untgz:** optimize extraction to single-pass and handle Zip Slip ([fa994c6](https://github.com/felipebz/javm/commit/fa994c62fb14c3c205b8fb1c8d5f3297bd0705c6))
+
 ## [0.9.0](https://github.com/felipebz/javm/compare/v0.8.0...v0.9.0) (2025-10-30)
 
 
