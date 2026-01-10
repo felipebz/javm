@@ -404,101 +404,92 @@ func untgz(src string, dst string, strip bool) error {
 		return err
 	}
 	defer gzFile.Close()
-	var prefixToStrip string
-	if strip {
-		gzr, err := gzip.NewReader(gzFile)
-		if err != nil {
-			return err
-		}
-		defer gzr.Close()
-		r := tar.NewReader(gzr)
-		var prefix []string
-		for {
-			header, err := r.Next()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return err
-			}
-			var dir string
-			if header.Typeflag != tar.TypeDir {
-				dir = filepath.Dir(header.Name)
-			} else {
-				continue
-			}
-			if prefix != nil {
-				dirSplit := strings.Split(dir, string(filepath.Separator))
-				i, e, dse := 0, len(prefix), len(dirSplit)
-				if dse < e {
-					e = dse
-				}
-				for i < e {
-					if prefix[i] != dirSplit[i] {
-						prefix = prefix[0:i]
-						break
-					}
-					i++
-				}
-			} else {
-				prefix = strings.Split(dir, string(filepath.Separator))
-			}
-		}
-		prefixToStrip = strings.Join(prefix, string(filepath.Separator))
-	}
-	gzFile.Seek(0, 0)
+
 	gzr, err := gzip.NewReader(gzFile)
 	if err != nil {
 		return err
 	}
 	defer gzr.Close()
-	r := tar.NewReader(gzr)
-	dirCache := make(map[string]bool) // todo: radix tree would perform better here
-	if err := os.MkdirAll(dst, 0755); err != nil {
-		return err
-	}
+
+	tr := tar.NewReader(gzr)
+
+	dirCache := make(map[string]bool)
+
+	var rootPrefix string
+
 	for {
-		header, err := r.Next()
+		header, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return err
 		}
-		var dir string
-		if header.Typeflag != tar.TypeDir {
-			dir = filepath.Dir(header.Name)
-		} else {
-			dir = filepath.Clean(header.Name)
-			if !strings.HasPrefix(dir, prefixToStrip) {
+
+		name := header.Name
+
+		if strip {
+			if rootPrefix == "" {
+				parts := strings.Split(strings.Trim(name, "/"), "/")
+				if len(parts) > 0 {
+					rootPrefix = parts[0] + "/"
+				}
+			}
+
+			if strings.HasPrefix(name, rootPrefix) {
+				name = strings.TrimPrefix(name, rootPrefix)
+			} else {
 				continue
 			}
 		}
-		dir = strings.TrimPrefix(dir, prefixToStrip)
-		if dir != "" && dir != "." {
-			cached := dirCache[dir]
-			if !cached {
-				if err := os.MkdirAll(filepath.Join(dst, dir), 0755); err != nil {
+
+		if name == "" || name == "/" {
+			continue
+		}
+
+		target := filepath.Join(dst, name)
+		if !strings.HasPrefix(target, filepath.Clean(dst)+string(os.PathSeparator)) {
+			return fmt.Errorf("zip slip detected: %s", target)
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if !dirCache[target] {
+				if err := os.MkdirAll(target, 0755); err != nil {
 					return err
 				}
-				dirCache[dir] = true
+				dirCache[target] = true
 			}
-		}
-		target := filepath.Join(dst, dir, filepath.Base(header.Name))
-		switch header.Typeflag {
+
 		case tar.TypeReg:
-			d, err := os.OpenFile(target,
-				os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(header.Mode|0600)&0777)
+			parent := filepath.Dir(target)
+			if !dirCache[parent] {
+				if err := os.MkdirAll(parent, 0755); err != nil {
+					return err
+				}
+				dirCache[parent] = true
+			}
+
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.FileMode(header.Mode)&0777|0600)
 			if err != nil {
 				return err
 			}
-			_, err = io.Copy(d, r)
-			d.Close()
-			if err != nil {
+
+			if _, err := io.Copy(f, tr); err != nil {
+				f.Close()
 				return err
 			}
+			f.Close()
+
 		case tar.TypeSymlink:
-			if err = os.Symlink(header.Linkname, target); err != nil {
+			parent := filepath.Dir(target)
+			if !dirCache[parent] {
+				if err := os.MkdirAll(parent, 0755); err != nil {
+					return err
+				}
+				dirCache[parent] = true
+			}
+			if err := os.Symlink(header.Linkname, target); err != nil {
 				return err
 			}
 		}
