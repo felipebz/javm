@@ -45,7 +45,7 @@ func TestLsBestMatch(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := LsBestMatch(tt.selector)
+		got, err := LsBestMatch(tt.selector, false)
 		if (err != nil) != tt.wantErr {
 			t.Errorf("LsBestMatch(%q) error = %v, wantErr %v", tt.selector, err, tt.wantErr)
 			continue
