@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/felipebz/javm/discovery"
 )
 
 type wtFakeDirEntry struct {
@@ -38,12 +40,10 @@ func (f wtFakeFileInfo) IsDir() bool        { return f.mode.IsDir() }
 func (f wtFakeFileInfo) Sys() any           { return nil }
 
 func TestNewWhichCommand_WithArg(t *testing.T) {
-	orig := readDir
-	defer func() { readDir = orig }()
-	readDir = func(path string) ([]fs.DirEntry, error) {
-		return []fs.DirEntry{
-			wtFakeDirEntry{name: "temurin@17.0.1", isDir: true},
-		}, nil
+	cleanup := setupMockLs()
+	defer cleanup()
+	mockLsResult = []discovery.JDK{
+		{Identifier: "temurin@17.0.1", Version: "17.0.1", Source: "javm", Path: "/tmp/jdk/temurin@17.0.1"},
 	}
 
 	// ensure predictable base dir
@@ -68,12 +68,10 @@ func TestNewWhichCommand_WithArg(t *testing.T) {
 }
 
 func TestNewWhichCommand_ReadsJavaVersion(t *testing.T) {
-	orig := readDir
-	defer func() { readDir = orig }()
-	readDir = func(path string) ([]fs.DirEntry, error) {
-		return []fs.DirEntry{
-			wtFakeDirEntry{name: "temurin@21.0.1", isDir: true},
-		}, nil
+	cleanup := setupMockLs()
+	defer cleanup()
+	mockLsResult = []discovery.JDK{
+		{Identifier: "temurin@21.0.1", Version: "21.0.1", Source: "javm"},
 	}
 
 	// create a temp workspace with .java-version

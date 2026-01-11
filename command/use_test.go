@@ -1,13 +1,15 @@
 package command
 
 import (
-	"github.com/felipebz/javm/cfg"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/discovery"
 )
 
 type DirEntryMock string
@@ -37,15 +39,19 @@ func TestUse(t *testing.T) {
 		suffix = "/Contents/Home"
 	}
 	javaHome := filepath.Join(cfg.Dir(), "jdk", "1.7.2", suffix)
+	mockJdkPath := filepath.Join(cfg.Dir(), "jdk", "1.7.2")
+
 	javaPath := filepath.Join(javaHome, "bin")
 
 	defer func() { os.Setenv("PATH", prevPath) }()
-	var prevReadDir = readDir
-	defer func() { readDir = prevReadDir }()
-	readDir = func(dirname string) ([]os.DirEntry, error) {
-		return []os.DirEntry{
-			DirEntryMock("1.6.0"), DirEntryMock("1.7.0"), DirEntryMock("1.7.2"), DirEntryMock("1.8.0"),
-		}, nil
+
+	cleanup := setupMockLs()
+	defer cleanup()
+	mockLsResult = []discovery.JDK{
+		{Identifier: "1.6.0", Version: "1.6.0", Source: "javm", Path: filepath.Join(cfg.Dir(), "jdk", "1.6.0")},
+		{Identifier: "1.7.0", Version: "1.7.0", Source: "javm", Path: filepath.Join(cfg.Dir(), "jdk", "1.7.0")},
+		{Identifier: "1.7.2", Version: "1.7.2", Source: "javm", Path: mockJdkPath},
+		{Identifier: "1.8.0", Version: "1.8.0", Source: "javm", Path: filepath.Join(cfg.Dir(), "jdk", "1.8.0")},
 	}
 	os.Setenv("PATH", "/usr/local/bin"+sep+filepath.Join(cfg.Dir(), "jdk", "1.6.0", "bin")+sep+"/usr/bin")
 	os.Setenv("JAVA_HOME", "/system-jdk")

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/semver"
 	log "github.com/sirupsen/logrus"
 )
@@ -39,7 +40,7 @@ func Link(selector string, dir string) error {
 
 func LinkLatest() error {
 	files, _ := readDir(filepath.Join(cfg.Dir(), "jdk"))
-	var vs, err = Ls()
+	var jdks, err = Ls()
 	if err != nil {
 		return err
 	}
@@ -50,7 +51,7 @@ func LinkLatest() error {
 			sourceVersion := f.Name()
 			if strings.Count(sourceVersion, ".") == 1 && !strings.HasPrefix(sourceVersion, "system@") {
 				target := GetLink(sourceVersion)
-				_, err := LsBestMatchWithVersionSlice(vs, sourceVersion)
+				_, err := FindBestMatchJDK(jdks, sourceVersion)
 				if err != nil {
 					err := os.Remove(filepath.Join(cfg.Dir(), "jdk", sourceVersion))
 					if err == nil {
@@ -65,7 +66,19 @@ func LinkLatest() error {
 			}
 		}
 	}
-	for _, v := range semver.VersionSlice(vs).TrimTo(semver.VPMinor) {
+
+	// Convert discovery.JDK to semver.Version for sorting/trimming
+	var versions []*semver.Version
+	for _, jdk := range jdks {
+		if v, err := semver.ParseVersion(jdk.Identifier); err == nil {
+			versions = append(versions, v)
+		} else if v, err := semver.ParseVersion(jdk.Version); err == nil {
+			// fallback check
+			versions = append(versions, v)
+		}
+	}
+
+	for _, v := range semver.VersionSlice(versions).TrimTo(semver.VPMinor) {
 		sourceVersion := v.TrimTo(semver.VPMinor)
 		target := filepath.Join(cfg.Dir(), "jdk", v.String())
 		if v.Prerelease() == "" && cache[sourceVersion] != target && !strings.HasPrefix(sourceVersion, "system@") {
@@ -77,21 +90,23 @@ func LinkLatest() error {
 			}
 		}
 	}
-	return linkAlias("default", vs)
+	return linkAlias("default", jdks)
 }
 
 func LinkAlias(name string) error {
-	var vs, err = Ls()
+	var jdks, err = Ls()
 	if err != nil {
 		return err
 	}
-	return linkAlias(name, vs)
+	return linkAlias(name, jdks)
 }
 
-func linkAlias(name string, vs []*semver.Version) error {
+func linkAlias(name string, jdks []discovery.JDK) error {
 	defaultAlias := GetAlias(name)
 	if defaultAlias != "" {
-		defaultAlias, _ = LsBestMatchWithVersionSlice(vs, defaultAlias)
+		if jdk, err := FindBestMatchJDK(jdks, defaultAlias); err == nil {
+			defaultAlias = jdk.Identifier
+		}
 	}
 	sourceRef := /*"alias@" + */ name
 	source := filepath.Join(cfg.Dir(), "jdk", sourceRef)

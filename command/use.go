@@ -14,11 +14,15 @@ func Use(selector string) ([]string, error) {
 	if aliasValue != "" {
 		selector = aliasValue
 	}
-	ver, err := LsBestMatch(selector)
+	jdks, err := Ls()
 	if err != nil {
 		return nil, err
 	}
-	return usePath(filepath.Join(cfg.Dir(), "jdk", ver))
+	jdk, err := FindBestMatchJDK(jdks, selector)
+	if err != nil {
+		return nil, err
+	}
+	return usePath(jdk.Path)
 }
 
 func usePath(path string) ([]string, error) {

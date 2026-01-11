@@ -4,19 +4,17 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"sort"
-	"strings"
+	"text/tabwriter"
 
 	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/semver"
 	"github.com/spf13/cobra"
 )
 
-var readDir = os.ReadDir
-
 func NewLsCommand() *cobra.Command {
-	var trimTo string
+	var showDetails bool
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List installed versions",
@@ -30,68 +28,119 @@ func NewLsCommand() *cobra.Command {
 				}
 			}
 
-			vs, err := Ls()
+			jdks, err := Ls()
 			if err != nil {
 				return err
 			}
-			if trimTo != "" {
-				vs = semver.VersionSlice(vs).TrimTo(parseTrimTo(trimTo))
-			}
-			printInstalledVersions(cmd.OutOrStdout(), vs, rng)
+
+			printInstalledVersions(cmd.OutOrStdout(), jdks, rng, showDetails)
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&trimTo, "latest", "", "Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
+	cmd.Flags().BoolVarP(&showDetails, "details", "d", false, "Show detailed information about discovered JDKs")
 	return cmd
 }
 
-func Ls() ([]*semver.Version, error) {
-	files, _ := readDir(filepath.Join(cfg.Dir(), "jdk"))
-	var r []*semver.Version
-	for _, f := range files {
-		info, _ := f.Info()
-		if f.IsDir() || (info.Mode()&os.ModeSymlink == os.ModeSymlink && strings.HasPrefix(f.Name(), "system@")) {
-			v, err := semver.ParseVersion(f.Name())
-			if err != nil {
-				return nil, err
-			}
-			r = append(r, v)
-		}
-	}
-	sort.Sort(sort.Reverse(semver.VersionSlice(r)))
-	return r, nil
+var readDir = os.ReadDir
+
+var lsFunc = func() ([]discovery.JDK, error) {
+	manager := discovery.NewManagerWithAllSources(
+		discovery.GetDefaultCacheFile(cfg.Dir()),
+		discovery.DefaultCacheTTL,
+	)
+
+	return manager.DiscoverAll()
 }
 
-func LsBestMatch(selector string) (ver string, err error) {
-	vs, err := Ls()
+func Ls() ([]discovery.JDK, error) {
+	return lsFunc()
+}
+
+func LsBestMatch(selector string) (string, error) {
+	jdks, err := Ls()
 	if err != nil {
-		return
+		return "", err
 	}
-	return LsBestMatchWithVersionSlice(vs, selector)
+	jdk, err := FindBestMatchJDK(jdks, selector)
+	if err != nil {
+		return "", err
+	}
+	return jdk.Identifier, nil
 }
 
-func LsBestMatchWithVersionSlice(vs []*semver.Version, selector string) (ver string, err error) {
+func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, error) {
 	rng, err := semver.ParseRange(selector)
 	if err != nil {
-		return
+		return discovery.JDK{}, err
 	}
-	for _, v := range vs {
-		if rng.Contains(v) {
-			ver = v.String()
-			break
+
+	sort.Slice(jdks, func(i, j int) bool {
+		v1, err1 := semver.ParseVersion(jdks[i].Version)
+		v2, err2 := semver.ParseVersion(jdks[j].Version)
+		if err1 == nil && err2 == nil {
+			return v2.LessThan(v1)
+		}
+		return jdks[i].Version > jdks[j].Version
+	})
+
+	for _, jdk := range jdks {
+		v, err := semver.ParseVersion(jdk.Identifier)
+		if err == nil && rng.Contains(v) {
+			return jdk, nil
+		}
+		// Also try Version field if Identifier didn't work (fallback)
+		v2, err2 := semver.ParseVersion(jdk.Version)
+		if err2 == nil && rng.Contains(v2) {
+			return jdk, nil
 		}
 	}
-	if ver == "" {
-		err = fmt.Errorf("%s isn't installed", rng)
-	}
-	return
+
+	return discovery.JDK{}, fmt.Errorf("%s isn't installed", rng)
 }
 
-func printInstalledVersions(w io.Writer, vs []*semver.Version, rng *semver.Range) {
-	for _, v := range vs {
-		if rng != nil && !rng.Contains(v) {
-			continue
+func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range, showDetails bool) {
+	// Filter by range
+	var filtered []discovery.JDK
+	for _, jdk := range jdks {
+		if rng != nil {
+			v, err := semver.ParseVersion(jdk.Identifier)
+			if err != nil || !rng.Contains(v) {
+				continue
+			}
 		}
-		fmt.Fprintln(w, v)
+		filtered = append(filtered, jdk)
 	}
+
+	// Sort by Source (ASC) then Version (DESC)
+	sort.Slice(filtered, func(i, j int) bool {
+		if filtered[i].Source != filtered[j].Source {
+			return filtered[i].Source < filtered[j].Source
+		}
+		v1, err1 := semver.ParseVersion(filtered[i].Version)
+		v2, err2 := semver.ParseVersion(filtered[j].Version)
+		if err1 == nil && err2 == nil {
+			return v2.LessThan(v1)
+		}
+		return filtered[i].Version > filtered[j].Version
+	})
+
+	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
+	if showDetails {
+		fmt.Fprintln(tw, "SOURCE\tNAME\tVENDOR\tARCHITECTURE\tPATH")
+		for _, jdk := range jdks {
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+				jdk.Source,
+				jdk.Identifier,
+				jdk.Vendor,
+				jdk.Architecture,
+				jdk.Path,
+			)
+		}
+	} else {
+		fmt.Fprintln(tw, "NAME\tSOURCE")
+		for _, jdk := range jdks {
+			fmt.Fprintf(tw, "%s\t%s\n", jdk.Identifier, jdk.Source)
+		}
+	}
+	tw.Flush()
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/command/fileiter"
+	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/semver"
 	"github.com/schollz/progressbar/v3"
 	log "github.com/sirupsen/logrus"
@@ -121,7 +122,11 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 		if err != nil {
 			return "", err
 		}
-		if slices.ContainsFunc(local, ver.Equals) {
+		if slices.ContainsFunc(local, func(jdk discovery.JDK) bool {
+			v, _ := semver.ParseVersion(jdk.Version)
+			vID, _ := semver.ParseVersion(jdk.Identifier)
+			return (v != nil && v.Equals(ver)) || (vID != nil && vID.Equals(ver))
+		}) {
 			return ver.String(), nil
 		}
 	}
