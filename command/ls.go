@@ -86,16 +86,29 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 		return jdks[i].Version > jdks[j].Version
 	})
 
+	var fallback discovery.JDK
+	hasFallback := false
+
 	for _, jdk := range jdks {
 		v, err := semver.ParseVersion(jdk.Identifier)
+		if err != nil {
+			v, err = semver.ParseVersion(jdk.Version)
+		}
+
 		if err == nil && rng.Contains(v) {
-			return jdk, nil
+			if jdk.Source == "javm" {
+				return jdk, nil
+			}
+
+			if !hasFallback {
+				fallback = jdk
+				hasFallback = true
+			}
 		}
-		// Also try Version field if Identifier didn't work (fallback)
-		v2, err2 := semver.ParseVersion(jdk.Version)
-		if err2 == nil && rng.Contains(v2) {
-			return jdk, nil
-		}
+	}
+
+	if hasFallback {
+		return fallback, nil
 	}
 
 	return discovery.JDK{}, fmt.Errorf("%s isn't installed", rng)

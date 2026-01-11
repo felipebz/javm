@@ -15,20 +15,13 @@ func Use(selector string) ([]string, error) {
 		selector = aliasValue
 	}
 
-	jdks, err := Ls(true)
+	jdks, err := Ls(false)
 	if err != nil {
 		return nil, err
 	}
 	jdk, err := FindBestMatchJDK(jdks, selector)
 	if err != nil {
-		jdks, err := Ls(false)
-		if err != nil {
-			return nil, err
-		}
-		jdk, err = FindBestMatchJDK(jdks, selector)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	return usePath(jdk.Path)
 }
