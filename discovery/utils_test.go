@@ -1,11 +1,8 @@
 package discovery
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
-	"runtime"
 	"testing"
 	"testing/fstest"
 )
@@ -104,25 +101,6 @@ func TestValidateJDK(t *testing.T) {
 func TestValidateJDK_IdentifierGeneration(t *testing.T) {
 	vfs := fstest.MapFS{}
 
-	createJDK := func(path, vendor, version string) string {
-		jdkPath := mkdir(t, vfs, path)
-		mkdir(t, vfs, filepath.Join(jdkPath, "bin"))
-
-		var javaExe string
-		if runtime.GOOS == "windows" {
-			javaExe = "java.exe"
-		} else {
-			javaExe = "java"
-		}
-
-		mkfile(t, vfs, filepath.Join(jdkPath, "bin", javaExe), "")
-
-		content := fmt.Sprintf("JAVA_VERSION=\"%s\"\nJAVA_VENDOR=\"%s\"\nOS_ARCH=\"x64\"", version, vendor)
-		mkfile(t, vfs, filepath.Join(jdkPath, "release"), content)
-
-		return jdkPath
-	}
-
 	tests := []struct {
 		name         string
 		source       string
@@ -179,7 +157,7 @@ os.arch=x64`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := createJDK(tt.path, tt.vendor, tt.version)
+			p := createFakeJDKWithVendor(t, vfs, "jdks", tt.path, tt.version, tt.vendor)
 
 			jdk, ok, err := ValidateJDK(vfs, fakeRunner{out: tt.runnerOutput}, "", p, tt.source)
 			if err != nil {

@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -20,6 +21,10 @@ func (f fakeRunner) CombinedOutput(name string, args ...string) ([]byte, error) 
 }
 
 func createFakeJDK(t *testing.T, vfs fstest.MapFS, baseDir, name string) string {
+	return createFakeJDKWithVendor(t, vfs, baseDir, name, "21", "TestVendor")
+}
+
+func createFakeJDKWithVendor(t *testing.T, vfs fstest.MapFS, baseDir, name string, version string, vendor string) string {
 	t.Helper()
 
 	jdkDir := path.Join(baseDir, name)
@@ -34,14 +39,9 @@ func createFakeJDK(t *testing.T, vfs fstest.MapFS, baseDir, name string) string 
 		Mode: fs.FileMode(0o755),
 	}
 
-	release := []byte(
-		`JAVA_VERSION="21"
-JAVA_VENDOR="TestVendor"
-OS_ARCH="x64"
-IMPLEMENTOR="JDK"`,
-	)
+	release := fmt.Sprintf("JAVA_VERSION=\"%s\"\nJAVA_VENDOR=\"%s\"\nOS_ARCH=\"x64\"", version, vendor)
 	vfs[path.Join(jdkDir, "release")] = &fstest.MapFile{
-		Data: release,
+		Data: []byte(release),
 		Mode: fs.FileMode(0o644),
 	}
 
