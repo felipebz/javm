@@ -13,7 +13,7 @@ end
 
 echo ">>> Exercising discovery/ls-remote"
 javm ls-remote 21
-javm discover list --details
+javm ls --details
 
 echo ">>> Installing JDK $JAVA_VERSION (idempotent)"
 javm install $JAVA_VERSION
