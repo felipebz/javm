@@ -118,7 +118,7 @@ func runInstall(client PackagesWithInfoClient, selector string, dst string) (str
 
 	// check whether requested version is already installed
 	if dst == "" {
-		local, err := Ls()
+		local, err := Ls(true)
 		if err != nil {
 			return "", err
 		}

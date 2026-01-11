@@ -41,7 +41,7 @@ func Which(selector string, home bool) (string, error) {
 	if aliasValue != "" {
 		selector = aliasValue
 	}
-	ver, err := LsBestMatch(selector)
+	ver, err := LsBestMatch(selector, false)
 	if err != nil {
 		return "", err
 	}

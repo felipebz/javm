@@ -14,7 +14,7 @@ func Use(selector string) ([]string, error) {
 	if aliasValue != "" {
 		selector = aliasValue
 	}
-	jdks, err := Ls()
+	jdks, err := Ls(false)
 	if err != nil {
 		return nil, err
 	}

@@ -22,7 +22,7 @@ func Link(selector string, dir string) error {
 		return err
 	}
 	if dir == "" {
-		ver, err := LsBestMatch(selector)
+		ver, err := LsBestMatch(selector, false)
 		if err != nil {
 			return err
 		}
@@ -43,7 +43,7 @@ func LinkLatest() error {
 	if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
 		log.Warn("Failed to delete cache file: ", err)
 	}
-	var jdks, err = Ls()
+	var jdks, err = Ls(true)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func LinkLatest() error {
 }
 
 func LinkAlias(name string) error {
-	var jdks, err = Ls()
+	var jdks, err = Ls(false)
 	if err != nil {
 		return err
 	}

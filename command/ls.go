@@ -28,7 +28,7 @@ func NewLsCommand() *cobra.Command {
 				}
 			}
 
-			jdks, err := Ls()
+			jdks, err := Ls(false)
 			if err != nil {
 				return err
 			}
@@ -52,12 +52,15 @@ var lsFunc = func() ([]discovery.JDK, error) {
 	return manager.DiscoverAll()
 }
 
-func Ls() ([]discovery.JDK, error) {
+func Ls(managedOnly bool) ([]discovery.JDK, error) {
+	if managedOnly {
+		return discovery.NewJavmSource().Discover()
+	}
 	return lsFunc()
 }
 
-func LsBestMatch(selector string) (string, error) {
-	jdks, err := Ls()
+func LsBestMatch(selector string, managedOnly bool) (string, error) {
+	jdks, err := Ls(managedOnly)
 	if err != nil {
 		return "", err
 	}

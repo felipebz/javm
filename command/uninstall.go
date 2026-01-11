@@ -8,7 +8,7 @@ import (
 )
 
 func Uninstall(selector string) error {
-	ver, err := LsBestMatch(selector)
+	ver, err := LsBestMatch(selector, true)
 	if err != nil {
 		return err
 	}

@@ -14,5 +14,8 @@ func GetDefaultCacheFile(configDir string) string {
 
 func DeleteCacheFile(configDir string) error {
 	cacheFile := GetDefaultCacheFile(configDir)
-	return os.Remove(cacheFile)
+	if _, err := os.Stat(cacheFile); os.IsExist(err) {
+		return os.Remove(cacheFile)
+	}
+	return nil
 }
