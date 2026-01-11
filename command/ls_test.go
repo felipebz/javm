@@ -99,14 +99,4 @@ func TestNewLsCommand_Output(t *testing.T) {
 
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && s[0:len(s)] == s && (s == substr || len(s) > len(substr))
-	// The above is not correct contains impl, just relying on strings.Contains
-	for i := 0; i < len(s)-len(substr)+1; i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
-
-// Removed legacy tests relying on readDir mocking and old Ls signature.
-// Helper functions below if needed.
