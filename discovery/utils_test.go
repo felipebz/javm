@@ -3,6 +3,7 @@ package discovery
 import (
 	"io/fs"
 	"os"
+	"path"
 	"testing"
 	"testing/fstest"
 )
@@ -157,9 +158,9 @@ os.arch=x64`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := createFakeJDKWithVendor(t, vfs, "jdks", tt.path, tt.version, tt.vendor)
+			createFakeJDKWithVendor(t, vfs, "jdks", tt.path, tt.version, tt.vendor)
 
-			jdk, ok, err := ValidateJDK(vfs, fakeRunner{out: tt.runnerOutput}, "", p, tt.source)
+			jdk, ok, err := ValidateJDK(vfs, fakeRunner{out: tt.runnerOutput}, "", path.Join("jdks", tt.path), tt.source)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
