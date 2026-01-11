@@ -259,9 +259,12 @@ func TestInstallZip(t *testing.T) {
 
 	// Verify content
 	var expectedPath string
-	if runtime.GOOS == "windows" {
+	switch runtime.GOOS {
+	case "windows":
 		expectedPath = filepath.Join(destDir, "bin", "java.exe")
-	} else {
+	case "darwin":
+		expectedPath = filepath.Join(destDir, "Contents", "Home", "bin", "java")
+	default:
 		expectedPath = filepath.Join(destDir, "bin", "java")
 	}
 
@@ -318,9 +321,12 @@ func TestInstallTgz(t *testing.T) {
 
 	// Verify content
 	var expectedPath string
-	if runtime.GOOS == "windows" {
+	switch runtime.GOOS {
+	case "windows":
 		expectedPath = filepath.Join(destDir, "bin", "java.exe")
-	} else {
+	case "darwin":
+		expectedPath = filepath.Join(destDir, "Contents", "Home", "bin", "java")
+	default:
 		expectedPath = filepath.Join(destDir, "bin", "java")
 	}
 
@@ -380,9 +386,12 @@ func TestInstallTxz(t *testing.T) {
 
 	// Verify content
 	var expectedPath string
-	if runtime.GOOS == "windows" {
+	switch runtime.GOOS {
+	case "windows":
 		expectedPath = filepath.Join(destDir, "bin", "java.exe")
-	} else {
+	case "darwin":
+		expectedPath = filepath.Join(destDir, "Contents", "Home", "bin", "java")
+	default:
 		expectedPath = filepath.Join(destDir, "bin", "java")
 	}
 
