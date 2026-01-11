@@ -1,8 +1,11 @@
 package discovery
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"testing/fstest"
 )
@@ -91,6 +94,106 @@ func TestValidateJDK(t *testing.T) {
 	if jdk.Source != "test-source" {
 		t.Errorf("Source = %v, want test-source", jdk.Source)
 	}
+	// "TestVendor" -> "testvendor", "test-source", "21" -> "testvendor-test-source@21"
+	expectedID := "testvendor-test-source@21"
+	if jdk.Identifier != expectedID {
+		t.Errorf("Identifier = %v, want %v", jdk.Identifier, expectedID)
+	}
+}
+
+func TestValidateJDK_IdentifierGeneration(t *testing.T) {
+	vfs := fstest.MapFS{}
+
+	createJDK := func(path, vendor, version string) string {
+		jdkPath := mkdir(t, vfs, path)
+		mkdir(t, vfs, filepath.Join(jdkPath, "bin"))
+
+		var javaExe string
+		if runtime.GOOS == "windows" {
+			javaExe = "java.exe"
+		} else {
+			javaExe = "java"
+		}
+
+		mkfile(t, vfs, filepath.Join(jdkPath, "bin", javaExe), "")
+
+		content := fmt.Sprintf("JAVA_VERSION=\"%s\"\nJAVA_VENDOR=\"%s\"\nOS_ARCH=\"x64\"", version, vendor)
+		mkfile(t, vfs, filepath.Join(jdkPath, "release"), content)
+
+		return jdkPath
+	}
+
+	tests := []struct {
+		name         string
+		source       string
+		vendor       string
+		version      string
+		path         string
+		wantID       string
+		runnerOutput string
+	}{
+		{
+			name:    "Javm Source",
+			source:  "javm",
+			vendor:  "Eclipse Adoptium",
+			version: "17.0.17",
+			path:    "temurin@17.0.17",
+			wantID:  "temurin@17.0.17",
+		},
+		{
+			name:    "System Source - Red Hat",
+			source:  "system",
+			vendor:  "Red Hat, Inc.",
+			version: "25.0.1",
+			path:    "redhat-25",
+			wantID:  "red-hat-inc-system@25",
+		},
+		{
+			name:    "Gradle Source - Adoptium",
+			source:  "gradle",
+			vendor:  "Eclipse Adoptium",
+			version: "11.0.15",
+			path:    "gradle-jdk",
+			wantID:  "eclipse-adoptium-gradle@11",
+		},
+		{
+			name:    "System Source - Oracle Legacy",
+			source:  "system",
+			vendor:  "Oracle Corporation",
+			version: "1.8.0_202",
+			path:    "oracle-8",
+			wantID:  "oracle-corporation-system@8",
+		},
+		{
+			name:    "Empty Vendor",
+			source:  "custom",
+			vendor:  "", // fallback to source
+			version: "21",
+			path:    "custom-jdk",
+			wantID:  "custom-custom@21",
+			runnerOutput: `java.vendor=
+java.version=21
+os.arch=x64`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := createJDK(tt.path, tt.vendor, tt.version)
+
+			jdk, ok, err := ValidateJDK(vfs, fakeRunner{out: tt.runnerOutput}, "", p, tt.source)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !ok {
+				t.Fatalf("jdk not valid")
+			}
+
+			if jdk.Identifier != tt.wantID {
+				t.Errorf("got identifier %q, want %q", jdk.Identifier, tt.wantID)
+			}
+		})
+	}
 }
 
 func TestExtractMetadataFromReleaseFile(t *testing.T) {
@@ -148,6 +251,20 @@ IMPLEMENTOR="Oracle"`),
 	}
 	if metadata["IMPLEMENTOR"] != "Oracle" {
 		t.Errorf("IMPLEMENTOR = %v, want Oracle", metadata["IMPLEMENTOR"])
+	}
+}
+
+func mkdir(t *testing.T, vfs fstest.MapFS, name string) string {
+	t.Helper()
+	vfs[name] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
+	return name
+}
+
+func mkfile(t *testing.T, vfs fstest.MapFS, name, content string) {
+	t.Helper()
+	vfs[name] = &fstest.MapFile{
+		Data: []byte(content),
+		Mode: 0o644,
 	}
 }
 

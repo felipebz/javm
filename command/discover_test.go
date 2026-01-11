@@ -39,8 +39,8 @@ func TestDiscoverRefreshCommand_Success(t *testing.T) {
 
 func TestDiscoverListCommand_SimpleOutput(t *testing.T) {
 	jdks := []discovery.JDK{
-		{Source: "sdkman", Version: "17.0.2"},
-		{Source: "system", Version: "21.0.1"},
+		{Source: "sdkman", Version: "17.0.2", Identifier: "test@17.0.2"},
+		{Source: "system", Version: "21.0.1", Identifier: "test@21.0.1"},
 	}
 	newManagerWithAllSources = func(cacheFile string, ttl time.Duration) discoverRunner {
 		return &fakeManager{jdks: jdks}
@@ -55,10 +55,10 @@ func TestDiscoverListCommand_SimpleOutput(t *testing.T) {
 	}
 	got := out.String()
 
-	if !strings.Contains(got, "sdkman@17.0.2") {
+	if !strings.Contains(got, "test@17.0.2  sdkman") {
 		t.Errorf("expected sdkman entry, got: %s", got)
 	}
-	if !strings.Contains(got, "system@21.0.1") {
+	if !strings.Contains(got, "test@21.0.1  system") {
 		t.Errorf("expected system entry, got: %s", got)
 	}
 }
@@ -71,6 +71,7 @@ func TestDiscoverListCommand_DetailsFlag(t *testing.T) {
 			Vendor:       "Temurin",
 			Architecture: "x64",
 			Path:         "/opt/jdk21",
+			Identifier:   "temurin@21.0.1",
 		},
 	}
 	newManagerWithAllSources = func(cacheFile string, ttl time.Duration) discoverRunner {
@@ -87,10 +88,10 @@ func TestDiscoverListCommand_DetailsFlag(t *testing.T) {
 	}
 	got := out.String()
 
-	if !strings.Contains(got, "SOURCE  VERSION  VENDOR   ARCHITECTURE  PATH") {
+	if !strings.Contains(got, "SOURCE  NAME            VENDOR   ARCHITECTURE  PATH") {
 		t.Errorf("expected table header, got: %s", got)
 	}
-	if !strings.Contains(got, "system  21.0.1   Temurin  x64           /opt/jdk21") {
+	if !strings.Contains(got, "system  temurin@21.0.1  Temurin  x64           /opt/jdk21") {
 		t.Errorf("expected detailed system entry, got: %s", got)
 	}
 }

@@ -13,6 +13,7 @@ type JDK struct {
 	Vendor       string `json:"vendor"`
 	Architecture string `json:"architecture"`
 	Source       string `json:"source"`
+	Identifier   string `json:"identifier"`
 }
 
 type Cache struct {

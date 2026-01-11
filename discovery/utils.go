@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -85,6 +86,12 @@ func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, e
 		}
 	}
 
+	if source == "javm" {
+		result.Identifier = filepath.Base(p)
+	} else {
+		result.Identifier = generateSystemIdentifier(result.Vendor, result.Version, source)
+	}
+
 	return result, true, nil
 }
 
@@ -144,4 +151,30 @@ func normalizeArchitecture(arch string) string {
 		return "x64"
 	}
 	return arch
+}
+
+func generateSystemIdentifier(vendor, version, source string) string {
+	v := strings.ToLower(vendor)
+	reg, _ := regexp.Compile("[^a-z0-9]+")
+	v = reg.ReplaceAllString(v, "-")
+	v = strings.Trim(v, "-")
+
+	if v == "" {
+		v = source
+	}
+
+	major := version
+	if strings.HasPrefix(version, "1.") {
+		parts := strings.Split(version, ".")
+		if len(parts) > 1 {
+			major = parts[1]
+		}
+	} else {
+		parts := strings.Split(version, ".")
+		if len(parts) > 0 {
+			major = parts[0]
+		}
+	}
+
+	return fmt.Sprintf("%s-%s@%s", v, source, major)
 }

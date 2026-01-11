@@ -80,24 +80,25 @@ func newDiscoverListCommand() *cobra.Command {
 				return jdks[i].Version < jdks[j].Version
 			})
 
+			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 			if showDetails {
-				w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-				fmt.Fprintln(w, "SOURCE\tVERSION\tVENDOR\tARCHITECTURE\tPATH")
+				fmt.Fprintln(w, "SOURCE\tNAME\tVENDOR\tARCHITECTURE\tPATH")
 				for _, jdk := range jdks {
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 						jdk.Source,
-						jdk.Version,
+						jdk.Identifier,
 						jdk.Vendor,
 						jdk.Architecture,
 						jdk.Path,
 					)
 				}
-				w.Flush()
 			} else {
+				fmt.Fprintln(w, "NAME\tSOURCE")
 				for _, jdk := range jdks {
-					fmt.Fprintf(cmd.OutOrStdout(), "%s@%s\n", jdk.Source, discovery.CleanupVersionString(jdk.Version))
+					fmt.Fprintf(w, "%s\t%s\n", jdk.Identifier, jdk.Source)
 				}
 			}
+			w.Flush()
 
 			return nil
 		},
