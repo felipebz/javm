@@ -1,9 +1,10 @@
 package command
 
 import (
-	"github.com/felipebz/javm/cfg"
 	"os"
 	"path/filepath"
+
+	"github.com/felipebz/javm/cfg"
 )
 
 func Uninstall(selector string) error {

@@ -40,6 +40,9 @@ func Link(selector string, dir string) error {
 
 func LinkLatest() error {
 	files, _ := readDir(filepath.Join(cfg.Dir(), "jdk"))
+	if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
+		log.Warn("Failed to delete cache file: ", err)
+	}
 	var jdks, err = Ls()
 	if err != nil {
 		return err
