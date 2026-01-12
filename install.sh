@@ -17,6 +17,8 @@ FILENAME="javm-${OS}-${ARCH}.tar.gz"
 
 if [[ "$OS" == "linux" || "$OS" == "darwin" ]]; then
   INSTALL_DIR="$HOME/.local/bin"
+  XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+  DOC_DIR="$XDG_DATA_HOME/doc/javm"
 else
   echo "Unsupported OS: $OS" >&2
   exit 1
@@ -170,8 +172,27 @@ verify_attestation() {
 }
 
 install_to_final() {
-  echo "Installing to $INSTALL_DIR ..."
-  cp -R "$EXTRACT_DIR"/. "$INSTALL_DIR"/
+  echo "Installing binary to $INSTALL_DIR ..."
+
+  local binary_src
+  binary_src="$(find "$EXTRACT_DIR" -type f -name javm | head -n1 || true)"
+
+  if [[ -z "$binary_src" ]]; then
+     echo "Error: Binary 'javm' not found in extracted files." >&2
+     exit 1
+  fi
+
+  if command -v install >/dev/null; then
+    install -m 755 "$binary_src" "$INSTALL_DIR/javm"
+  else
+    cp "$binary_src" "$INSTALL_DIR/javm"
+    chmod +x "$INSTALL_DIR/javm"
+  fi
+
+  mkdir -p "$DOC_DIR"
+
+  find "$EXTRACT_DIR" -maxdepth 2 -type f \( -iname "LICENSE*" \) \
+    -exec cp {} "$DOC_DIR/" \; || true
 }
 
 # --- fluxo principal ---
