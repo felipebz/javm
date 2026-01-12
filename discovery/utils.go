@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+var identifierRegexp = regexp.MustCompile("[^a-z0-9]+")
+
 func ScanLocationsForJDKs(root string, vfs fs.FS, runner Runner, locations []string, sourceName string) ([]JDK, error) {
 	var jdks []JDK
 
@@ -103,7 +105,7 @@ func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, e
 	}
 
 	if source == "javm" {
-		result.Identifier = filepath.Base(p)
+		result.Identifier = filepath.Base(filepath.FromSlash(p))
 	} else {
 		result.Identifier = generateSystemIdentifier(result.Vendor, result.Version, source)
 	}
@@ -171,8 +173,7 @@ func normalizeArchitecture(arch string) string {
 
 func generateSystemIdentifier(vendor, version, source string) string {
 	v := strings.ToLower(vendor)
-	reg, _ := regexp.Compile("[^a-z0-9]+")
-	v = reg.ReplaceAllString(v, "-")
+	v = identifierRegexp.ReplaceAllString(v, "-")
 	v = strings.Trim(v, "-")
 
 	if v == "" {
