@@ -27,7 +27,11 @@ func createFakeJDK(t *testing.T, vfs fstest.MapFS, baseDir, name string) string 
 func createFakeJDKWithVendor(t *testing.T, vfs fstest.MapFS, baseDir, name string, version string, vendor string) string {
 	t.Helper()
 
-	jdkDir := path.Join(baseDir, name)
+	var osSpecificSubDir = ""
+	if runtime.GOOS == "darwin" {
+		osSpecificSubDir = path.Join("Contents", "Home")
+	}
+	jdkDir := path.Join(baseDir, name, osSpecificSubDir)
 	binDir := path.Join(jdkDir, "bin")
 	java := "java"
 	if runtime.GOOS == "windows" {
@@ -48,7 +52,7 @@ func createFakeJDKWithVendor(t *testing.T, vfs fstest.MapFS, baseDir, name strin
 	vfs[jdkDir] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
 	vfs[binDir] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
 
-	return filepath.Clean(jdkDir)
+	return filepath.Clean(path.Join(baseDir, name))
 }
 
 func setEnvTemp(t *testing.T, key, value string) {
