@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.11.0](https://github.com/felipebz/javm/compare/v0.10.0...v0.11.0) (2026-01-12)
+
+
+### Features
+
+* **cache:** delete autodiscovery cache during install and uninstall operations ([ab5a097](https://github.com/felipebz/javm/commit/ab5a0974112dd41f1d4d581ce542f9c41712bebb))
+* **discovery:** add JDK identifier generation and display ([ca10859](https://github.com/felipebz/javm/commit/ca10859f811c353ab8fc2122c9da18bb2a5dd7b5))
+
+
+### Bug Fixes
+
+* **alias:** correct file permission for alias file ([8bdd0e9](https://github.com/felipebz/javm/commit/8bdd0e97c831d1d1e55b354c0b6944930ecc085c))
+* **discover:** fix OS-specific path handling ([b2092ba](https://github.com/felipebz/javm/commit/b2092baa7eab76e3ec828df6870ef3ed809e3944))
+* **install:** ensure binary install and doc copy logic ([7c44c71](https://github.com/felipebz/javm/commit/7c44c71744c378b386585099103fd56f225673a4))
+* **use:** fallback to full JDK list if no match found in managed-only mode ([1db216e](https://github.com/felipebz/javm/commit/1db216e0fd531022576a12c75a2263e92da27fa4))
+* **which:** use JDK path directly ([14956e8](https://github.com/felipebz/javm/commit/14956e8f7508a8218fc669ddb9b8fe02f0418b2c))
+
 ## [0.10.0](https://github.com/felipebz/javm/compare/v0.9.0...v0.10.0) (2026-01-10)
 
 
