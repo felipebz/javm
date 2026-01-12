@@ -1,8 +1,8 @@
 package cfg
 
 import (
+	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -11,12 +11,15 @@ import (
 func ReadJavaVersion() string {
 	cwd, err := os.Getwd()
 	if err == nil {
-		path := filepath.Join(cwd, ".java-version")
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return ""
-		}
-		return strings.TrimSpace(string(b))
+		return ReadJavaVersionFromFS(os.DirFS(cwd))
 	}
 	return ""
+}
+
+func ReadJavaVersionFromFS(vfs fs.FS) string {
+	b, err := fs.ReadFile(vfs, ".java-version")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
 }
