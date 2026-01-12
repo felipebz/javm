@@ -73,8 +73,11 @@ func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, e
 	}
 
 	md, err := ExtractMetadataFromReleaseFile(vfs, jdkPath)
+
+	fullPath := filepath.Join(root, filepath.FromSlash(p))
+
 	result := JDK{
-		Path:         path.Join(root, p),
+		Path:         fullPath,
 		Version:      md["JAVA_VERSION"],
 		Vendor:       md["JAVA_VENDOR"],
 		Architecture: normalizeArchitecture(md["OS_ARCH"]),
@@ -82,7 +85,8 @@ func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, e
 	}
 
 	if result.Version == "" || result.Vendor == "" || result.Architecture == "" {
-		md, err = ExtractMetadataFromJavaVersion(runner, filepath.Join(root, javaPath))
+		execPath := filepath.Join(root, filepath.FromSlash(javaPath))
+		md, err = ExtractMetadataFromJavaVersion(runner, execPath)
 		if err != nil {
 			return JDK{}, false, fmt.Errorf("failed to extract metadata: %w", err)
 		}

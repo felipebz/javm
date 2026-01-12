@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"testing/fstest"
@@ -51,7 +52,7 @@ func createFakeJDKWithVendor(t *testing.T, vfs fstest.MapFS, baseDir, name strin
 	vfs[jdkDir] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
 	vfs[binDir] = &fstest.MapFile{Mode: fs.ModeDir | 0o755}
 
-	return path.Join(baseDir, name)
+	return filepath.Join(baseDir, name)
 }
 
 func setEnvTemp(t *testing.T, key, value string) {
