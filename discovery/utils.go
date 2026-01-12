@@ -52,9 +52,9 @@ func makeJDKWalkFunc(vfs fs.FS, runner Runner, root, sourceName string, jdks *[]
 func ExpectedJDKDir(dir string, goos string) string {
 	var osSpecificSubDir = ""
 	if goos == "darwin" {
-		osSpecificSubDir = path.Join("Contents", "Home")
+		osSpecificSubDir = filepath.Join("Contents", "Home")
 	}
-	return path.Join(dir, osSpecificSubDir)
+	return filepath.Join(dir, osSpecificSubDir)
 }
 
 func ExpectedJavaPath(dir string, goos string) string {
@@ -62,7 +62,7 @@ func ExpectedJavaPath(dir string, goos string) string {
 	if goos == "windows" {
 		java = "java.exe"
 	}
-	return path.Join(ExpectedJDKDir(dir, goos), "bin", java)
+	return filepath.Join(ExpectedJDKDir(dir, goos), "bin", java)
 }
 
 func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, error) {
