@@ -49,12 +49,20 @@ func makeJDKWalkFunc(vfs fs.FS, runner Runner, root, sourceName string, jdks *[]
 	}
 }
 
-func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, error) {
-	javaExe := "java"
-	if runtime.GOOS == "windows" {
-		javaExe = "java.exe"
+func ExpectedJavaPath(dir string, goos string) string {
+	var osSpecificSubDir = ""
+	if goos == "darwin" {
+		osSpecificSubDir = filepath.Join("Contents", "Home")
 	}
-	javaPath := path.Join(p, "bin", javaExe)
+	java := "java"
+	if goos == "windows" {
+		java = "java.exe"
+	}
+	return filepath.Join(dir, osSpecificSubDir, "bin", java)
+}
+
+func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, error) {
+	javaPath := ExpectedJavaPath(p, runtime.GOOS)
 	if _, err := fs.Stat(vfs, javaPath); err != nil {
 		return JDK{}, false, nil
 	}

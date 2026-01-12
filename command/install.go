@@ -321,7 +321,7 @@ func install(file string, dst string) (err error) {
 // **/{Contents/Home,Home,}bin/java -> <dir>/Contents/Home/bin/java
 func normalizePathToBinJava(dir string, goos string) error {
 	dir = filepath.Clean(dir)
-	if _, err := os.Stat(expectedJavaPath(dir, goos)); os.IsNotExist(err) {
+	if _, err := os.Stat(discovery.ExpectedJavaPath(dir, goos)); os.IsNotExist(err) {
 		java := "java"
 		if goos == "windows" {
 			java = "java.exe"
@@ -375,20 +375,8 @@ func normalizePathToBinJava(dir string, goos string) error {
 	return nil
 }
 
-func expectedJavaPath(dir string, goos string) string {
-	var osSpecificSubDir = ""
-	if goos == "darwin" {
-		osSpecificSubDir = filepath.Join("Contents", "Home")
-	}
-	java := "java"
-	if goos == "windows" {
-		java = "java.exe"
-	}
-	return filepath.Join(dir, osSpecificSubDir, "bin", java)
-}
-
 func assertJavaDistribution(dir string, goos string) error {
-	var path = expectedJavaPath(dir, goos)
+	var path = discovery.ExpectedJavaPath(dir, goos)
 	var err error
 	if _, err = os.Stat(path); os.IsNotExist(err) {
 		err = errors.New(path + " wasn't found. " +

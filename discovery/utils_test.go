@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 )
@@ -50,6 +51,36 @@ func TestScanLocationsForJDKs_IgnoresMissingLocations(t *testing.T) {
 	}
 	if len(jdks) != 0 {
 		t.Fatalf("expected 0 JDKs, got %d", len(jdks))
+	}
+}
+
+func TestExpectedJavaPath(t *testing.T) {
+	tests := []struct {
+		dir      string
+		os       string
+		expected string
+	}{
+		{"/opt/java", "linux", filepath.Join("/opt/java", "bin", "java")},
+		{"/opt/java", "darwin", filepath.Join("/opt/java", "Contents", "Home", "bin", "java")},
+		{"C:\\Java", "windows", filepath.Join("C:\\Java", "bin", "java.exe")},
+	}
+
+	for _, tt := range tests {
+		result := ExpectedJavaPath(tt.dir, tt.os)
+
+		var expected string
+		switch tt.os {
+		case "darwin":
+			expected = filepath.Join(tt.dir, "Contents", "Home", "bin", "java")
+		case "windows":
+			expected = filepath.Join(tt.dir, "bin", "java.exe")
+		default:
+			expected = filepath.Join(tt.dir, "bin", "java")
+		}
+
+		if result != expected {
+			t.Errorf("ExpectedJavaPath(%q, %q) = %q, want %q", tt.dir, tt.os, result, expected)
+		}
 	}
 }
 
