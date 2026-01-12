@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"text/tabwriter"
 
@@ -149,7 +150,7 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range
 				jdk.Identifier,
 				jdk.Vendor,
 				jdk.Architecture,
-				jdk.Path,
+				filepath.Clean(jdk.Path),
 			)
 		}
 	} else {
