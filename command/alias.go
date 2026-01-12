@@ -1,16 +1,17 @@
 package command
 
 import (
-	"github.com/felipebz/javm/cfg"
 	"os"
 	"path/filepath"
+
+	"github.com/felipebz/javm/cfg"
 )
 
 func SetAlias(name string, ver string) (err error) {
 	if ver == "" {
 		err = os.Remove(filepath.Join(cfg.Dir(), name+".alias"))
 	} else {
-		err = os.WriteFile(filepath.Join(cfg.Dir(), name+".alias"), []byte(ver), 0666)
+		err = os.WriteFile(filepath.Join(cfg.Dir(), name+".alias"), []byte(ver), 0644)
 	}
 	return
 }
