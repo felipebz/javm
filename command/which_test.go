@@ -61,7 +61,7 @@ func TestNewWhichCommand_WithArg(t *testing.T) {
 	}
 
 	got := out.String()
-	want := filepath.Join(tmp, "jdk", "temurin@17.0.1") + "\n"
+	want := "/tmp/jdk/temurin@17.0.1\n"
 	if got != want {
 		t.Errorf("got %q want %q", got, want)
 	}
@@ -71,7 +71,7 @@ func TestNewWhichCommand_ReadsJavaVersion(t *testing.T) {
 	cleanup := setupMockLs()
 	defer cleanup()
 	mockLsResult = []discovery.JDK{
-		{Identifier: "temurin@21.0.1", Version: "21.0.1", Source: "javm"},
+		{Identifier: "temurin@21.0.1", Version: "21.0.1", Source: "javm", Path: "/tmp/jdk/temurin@21.0.1"},
 	}
 
 	// create a temp workspace with .java-version
@@ -97,7 +97,7 @@ func TestNewWhichCommand_ReadsJavaVersion(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	got := out.String()
-	want := filepath.Join(tmp, "jdk", "temurin@21.0.1") + "\n"
+	want := "/tmp/jdk/temurin@21.0.1\n"
 	if got != want {
 		t.Errorf("got %q want %q", got, want)
 	}

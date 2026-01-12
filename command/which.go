@@ -41,11 +41,15 @@ func Which(selector string, home bool) (string, error) {
 	if aliasValue != "" {
 		selector = aliasValue
 	}
-	ver, err := LsBestMatch(selector, false)
+	jdks, err := Ls(false)
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(cfg.Dir(), "jdk", ver)
+	jdk, err := FindBestMatchJDK(jdks, selector)
+	if err != nil {
+		return "", err
+	}
+	path := jdk.Path
 	if home && runtime.GOOS == "darwin" {
 		path = filepath.Join(path, "Contents", "Home")
 	}
