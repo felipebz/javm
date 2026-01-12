@@ -76,7 +76,7 @@ func (d *Manager) DiscoverAll() ([]JDK, error) {
 		}
 	}
 
-	uniqueJDKs := deduplicateJDKs(allJDKs)
+	uniqueJDKs := DeduplicateJDKs(allJDKs)
 
 	cache.JDKs = uniqueJDKs
 	cache.LastUpdated = time.Now()
@@ -85,18 +85,4 @@ func (d *Manager) DiscoverAll() ([]JDK, error) {
 	}
 
 	return uniqueJDKs, nil
-}
-
-func deduplicateJDKs(jdks []JDK) []JDK {
-	seen := make(map[string]bool)
-	var result []JDK
-
-	for _, jdk := range jdks {
-		if !seen[jdk.Path] {
-			seen[jdk.Path] = true
-			result = append(result, jdk)
-		}
-	}
-
-	return result
 }
