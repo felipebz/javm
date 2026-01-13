@@ -100,26 +100,7 @@ func main() {
 	deactivateCmd.Flags().MarkHidden("fd3")
 	rootCmd.AddCommand(
 		command.NewInstallCommand(client),
-		&cobra.Command{
-			Use:   "uninstall [version to uninstall]",
-			Short: "Uninstall JDK",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				if len(args) == 0 {
-					return pflag.ErrHelp
-				}
-				if strings.HasPrefix(args[0], "system@") {
-					return fmt.Errorf("Link to system JDK can only be removed with 'unlink' (e.g. 'javm unlink %s')", args[0])
-				}
-				if err := command.Uninstall(args[0]); err != nil {
-					return err
-				}
-				if err := command.LinkLatest(); err != nil {
-					return err
-				}
-				return nil
-			},
-			Example: "  javm uninstall 1.8",
-		},
+		command.NewUninstallCommand(),
 		&cobra.Command{
 			Use:   "link [name] [path]",
 			Short: "Resolve or update a link",
