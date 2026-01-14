@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v6
         with: { fetch-depth: 1 }
 
-      - name: Install zsh & fish
+      - name: Install dependencies
         shell: bash
         run: |
           set -euo pipefail
@@ -70,10 +70,14 @@ jobs:
           javm init fish | source
           source .github/scripts/integration_test.fish
 
-      - name: Test nushell
+      - name: Setup nushell
         shell: 'nu {0}'
         run: |
           javm init nu | save -f javm.nu
+
+      - name: Test nushell
+        shell: 'nu {0}'
+        run: |
           source javm.nu
           source .github/scripts/integration_test.fish
 
