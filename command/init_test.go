@@ -85,12 +85,40 @@ func TestInitCommand_UnsupportedShell(t *testing.T) {
 
 func TestSortedShells(t *testing.T) {
 	keys := sortedShells()
-	want := []string{"bash", "fish", "powershell", "pwsh", "zsh"}
+	want := []string{"bash", "fish", "nu", "powershell", "pwsh", "zsh"}
 	for _, k := range want {
 		found := slices.Contains(keys, k)
 		if !found {
 			t.Errorf("sortedShells() missing: %s", k)
 		}
+	}
+}
+
+func TestInitCommand_Nushell(t *testing.T) {
+	// Isolate from any real user config by pointing JAVM_HOME to a temp dir
+	tmp := t.TempDir()
+	oldHome, had := os.LookupEnv("JAVM_HOME")
+	os.Setenv("JAVM_HOME", tmp)
+	if had {
+		t.Cleanup(func() { os.Setenv("JAVM_HOME", oldHome) })
+	} else {
+		t.Cleanup(func() { os.Unsetenv("JAVM_HOME") })
+	}
+
+	cmd := NewInitCommand()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"nu"})
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, testExecutablePath) {
+		t.Errorf("script does not contain the executable path, got: %s", output)
+	}
+	if !strings.Contains(output, "def --wrapped javm") {
+		t.Errorf("script does not look like a nushell script, got: %s", output)
 	}
 }
 

@@ -108,6 +108,20 @@ iex "$(javm init pwsh)"
 > echo $PROFILE
 > ```
 
+### Nushell
+
+Generate the script file using `javm init nu`:
+
+```nushell
+javm init nu | save -f ~/.local/share/javm/javm.nu
+```
+
+Add this to your `config.nu` (you can find it by running `$nu.config-path`):
+
+```nushell
+source ~/.local/share/javm/javm.nu
+```
+
 ## Post Setup
 
 After editing your profile or config, restart your shell or reload your profile to apply the changes.

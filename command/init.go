@@ -22,12 +22,16 @@ var bashInitScript string
 //go:embed shellscripts/javm.fish
 var fishInitScript string
 
+//go:embed shellscripts/javm.nu
+var nuInitScript string
+
 var shellScripts = map[string]string{
 	"powershell": pwshInitScript,
 	"pwsh":       pwshInitScript,
 	"bash":       bashInitScript,
 	"zsh":        bashInitScript,
 	"fish":       fishInitScript,
+	"nu":         nuInitScript,
 }
 
 var getExecutablePath = realGetExecutablePath

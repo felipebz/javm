@@ -36,6 +36,7 @@ jobs:
           sudo rm -f /var/lib/man-db/auto-update
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends zsh fish
+          npm install -g nushell
 
       - name: Install javm (once)
         shell: bash
@@ -67,6 +68,13 @@ jobs:
         shell: 'fish {0}'
         run: |
           javm init fish | source
+          source .github/scripts/integration_test.fish
+
+      - name: Test nushell
+        shell: 'nu {0}'
+        run: |
+          javm init nu | save -f javm.nu
+          source javm.nu
           source .github/scripts/integration_test.fish
 
   macos:
