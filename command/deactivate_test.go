@@ -1,11 +1,12 @@
 package command
 
 import (
-	"github.com/felipebz/javm/cfg"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/felipebz/javm/cfg"
 )
 
 func TestDeactivate(t *testing.T) {
@@ -17,7 +18,7 @@ func TestDeactivate(t *testing.T) {
 	os.Setenv("PATH", "/usr/local/bin"+sep+javaPath+sep+"/system-jdk/bin"+sep+"/usr/bin")
 	os.Setenv("JAVA_HOME", javaHome)
 	os.Setenv("JAVA_HOME_BEFORE_JABBA", "/system-jdk")
-	actual, err := Deactivate()
+	actual, err := deactivate()
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestDeactivateInUnusedEnv(t *testing.T) {
 	os.Setenv("PATH", "/usr/local/bin:/system-jdk/bin:/usr/bin")
 	os.Setenv("JAVA_HOME", "/system-jdk")
 	os.Unsetenv("JAVA_HOME_BEFORE_JABBA")
-	actual, err := Deactivate()
+	actual, err := deactivate()
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

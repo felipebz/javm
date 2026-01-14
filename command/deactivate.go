@@ -6,9 +6,29 @@ import (
 	"regexp"
 
 	"github.com/felipebz/javm/cfg"
+	"github.com/spf13/cobra"
 )
 
-func Deactivate() ([]string, error) {
+func NewDeactivateCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "deactivate",
+		Short: "Undo effects of `javm` on current shell",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			out, err := deactivate()
+			if err != nil {
+				return err
+			}
+			fd3, _ := cmd.Flags().GetString("fd3")
+			PrintForShellToEval(out, fd3)
+			return nil
+		},
+	}
+	cmd.Flags().String("fd3", "", "")
+	_ = cmd.Flags().MarkHidden("fd3")
+	return cmd
+}
+
+func deactivate() ([]string, error) {
 	sep := string(os.PathListSeparator)
 	pth, _ := os.LookupEnv("PATH")
 	rgxp := regexp.MustCompile(regexp.QuoteMeta(filepath.Join(cfg.Dir(), "jdk")) + "[^" + sep + "]+[" + sep + "]")

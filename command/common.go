@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -63,5 +64,16 @@ func parseTrimTo(value string) semver.VersionPart {
 		return semver.VPPatch
 	default:
 		return -1
+	}
+}
+
+func PrintForShellToEval(out []string, fd3 string) {
+	if fd3 != "" {
+		os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0666)
+	} else {
+		fd := os.NewFile(3, "fd3")
+		for _, line := range out {
+			fmt.Fprintln(fd, line)
+		}
 	}
 }

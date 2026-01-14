@@ -83,21 +83,6 @@ func main() {
 	useCmd.Flags().String("fd3", "", "")
 	useCmd.Flags().MarkHidden("fd3")
 
-	deactivateCmd := &cobra.Command{
-		Use:   "deactivate",
-		Short: "Undo effects of `javm` on current shell",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			out, err := command.Deactivate()
-			if err != nil {
-				return err
-			}
-			fd3, _ := cmd.Flags().GetString("fd3")
-			printForShellToEval(out, fd3)
-			return nil
-		},
-	}
-	deactivateCmd.Flags().String("fd3", "", "")
-	deactivateCmd.Flags().MarkHidden("fd3")
 	rootCmd.AddCommand(
 		command.NewInstallCommand(client),
 		command.NewUninstallCommand(),
@@ -107,7 +92,7 @@ func main() {
 		command.NewCurrentCommand(),
 		command.NewLsCommand(),
 		command.NewLsRemoteCommand(client),
-		deactivateCmd,
+		command.NewDeactivateCommand(),
 		command.NewAliasCommand(),
 		command.NewUnaliasCommand(),
 		command.NewLsDistributionsCommand(client),
@@ -138,17 +123,6 @@ func use(ver string, fd3 string) error {
 	if err != nil {
 		return err
 	}
-	printForShellToEval(out, fd3)
+	command.PrintForShellToEval(out, fd3)
 	return nil
-}
-
-func printForShellToEval(out []string, fd3 string) {
-	if fd3 != "" {
-		os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0666)
-	} else {
-		fd := os.NewFile(3, "fd3")
-		for _, line := range out {
-			fmt.Fprintln(fd, line)
-		}
-	}
 }
