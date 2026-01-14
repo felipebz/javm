@@ -76,10 +76,12 @@ jobs:
           javm init nu | save -f ~/.local/share/javm/javm.nu
 
       - name: Test nushell
-        shell: 'nu {0}'
+        shell: bash
         run: |
-          source ~/.local/share/javm/javm.nu
-          source .github/scripts/integration_test.nu
+          nu -c "
+            source ~/.local/share/javm/javm.nu
+            source .github/scripts/integration_test.nu
+         "
 
   macos:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
