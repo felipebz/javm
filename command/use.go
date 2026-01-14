@@ -7,7 +7,40 @@ import (
 	"runtime"
 
 	"github.com/felipebz/javm/cfg"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
+
+func NewUseCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "use [version to use]",
+		Short: "Modify PATH & JAVA_HOME to use specific JDK",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var ver string
+			if len(args) == 0 {
+				ver = cfg.ReadJavaVersion()
+				if ver == "" {
+					return pflag.ErrHelp
+				}
+			} else {
+				ver = args[0]
+			}
+			fd3, _ := cmd.Flags().GetString("fd3")
+
+			out, err := Use(ver)
+			if err != nil {
+				return err
+			}
+			printForShellToEval(out, fd3)
+			return nil
+		},
+		Example: "  javm use 1.8\n" +
+			"  javm use ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
+	}
+	cmd.Flags().String("fd3", "", "")
+	_ = cmd.Flags().MarkHidden("fd3")
+	return cmd
+}
 
 func Use(selector string) ([]string, error) {
 	aliasValue := getAlias(selector)

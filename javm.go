@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/command"
 	"github.com/felipebz/javm/discoapi"
 	log "github.com/sirupsen/logrus"
@@ -61,34 +60,12 @@ func main() {
 	}
 	client := discoapi.NewClient()
 
-	useCmd := &cobra.Command{
-		Use:   "use [version to use]",
-		Short: "Modify PATH & JAVA_HOME to use specific JDK",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var ver string
-			if len(args) == 0 {
-				ver = cfg.ReadJavaVersion()
-				if ver == "" {
-					return pflag.ErrHelp
-				}
-			} else {
-				ver = args[0]
-			}
-			fd3, _ := cmd.Flags().GetString("fd3")
-			return use(ver, fd3)
-		},
-		Example: "  javm use 1.8\n" +
-			"  javm use ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
-	}
-	useCmd.Flags().String("fd3", "", "")
-	useCmd.Flags().MarkHidden("fd3")
-
 	rootCmd.AddCommand(
 		command.NewInstallCommand(client),
 		command.NewUninstallCommand(),
 		command.NewLinkCommand(),
 		command.NewUnlinkCommand(),
-		useCmd,
+		command.NewUseCommand(),
 		command.NewCurrentCommand(),
 		command.NewLsCommand(),
 		command.NewLsRemoteCommand(client),
@@ -116,13 +93,4 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(-1)
 	}
-}
-
-func use(ver string, fd3 string) error {
-	out, err := command.Use(ver)
-	if err != nil {
-		return err
-	}
-	command.PrintForShellToEval(out, fd3)
-	return nil
 }

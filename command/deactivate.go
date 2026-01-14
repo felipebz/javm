@@ -19,7 +19,7 @@ func NewDeactivateCommand() *cobra.Command {
 				return err
 			}
 			fd3, _ := cmd.Flags().GetString("fd3")
-			PrintForShellToEval(out, fd3)
+			printForShellToEval(out, fd3)
 			return nil
 		},
 	}

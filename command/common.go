@@ -67,7 +67,7 @@ func parseTrimTo(value string) semver.VersionPart {
 	}
 }
 
-func PrintForShellToEval(out []string, fd3 string) {
+func printForShellToEval(out []string, fd3 string) {
 	if fd3 != "" {
 		os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0666)
 	} else {
