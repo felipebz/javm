@@ -117,7 +117,7 @@ func TestInitCommand_Nushell(t *testing.T) {
 	if !strings.Contains(output, testExecutablePath) {
 		t.Errorf("script does not contain the executable path, got: %s", output)
 	}
-	if !strings.Contains(output, "def --wrapped javm") {
+	if !strings.Contains(output, "def --env --wrapped javm") {
 		t.Errorf("script does not look like a nushell script, got: %s", output)
 	}
 }
