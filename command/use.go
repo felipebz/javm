@@ -10,7 +10,7 @@ import (
 )
 
 func Use(selector string) ([]string, error) {
-	aliasValue := GetAlias(selector)
+	aliasValue := getAlias(selector)
 	if aliasValue != "" {
 		selector = aliasValue
 	}

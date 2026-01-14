@@ -37,7 +37,7 @@ func NewWhichCommand() *cobra.Command {
 }
 
 func Which(selector string, home bool) (string, error) {
-	aliasValue := GetAlias(selector)
+	aliasValue := getAlias(selector)
 	if aliasValue != "" {
 		selector = aliasValue
 	}

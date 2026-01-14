@@ -108,44 +108,8 @@ func main() {
 		command.NewLsCommand(),
 		command.NewLsRemoteCommand(client),
 		deactivateCmd,
-		&cobra.Command{
-			Use:   "alias [name] [version]",
-			Short: "Resolve or update an alias",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				if len(args) == 0 {
-					return pflag.ErrHelp
-				}
-				name := args[0]
-				if len(args) == 1 {
-					if value := command.GetAlias(name); value != "" {
-						fmt.Println(value)
-					}
-					return nil
-				}
-				if err := command.SetAlias(name, args[1]); err != nil {
-					return err
-				}
-				if err := command.LinkAlias(name); err != nil {
-					return err
-				}
-				return nil
-			},
-			Example: "  javm alias default 1.8\n" +
-				"  javm alias default # show value bound to an alias",
-		},
-		&cobra.Command{
-			Use:   "unalias [name]",
-			Short: "Delete an alias",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				if len(args) == 0 {
-					return pflag.ErrHelp
-				}
-				if err := command.SetAlias(args[0], ""); err != nil {
-					return err
-				}
-				return nil
-			},
-		},
+		command.NewAliasCommand(),
+		command.NewUnaliasCommand(),
 		command.NewLsDistributionsCommand(client),
 		command.NewWhichCommand(),
 		command.NewInitCommand(),
