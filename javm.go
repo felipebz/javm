@@ -104,16 +104,7 @@ func main() {
 		command.NewLinkCommand(),
 		command.NewUnlinkCommand(),
 		useCmd,
-		&cobra.Command{
-			Use:   "current",
-			Short: "Display currently 'use'ed version",
-			Run: func(cmd *cobra.Command, args []string) {
-				ver := command.Current()
-				if ver != "" {
-					fmt.Println(ver)
-				}
-			},
-		},
+		command.NewCurrentCommand(),
 		command.NewLsCommand(),
 		command.NewLsRemoteCommand(client),
 		deactivateCmd,
