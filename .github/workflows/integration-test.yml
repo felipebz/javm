@@ -73,12 +73,12 @@ jobs:
       - name: Setup nushell
         shell: 'nu {0}'
         run: |
-          javm init nu | save -f javm.nu
+          javm init nu | save -f ~/.local/share/javm/javm.nu
 
       - name: Test nushell
         shell: 'nu {0}'
         run: |
-          source javm.nu
+          source ~/.local/share/javm/javm.nu
           source .github/scripts/integration_test.fish
 
   macos:
