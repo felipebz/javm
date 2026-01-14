@@ -72,13 +72,13 @@ func usePath(path string) ([]string, error) {
 	if runtime.GOOS == "darwin" {
 		path = filepath.Join(path, "Contents", "Home")
 	}
-	systemJavaHome, overrideWasSet := os.LookupEnv("JAVA_HOME_BEFORE_JABBA")
+	systemJavaHome, overrideWasSet := os.LookupEnv("JAVA_HOME_BEFORE_JAVM")
 	if !overrideWasSet {
 		systemJavaHome, _ = os.LookupEnv("JAVA_HOME")
 	}
 	return []string{
 		"SET\tPATH\t" + filepath.Join(path, "bin") + string(os.PathListSeparator) + pth,
 		"SET\tJAVA_HOME\t" + path,
-		"SET\tJAVA_HOME_BEFORE_JABBA\t" + systemJavaHome,
+		"SET\tJAVA_HOME_BEFORE_JAVM\t" + systemJavaHome,
 	}, nil
 }

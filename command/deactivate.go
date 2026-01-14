@@ -34,13 +34,13 @@ func deactivate() ([]string, error) {
 	rgxp := regexp.MustCompile(regexp.QuoteMeta(filepath.Join(cfg.Dir(), "jdk")) + "[^" + sep + "]+[" + sep + "]")
 	// strip references to ~/.jabba/jdk/*, otherwise leave unchanged
 	pth = rgxp.ReplaceAllString(pth, "")
-	javaHome, overrideWasSet := os.LookupEnv("JAVA_HOME_BEFORE_JABBA")
+	javaHome, overrideWasSet := os.LookupEnv("JAVA_HOME_BEFORE_JAVM")
 	if !overrideWasSet {
 		javaHome, _ = os.LookupEnv("JAVA_HOME")
 	}
 	return []string{
 		"SET\tPATH\t" + pth,
 		"SET\tJAVA_HOME\t" + javaHome,
-		"UNSET\tJAVA_HOME_BEFORE_JABBA",
+		"UNSET\tJAVA_HOME_BEFORE_JAVM",
 	}, nil
 }
