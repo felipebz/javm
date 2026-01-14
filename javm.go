@@ -101,42 +101,8 @@ func main() {
 	rootCmd.AddCommand(
 		command.NewInstallCommand(client),
 		command.NewUninstallCommand(),
-		&cobra.Command{
-			Use:   "link [name] [path]",
-			Short: "Resolve or update a link",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				if len(args) == 0 {
-					if err := command.LinkLatest(); err != nil {
-						return err
-					}
-					return nil
-				}
-				if len(args) == 1 {
-					if value := command.GetLink(args[0]); value != "" {
-						fmt.Println(value)
-					}
-				} else if err := command.Link(args[0], args[1]); err != nil {
-					return err
-				}
-				return nil
-			},
-			Example: "  javm link system@1.8.20 /Library/Java/JavaVirtualMachines/jdk1.8.0_20.jdk\n" +
-				"  javm link system@1.8.20 # show link target",
-		},
-		&cobra.Command{
-			Use:   "unlink [name]",
-			Short: "Delete a link",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				if len(args) == 0 {
-					return pflag.ErrHelp
-				}
-				if err := command.Link(args[0], ""); err != nil {
-					return err
-				}
-				return nil
-			},
-			Example: "  javm unlink system@1.8.20",
-		},
+		command.NewLinkCommand(),
+		command.NewUnlinkCommand(),
 		useCmd,
 		&cobra.Command{
 			Use:   "current",

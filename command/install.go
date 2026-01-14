@@ -49,7 +49,7 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 				return err
 			}
 			if customInstallDestination == "" {
-				if err := LinkLatest(); err != nil {
+				if err := linkLatest(); err != nil {
 					return err
 				}
 				// TODO change to call the "use" command after it's refactored

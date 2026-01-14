@@ -2,6 +2,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,9 +12,53 @@ import (
 	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/semver"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-func Link(selector string, dir string) error {
+func NewLinkCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "link [name] [path]",
+		Short: "Resolve or update a link",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				if err := linkLatest(); err != nil {
+					return err
+				}
+				return nil
+			}
+			if len(args) == 1 {
+				if value := getLink(args[0]); value != "" {
+					fmt.Println(value)
+				}
+			} else if err := link(args[0], args[1]); err != nil {
+				return err
+			}
+			return nil
+		},
+		Example: "  javm link system@1.8.20 /Library/Java/JavaVirtualMachines/jdk1.8.0_20.jdk\n" +
+			"  javm link system@1.8.20 # show link target",
+	}
+}
+
+func NewUnlinkCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "unlink [name]",
+		Short: "Delete a link",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return pflag.ErrHelp
+			}
+			if err := link(args[0], ""); err != nil {
+				return err
+			}
+			return nil
+		},
+		Example: "  javm unlink system@1.8.20",
+	}
+}
+
+func link(selector string, dir string) error {
 	if !strings.HasPrefix(selector, "system@") {
 		return errors.New("Name must begin with 'system@' (e.g. 'system@1.8.73')")
 	}
@@ -38,7 +83,7 @@ func Link(selector string, dir string) error {
 	}
 }
 
-func LinkLatest() error {
+func linkLatest() error {
 	files, _ := readDir(filepath.Join(cfg.Dir(), "jdk"))
 	if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
 		log.Warn("Failed to delete cache file: ", err)
@@ -53,7 +98,7 @@ func LinkLatest() error {
 		if f.IsDir() || info.Mode()&os.ModeSymlink == os.ModeSymlink {
 			sourceVersion := f.Name()
 			if strings.Count(sourceVersion, ".") == 1 && !strings.HasPrefix(sourceVersion, "system@") {
-				target := GetLink(sourceVersion)
+				target := getLink(sourceVersion)
 				_, err := FindBestMatchJDK(jdks, sourceVersion)
 				if err != nil {
 					err := os.Remove(filepath.Join(cfg.Dir(), "jdk", sourceVersion))
@@ -113,7 +158,7 @@ func linkAlias(name string, jdks []discovery.JDK) error {
 	}
 	sourceRef := /*"alias@" + */ name
 	source := filepath.Join(cfg.Dir(), "jdk", sourceRef)
-	sourceTarget := GetLink(sourceRef)
+	sourceTarget := getLink(sourceRef)
 	if defaultAlias != "" {
 		target := filepath.Join(cfg.Dir(), "jdk", defaultAlias)
 		if sourceTarget != target {
@@ -135,7 +180,7 @@ func linkAlias(name string, jdks []discovery.JDK) error {
 	return nil
 }
 
-func GetLink(name string) string {
+func getLink(name string) string {
 	res, err := filepath.EvalSymlinks(filepath.Join(cfg.Dir(), "jdk", name))
 	if err != nil {
 		return ""
