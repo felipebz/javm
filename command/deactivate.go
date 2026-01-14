@@ -32,7 +32,7 @@ func deactivate() ([]string, error) {
 	sep := string(os.PathListSeparator)
 	pth, _ := os.LookupEnv("PATH")
 	rgxp := regexp.MustCompile(regexp.QuoteMeta(filepath.Join(cfg.Dir(), "jdk")) + "[^" + sep + "]+[" + sep + "]")
-	// strip references to ~/.jabba/jdk/*, otherwise leave unchanged
+	// strip references to managed jdks dir, otherwise leave unchanged
 	pth = rgxp.ReplaceAllString(pth, "")
 	javaHome, overrideWasSet := os.LookupEnv("JAVA_HOME_BEFORE_JAVM")
 	if !overrideWasSet {

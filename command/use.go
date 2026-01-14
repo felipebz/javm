@@ -67,7 +67,7 @@ func usePath(path string) ([]string, error) {
 	}
 	pth, _ := os.LookupEnv("PATH")
 	rgxp := regexp.MustCompile(regexp.QuoteMeta(filepath.Join(cfg.Dir(), "jdk")) + "[^" + sep + "]+[" + sep + "]")
-	// strip references to ~/.jabba/jdk/*, otherwise leave unchanged
+	// strip references to managed jdks dir, otherwise leave unchanged
 	pth = rgxp.ReplaceAllString(pth, "")
 	if runtime.GOOS == "darwin" {
 		path = filepath.Join(path, "Contents", "Home")
