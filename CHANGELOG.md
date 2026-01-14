@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/felipebz/javm/compare/v0.11.0...v0.12.0) (2026-01-14)
+
+
+### Features
+
+* **nushell:** add support for Nushell (closes [#17](https://github.com/felipebz/javm/issues/17)) ([0d0067c](https://github.com/felipebz/javm/commit/0d0067c64eea1299c0f4fb49e7c1aac45c7f9391))
+
 ## [0.11.0](https://github.com/felipebz/javm/compare/v0.10.0...v0.11.0) (2026-01-12)
 
 
