@@ -81,7 +81,7 @@ jobs:
           nu -c "
             source ~/.local/share/javm/javm.nu
             source .github/scripts/integration_test.nu
-         "
+          "
 
   macos:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
