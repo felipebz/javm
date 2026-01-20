@@ -9,12 +9,17 @@ import (
 )
 
 func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package, error) {
+	archFilter := map[string]string{
+		"amd64": "amd64,x64",
+		"arm64": "arm64,aarch64",
+	}[arch]
+
 	params := url.Values{}
 	if os != "" {
 		params.Set("operating_system", os)
 	}
 	if arch != "" {
-		params.Set("architecture", arch)
+		params.Set("architecture", archFilter)
 	}
 	if distribution != "" {
 		params.Set("distribution", distribution)
