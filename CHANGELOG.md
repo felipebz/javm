@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/felipebz/javm/compare/v0.12.0...v0.12.1) (2026-01-20)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/sirupsen/logrus to v1.9.4 ([#52](https://github.com/felipebz/javm/issues/52)) ([e8db255](https://github.com/felipebz/javm/commit/e8db2554749fee8f4bf5db48f5759412879ec973))
+* **discoapi:** add multi-architecture filtering for GetPackages ([7a4a54a](https://github.com/felipebz/javm/commit/7a4a54aaa44bf94216bd677b338a080a62d3ab1a))
+
 ## [0.12.0](https://github.com/felipebz/javm/compare/v0.11.0...v0.12.0) (2026-01-14)
 
 
