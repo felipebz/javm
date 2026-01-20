@@ -46,7 +46,7 @@ func TestGetPackages_QueryParams(t *testing.T) {
 			ver:  "24",
 			expect: []wantParam{
 				{"operating_system", "linux"},
-				{"architecture", "amd64"},
+				{"architecture", "amd64,x64"},
 				{"distribution", "temurin"},
 				{"version", "24"},
 				{"archive_type", "tar.gz"},
@@ -63,7 +63,7 @@ func TestGetPackages_QueryParams(t *testing.T) {
 			ver:  "24",
 			expect: []wantParam{
 				{"operating_system", "windows"},
-				{"architecture", "arm64"},
+				{"architecture", "arm64,aarch64"},
 				{"distribution", "zulu"},
 				{"version", "24"},
 				{"archive_type", "zip"},
