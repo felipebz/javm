@@ -49,6 +49,10 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 				return err
 			}
 			if customInstallDestination == "" {
+				if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
+					return err
+				}
+
 				if err := linkLatest(); err != nil {
 					return err
 				}
