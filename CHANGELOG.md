@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.2](https://github.com/felipebz/javm/compare/v0.12.1...v0.12.2) (2026-02-04)
+
+
+### Bug Fixes
+
+* **discovery:** handle non-existent cache file gracefully in DeleteCacheFile ([4fe721d](https://github.com/felipebz/javm/commit/4fe721deb3afe0e3faf8c62da7e4d47bb064bb12))
+* **install:** clear discovery cache when no custom destination is set ([cbd6075](https://github.com/felipebz/javm/commit/cbd6075fe68475edfa1ff8aec3069ccc2d5062d9))
+
 ## [0.12.1](https://github.com/felipebz/javm/compare/v0.12.0...v0.12.1) (2026-01-20)
 
 
