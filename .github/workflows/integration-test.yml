@@ -87,7 +87,7 @@ jobs:
 
   macos:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: macos-15
+    runs-on: macos-26
     concurrency:
       group: integration-tests-javm-${{ github.ref }}-macos
       cancel-in-progress: true
