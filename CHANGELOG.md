@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.3](https://github.com/felipebz/javm/compare/v0.12.2...v0.12.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/masterminds/semver/v3 to v3.5.0 ([4241a8e](https://github.com/felipebz/javm/commit/4241a8e6d443f0538a349ad1a61ac481d317aa08))
+* **deps:** update module github.com/masterminds/semver/v3 to v3.5.0 ([63b7765](https://github.com/felipebz/javm/commit/63b7765f6b75d94b46633114fb52f5e2e4adfbba))
+* **deps:** update module github.com/schollz/progressbar/v3 to v3.19.1 ([#75](https://github.com/felipebz/javm/issues/75)) ([e498d3d](https://github.com/felipebz/javm/commit/e498d3d9de4e017f35992973ce59ef3259fb4586))
+
 ## [0.12.2](https://github.com/felipebz/javm/compare/v0.12.1...v0.12.2) (2026-02-04)
 
 
