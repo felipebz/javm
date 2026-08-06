@@ -67,13 +67,19 @@ func parseTrimTo(value string) semver.VersionPart {
 	}
 }
 
-func printForShellToEval(out []string, fd3 string) {
+func printForShellToEval(out []string, fd3 string) error {
 	if fd3 != "" {
-		os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0666)
-	} else {
-		fd := os.NewFile(3, "fd3")
-		for _, line := range out {
-			fmt.Fprintln(fd, line)
+		return os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0600)
+	}
+
+	fd := os.NewFile(3, "fd3")
+	if fd == nil {
+		return fmt.Errorf("shell integration is not active; run `javm init <shell>` first")
+	}
+	for _, line := range out {
+		if _, err := fmt.Fprintln(fd, line); err != nil {
+			return err
 		}
 	}
+	return nil
 }

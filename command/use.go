@@ -31,8 +31,7 @@ func NewUseCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printForShellToEval(out, fd3)
-			return nil
+			return printForShellToEval(out, fd3)
 		},
 		Example: "  javm use 1.8\n" +
 			"  javm use ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
