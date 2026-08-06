@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.13.0](https://github.com/felipebz/javm/compare/v0.12.2...v0.13.0) (2026-08-06)
+
+
+### Features
+
+* add CMD support for `javm init` (closes [#58](https://github.com/felipebz/javm/issues/58)) ([8e758bb](https://github.com/felipebz/javm/commit/8e758bbe5d1ec1b75007fbc77ff2777ec933f700))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/masterminds/semver/v3 to v3.5.0 ([4241a8e](https://github.com/felipebz/javm/commit/4241a8e6d443f0538a349ad1a61ac481d317aa08))
+* **deps:** update module github.com/masterminds/semver/v3 to v3.5.0 ([63b7765](https://github.com/felipebz/javm/commit/63b7765f6b75d94b46633114fb52f5e2e4adfbba))
+* **deps:** update module github.com/schollz/progressbar/v3 to v3.19.1 ([#75](https://github.com/felipebz/javm/issues/75)) ([e498d3d](https://github.com/felipebz/javm/commit/e498d3d9de4e017f35992973ce59ef3259fb4586))
+* **deps:** update module github.com/ulikunitz/xz to v0.5.16 ([22f5d7e](https://github.com/felipebz/javm/commit/22f5d7ed8bd36a5a479821a738026099b7168342))
+* **deps:** update module github.com/ulikunitz/xz to v0.5.16 ([09971aa](https://github.com/felipebz/javm/commit/09971aae3d9f9affc6ef5d2ee514f21ca7cae2b3))
+
 ## [0.12.2](https://github.com/felipebz/javm/compare/v0.12.1...v0.12.2) (2026-02-04)
 
 
