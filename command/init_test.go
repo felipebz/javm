@@ -72,6 +72,35 @@ func TestInitCommand_PowerShell(t *testing.T) {
 	}
 }
 
+func TestInitCommand_CMD(t *testing.T) {
+	t.Setenv("JAVM_HOME", t.TempDir())
+	oldExecutablePath := testExecutablePath
+	testExecutablePath = `C:\Program Files\javm & tools\100%^\javm.exe`
+	t.Cleanup(func() { testExecutablePath = oldExecutablePath })
+
+	cmd := NewInitCommand()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"cmd"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, `set "_JAVM_EXECUTABLE=C:\Program Files\javm & tools\100%%^\javm.exe"`) {
+		t.Errorf("cmd wrapper does not safely embed the executable path, got: %s", output)
+	}
+	if !strings.Contains(output, `setlocal DisableDelayedExpansion`) {
+		t.Errorf("cmd wrapper must preserve exclamation marks in paths, got: %s", output)
+	}
+	if !strings.Contains(output, `exit /b %_JAVM_EXIT_CODE%`) {
+		t.Errorf("cmd wrapper does not propagate the exit code, got: %s", output)
+	}
+	if strings.Contains(output, "::JAVM::") {
+		t.Errorf("placeholder was not replaced: %s", output)
+	}
+}
+
 func TestInitCommand_UnsupportedShell(t *testing.T) {
 	cmd := NewInitCommand()
 	buf := &bytes.Buffer{}
@@ -85,7 +114,7 @@ func TestInitCommand_UnsupportedShell(t *testing.T) {
 
 func TestSortedShells(t *testing.T) {
 	keys := sortedShells()
-	want := []string{"bash", "fish", "nu", "powershell", "pwsh", "zsh"}
+	want := []string{"bash", "cmd", "fish", "nu", "powershell", "pwsh", "zsh"}
 	for _, k := range want {
 		found := slices.Contains(keys, k)
 		if !found {

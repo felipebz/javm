@@ -25,6 +25,9 @@ var fishInitScript string
 //go:embed shellscripts/javm.nu
 var nuInitScript string
 
+//go:embed shellscripts/javm.cmd
+var cmdInitScript string
+
 var shellScripts = map[string]string{
 	"powershell": pwshInitScript,
 	"pwsh":       pwshInitScript,
@@ -32,6 +35,7 @@ var shellScripts = map[string]string{
 	"zsh":        bashInitScript,
 	"fish":       fishInitScript,
 	"nu":         nuInitScript,
+	"cmd":        cmdInitScript,
 }
 
 var getExecutablePath = realGetExecutablePath
@@ -57,10 +61,13 @@ func NewInitCommand() *cobra.Command {
 				return err
 			}
 
+			if shell == "cmd" {
+				executable = escapeBatchValue(executable)
+			}
 			script = strings.NewReplacer("::JAVM::", executable).Replace(script)
 
 			defaultFile := filepath.Join(cfg.Dir(), "default-version")
-			if data, err := os.ReadFile(defaultFile); err == nil {
+			if data, err := os.ReadFile(defaultFile); err == nil && shell != "cmd" {
 				ver := strings.TrimSpace(string(data))
 				if ver != "" {
 					script += "\n" + "javm use " + ver + "\n"
@@ -80,6 +87,12 @@ func NewInitCommand() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// escapeBatchValue protects percent signs, which cmd.exe expands even inside a
+// quoted SET assignment. Double quotes cannot occur in Windows file names.
+func escapeBatchValue(value string) string {
+	return strings.ReplaceAll(value, "%", "%%")
 }
 
 func realGetExecutablePath() (string, error) {

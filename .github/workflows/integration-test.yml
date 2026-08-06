@@ -153,3 +153,15 @@ jobs:
           $ErrorActionPreference = 'Stop'
           iex "$(javm init pwsh)"
           . ".github/scripts/integration_test.ps1"
+
+      - name: Test Command Prompt
+        shell: cmd
+        run: |
+          set "JAVM_METACHAR_DIR=%TEMP%\javm test & tools!^"
+          mkdir "%JAVM_METACHAR_DIR%"
+          for /f "delims=" %%I in ('where javm.exe') do if not defined JAVM_ORIGINAL_EXE set "JAVM_ORIGINAL_EXE=%%I"
+          copy /y "%JAVM_ORIGINAL_EXE%" "%JAVM_METACHAR_DIR%\javm.exe"
+          mkdir "%TEMP%\javm-cmd-wrapper"
+          "%JAVM_METACHAR_DIR%\javm.exe" init cmd > "%TEMP%\javm-cmd-wrapper\javm.cmd"
+          set "PATH=%TEMP%\javm-cmd-wrapper;%PATH%"
+          call .github\scripts\integration_test.cmd

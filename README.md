@@ -68,7 +68,8 @@ iex "& { $(irm https://javm.dev/install.ps1) } v0.1.0"
 
 ## Shell Setup
 
-To enable javm in your shell, you need to evaluate the output of `javm init <shell>`.
+To enable javm in your shell, initialize it with `javm init <shell>` as shown
+for your shell below.
 
 ### Bash
 
@@ -107,6 +108,29 @@ iex "$(javm init pwsh)"
 > ```powershell
 > echo $PROFILE
 > ```
+
+### Command Prompt (CMD)
+
+Generate the CMD wrapper in a directory separate from `javm.exe`:
+
+```batch
+mkdir "%LOCALAPPDATA%\javm\cmd" 2>NUL
+javm init cmd > "%LOCALAPPDATA%\javm\cmd\javm.cmd"
+set "PATH=%LOCALAPPDATA%\javm\cmd;%PATH%"
+```
+
+Keep that wrapper directory before the directory containing `javm.exe` in your
+user `PATH`, then open a new Command Prompt. CMD checks `.exe` before `.cmd`
+inside the same directory, so placing both files together bypasses the wrapper
+and prevents `use` and `deactivate` from changing the current session.
+
+When invoking javm from another batch file, use `call javm ...` so control
+returns to the calling script:
+
+```batch
+call javm use 21
+call javm deactivate
+```
 
 ### Nushell
 
