@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/felipebz/javm/discoapi"
+	"github.com/spf13/cobra"
 	"github.com/ulikunitz/xz"
 )
 
@@ -69,6 +70,25 @@ func TestInstallCancellationCleansOwnedStaging(t *testing.T) {
 	}
 	if len(staging) != 0 {
 		t.Fatalf("staging directories remain after cancellation: %v", staging)
+	}
+}
+
+func TestInstallCommandDoesNotPrintUsageWhenCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	rootCmd := &cobra.Command{Use: "javm"}
+	rootCmd.AddCommand(NewInstallCommand(installPackagesClient{}))
+	var output bytes.Buffer
+	rootCmd.SetOut(&output)
+	rootCmd.SetErr(&output)
+	rootCmd.SetArgs([]string{"install", "21"})
+
+	err := rootCmd.ExecuteContext(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation error, got %v", err)
+	}
+	if strings.Contains(output.String(), "Usage:") {
+		t.Fatalf("usage was printed for cancellation:\n%s", output.String())
 	}
 }
 

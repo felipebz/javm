@@ -37,6 +37,9 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 			}
 			ver, err := runInstall(cmd.Context(), client, ver, customInstallDestination)
 			if err != nil {
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					cmd.SilenceUsage = true
+				}
 				return err
 			}
 			if customInstallDestination == "" {
