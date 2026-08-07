@@ -214,7 +214,7 @@ javm uninstall zulu@1.8
 
 ## Development
 
-Prerequisite: Go **1.25.x**
+Prerequisite: Go **1.26.x**
 
 ```sh
 git clone https://github.com/felipebz/javm
