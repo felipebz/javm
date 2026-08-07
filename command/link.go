@@ -142,6 +142,9 @@ func linkLatest() error {
 }
 
 func linkAliasName(name string) error {
+	if err := validateAliasName(name); err != nil {
+		return err
+	}
 	var jdks, err = Ls(false)
 	if err != nil {
 		return err
@@ -150,6 +153,9 @@ func linkAliasName(name string) error {
 }
 
 func linkAlias(name string, jdks []discovery.JDK) error {
+	if err := validateAliasName(name); err != nil {
+		return err
+	}
 	defaultAlias := getAlias(name)
 	if defaultAlias != "" {
 		if jdk, err := FindBestMatchJDK(jdks, defaultAlias); err == nil {
