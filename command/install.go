@@ -84,7 +84,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			return "", derr
 		}
 	}
-	packageIndex, err := makePackageIndexContext(ctx, client, runtime.GOOS, runtime.GOARCH, distribution)
+	packageIndex, err := makePackageIndex(ctx, client, runtime.GOOS, runtime.GOARCH, distribution)
 	if err != nil {
 		return "", err
 	}

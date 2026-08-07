@@ -1,10 +1,13 @@
 package discoapi
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 // Sample JSON response similar to what DiscoAPI would return
@@ -56,5 +59,19 @@ func TestGetDistributions(t *testing.T) {
 	}
 	if dists[1].Name != "Zulu" || dists[1].APIParameter != "zulu" {
 		t.Errorf("unexpected second distribution: %+v", dists[1])
+	}
+}
+
+func TestGetDistributionsHonorsContext(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	client := &Client{BaseURL: server.URL, HTTPClient: server.Client()}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	if _, err := client.GetDistributionsContext(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected deadline error, got %v", err)
 	}
 }

@@ -12,11 +12,11 @@ import (
 )
 
 type PackagesClient interface {
-	GetPackages(os, arch, distribution, version string) ([]discoapi.Package, error)
+	GetPackagesContext(ctx context.Context, os, arch, distribution, version string) ([]discoapi.Package, error)
 }
 
 type PackagesWithInfoClient interface {
-	GetPackagesContext(ctx context.Context, os, arch, distribution, version string) ([]discoapi.Package, error)
+	PackagesClient
 	GetPackageInfoContext(ctx context.Context, id string) (*discoapi.PackageInfo, error)
 }
 
@@ -25,15 +25,7 @@ type packageIndex struct {
 	Sorted    []*semver.Version
 }
 
-func makePackageIndex(client PackagesClient, osFlag, archFlag, distributionFlag string) (*packageIndex, error) {
-	pkgs, err := client.GetPackages(osFlag, archFlag, distributionFlag, "")
-	if err != nil {
-		return nil, err
-	}
-	return packageIndexFromPackages(pkgs), nil
-}
-
-func makePackageIndexContext(ctx context.Context, client PackagesWithInfoClient, osFlag, archFlag, distributionFlag string) (*packageIndex, error) {
+func makePackageIndex(ctx context.Context, client PackagesClient, osFlag, archFlag, distributionFlag string) (*packageIndex, error) {
 	pkgs, err := client.GetPackagesContext(ctx, osFlag, archFlag, distributionFlag, "")
 	if err != nil {
 		return nil, err

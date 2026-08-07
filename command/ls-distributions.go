@@ -1,15 +1,16 @@
 package command
 
 import (
+	"context"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
 
 	"github.com/felipebz/javm/discoapi"
+	"github.com/spf13/cobra"
 )
 
 type DistributionsClient interface {
-	GetDistributions() ([]discoapi.Distribution, error)
+	GetDistributionsContext(ctx context.Context) ([]discoapi.Distribution, error)
 }
 
 func NewLsDistributionsCommand(client DistributionsClient) *cobra.Command {
@@ -17,7 +18,7 @@ func NewLsDistributionsCommand(client DistributionsClient) *cobra.Command {
 		Use:   "ls-distributions",
 		Short: "List all available Java distributions",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			distributions, err := client.GetDistributions()
+			distributions, err := client.GetDistributionsContext(cmd.Context())
 			if err != nil {
 				return err
 			}

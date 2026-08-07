@@ -2,6 +2,8 @@ package command
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/felipebz/javm/discoapi"
@@ -14,7 +16,10 @@ type mockPackagesClient struct {
 	Err  error
 }
 
-func (m *mockPackagesClient) GetPackages(os, arch, distribution, version string) ([]discoapi.Package, error) {
+func (m *mockPackagesClient) GetPackagesContext(ctx context.Context, os, arch, distribution, version string) ([]discoapi.Package, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	return m.Pkgs, m.Err
 }
 
@@ -101,7 +106,7 @@ func TestRunLsRemote_EmptyResult(t *testing.T) {
 		Pkgs: []discoapi.Package{},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(&out, mock, "linux", "amd64", "", "major", "")
+	err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "", "major", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -119,7 +124,7 @@ func TestRunLsRemote_SpecificDistribution(t *testing.T) {
 		},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(&out, mock, "linux", "amd64", "zulu", "patch", "")
+	err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "zulu", "patch", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -141,7 +146,7 @@ func TestRunLsRemote_WithRange(t *testing.T) {
 		},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(&out, mock, "linux", "amd64", "", "patch", ">=20")
+	err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "", "patch", ">=20")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -151,5 +156,16 @@ temurin@21.0.1       21.0.1          temurin 21.0.1
 `
 	if got != want {
 		t.Errorf("range got:\n%q\nwant:\n%q", got, want)
+	}
+}
+
+func TestLsRemotePropagatesCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	cmd := NewLsRemoteCommand(&mockPackagesClient{})
+	cmd.SetArgs(nil)
+
+	if err := cmd.ExecuteContext(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation error, got %v", err)
 	}
 }

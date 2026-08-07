@@ -2,6 +2,8 @@ package command
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/felipebz/javm/discoapi"
@@ -12,8 +14,22 @@ type mockClient struct {
 	err           error
 }
 
-func (m *mockClient) GetDistributions() ([]discoapi.Distribution, error) {
+func (m *mockClient) GetDistributionsContext(ctx context.Context) ([]discoapi.Distribution, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	return m.distributions, m.err
+}
+
+func TestLsDistributionsPropagatesCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	cmd := NewLsDistributionsCommand(&mockClient{})
+	cmd.SetArgs(nil)
+
+	if err := cmd.ExecuteContext(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation error, got %v", err)
+	}
 }
 
 func TestNewLsDistributionsCommand(t *testing.T) {

@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"runtime"
@@ -30,6 +31,7 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 
 			normalizedOS := normalizeOS(osFlag)
 			return runLsRemote(
+				cmd.Context(),
 				cmd.OutOrStdout(),
 				client,
 				normalizedOS,
@@ -49,6 +51,7 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 }
 
 func runLsRemote(
+	ctx context.Context,
 	out io.Writer,
 	client PackagesClient,
 	osFlag, archFlag, distributionFlag, trimTo, rangeArg string,
@@ -65,7 +68,7 @@ func runLsRemote(
 	if distributionFlag == "all" {
 		distributionFlag = ""
 	}
-	packageIndex, err := makePackageIndex(client, osFlag, archFlag, distributionFlag)
+	packageIndex, err := makePackageIndex(ctx, client, osFlag, archFlag, distributionFlag)
 	if err != nil {
 		return err
 	}

@@ -1,9 +1,11 @@
 package command
 
 import (
-	"github.com/felipebz/javm/discoapi"
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/felipebz/javm/discoapi"
 )
 
 func TestMakePackageIndex(t *testing.T) {
@@ -13,7 +15,7 @@ func TestMakePackageIndex(t *testing.T) {
 			{JavaVersion: "17+35", Distribution: "zulu", DistributionVersion: "17"},
 		},
 	}
-	idx, err := makePackageIndex(mock, "linux", "amd64", "")
+	idx, err := makePackageIndex(context.Background(), mock, "linux", "amd64", "")
 	if err != nil {
 		t.Fatal(err)
 	}

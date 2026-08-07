@@ -95,6 +95,25 @@ func TestClientFetchRejectsOversizedAndHonorsContext(t *testing.T) {
 		}
 	})
 
+	t.Run("oversized chunked response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.(http.Flusher).Flush()
+			_, _ = io.CopyN(w, strings.NewReader(strings.Repeat("x", int(maxResponseSize+1))), maxResponseSize+1)
+		}))
+		defer server.Close()
+		client := &Client{BaseURL: server.URL, HTTPClient: server.Client()}
+		if _, err := client.fetch("large", nil); err == nil || !strings.Contains(err.Error(), "exceeds") {
+			t.Fatalf("expected response limit error, got %v", err)
+		}
+	})
+
+	t.Run("invalid base URL", func(t *testing.T) {
+		client := &Client{BaseURL: "%", HTTPClient: http.DefaultClient}
+		if _, err := client.fetch("packages", nil); err == nil || !strings.Contains(err.Error(), "build DiscoAPI URL") {
+			t.Fatalf("expected URL construction error, got %v", err)
+		}
+	})
+
 	t.Run("cancelled", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			<-r.Context().Done()
