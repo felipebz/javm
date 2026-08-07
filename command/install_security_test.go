@@ -29,7 +29,7 @@ func TestInstallRollsBackAndCleansStaging(t *testing.T) {
 	parent := t.TempDir()
 	dst := filepath.Join(parent, "jdk")
 
-	err := install(archive, dst)
+	err := install(context.Background(), archive, dst)
 	if err == nil || !strings.Contains(err.Error(), "installation rolled back") {
 		t.Fatalf("expected rollback error, got %v", err)
 	}
@@ -45,6 +45,33 @@ func TestInstallRollsBackAndCleansStaging(t *testing.T) {
 	}
 }
 
+func TestInstallCancellationCleansOwnedStaging(t *testing.T) {
+	parent := t.TempDir()
+	dst := filepath.Join(parent, "jdk")
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := installWithExtractor(ctx, "jdk.zip", dst, func(ctx context.Context, _, staging string) error {
+		if err := os.WriteFile(filepath.Join(staging, "partial"), []byte("partial"), 0600); err != nil {
+			return err
+		}
+		cancel()
+		return ctx.Err()
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation error, got %v", err)
+	}
+	if _, err := os.Lstat(dst); !os.IsNotExist(err) {
+		t.Fatalf("partial destination remains after cancellation: %v", err)
+	}
+	staging, err := filepath.Glob(filepath.Join(parent, ".jdk.staging-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(staging) != 0 {
+		t.Fatalf("staging directories remain after cancellation: %v", staging)
+	}
+}
+
 func TestInstallNeverReplacesExistingDestination(t *testing.T) {
 	archive := makeZipArchive(t, []zipTestEntry{{name: javaArchivePath(), body: "java", mode: 0755}})
 	dst := t.TempDir()
@@ -53,7 +80,7 @@ func TestInstallNeverReplacesExistingDestination(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := install(archive, dst); err == nil || !strings.Contains(err.Error(), "refusing to replace") {
+	if err := install(context.Background(), archive, dst); err == nil || !strings.Contains(err.Error(), "refusing to replace") {
 		t.Fatalf("expected existing destination error, got %v", err)
 	}
 	data, err := os.ReadFile(sentinel)
@@ -140,7 +167,7 @@ func TestArchiveExtractionLimits(t *testing.T) {
 		if err := tw.Close(); err != nil {
 			t.Fatal(err)
 		}
-		err := extractTarWithLimits(&archive, t.TempDir(), true, extractionLimits{maxEntries: 1, maxBytes: 100})
+		err := extractTarWithLimits(context.Background(), &archive, t.TempDir(), true, extractionLimits{maxEntries: 1, maxBytes: 100})
 		if err == nil || !strings.Contains(err.Error(), "exceeds 1 entries") {
 			t.Fatalf("expected entry limit error, got %v", err)
 		}
@@ -148,11 +175,27 @@ func TestArchiveExtractionLimits(t *testing.T) {
 
 	t.Run("expanded bytes", func(t *testing.T) {
 		archive := makeZipArchive(t, []zipTestEntry{{name: "jdk/large", body: "12345", mode: 0644}})
-		err := unzipWithLimits(archive, t.TempDir(), true, extractionLimits{maxEntries: 10, maxBytes: 4})
+		err := unzipWithLimits(context.Background(), archive, t.TempDir(), true, extractionLimits{maxEntries: 10, maxBytes: 4})
 		if err == nil || !strings.Contains(err.Error(), "exceeds 4 extracted bytes") {
 			t.Fatalf("expected extracted size error, got %v", err)
 		}
 	})
+}
+
+func TestTarExtractionStopsWhenContextIsCanceled(t *testing.T) {
+	var archive bytes.Buffer
+	tw := tar.NewWriter(&archive)
+	writeTarEntries(t, tw, []tarTestEntry{{name: "jdk/bin/java", body: "java", typeflag: tar.TypeReg}})
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &cancelAfterRead{reader: bytes.NewReader(archive.Bytes()), cancel: cancel}
+	err := extractTar(ctx, reader, t.TempDir(), true)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation error, got %v", err)
+	}
 }
 
 func TestDownloadValidatesStatusSizeAndCancellation(t *testing.T) {
@@ -242,6 +285,17 @@ type installPackagesClient struct {
 	checksum    string
 }
 
+type cancelAfterRead struct {
+	reader io.Reader
+	cancel context.CancelFunc
+}
+
+func (r *cancelAfterRead) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	r.cancel()
+	return n, err
+}
+
 func (c installPackagesClient) GetPackagesContext(ctx context.Context, _, _, _, _ string) ([]discoapi.Package, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -300,7 +354,7 @@ func assertUnsafeInstall(t *testing.T, archive, errorPart string) {
 	parent := t.TempDir()
 	dst := filepath.Join(parent, "jdk")
 	external := filepath.Join(parent, "outside")
-	if err := install(archive, dst); err == nil || !strings.Contains(err.Error(), errorPart) {
+	if err := install(context.Background(), archive, dst); err == nil || !strings.Contains(err.Error(), errorPart) {
 		t.Fatalf("expected error containing %q, got %v", errorPart, err)
 	}
 	if _, err := os.Lstat(dst); !os.IsNotExist(err) {

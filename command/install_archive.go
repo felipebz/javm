@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -30,7 +31,16 @@ type extractionLimits struct {
 	maxBytes   int64
 }
 
-func install(file string, dst string) (err error) {
+type archiveExtractor func(context.Context, string, string) error
+
+func install(ctx context.Context, file string, dst string) (err error) {
+	return installWithExtractor(ctx, file, dst, extractArchive)
+}
+
+func installWithExtractor(ctx context.Context, file string, dst string, extract archiveExtractor) (err error) {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	dst, err = filepath.Abs(dst)
 	if err != nil {
 		return fmt.Errorf("resolve installation destination: %w", err)
@@ -60,16 +70,19 @@ func install(file string, dst string) (err error) {
 	if err := os.Mkdir(extractRoot, 0700); err != nil {
 		return fmt.Errorf("create extraction directory: %w", err)
 	}
-	if err := extractArchive(file, extractRoot); err != nil {
+	if err := extract(ctx, file, extractRoot); err != nil {
 		return fmt.Errorf("extract archive into staging: %w; installation rolled back", err)
 	}
 
-	readyRoot, err := prepareStagedJDK(extractRoot, transactionDir, runtime.GOOS)
+	readyRoot, err := prepareStagedJDK(ctx, extractRoot, transactionDir, runtime.GOOS)
 	if err != nil {
 		return fmt.Errorf("validate staged JDK: %w; installation rolled back", err)
 	}
 	if err := assertJavaDistribution(readyRoot, runtime.GOOS); err != nil {
 		return fmt.Errorf("validate staged JDK: %w; installation rolled back", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("installation canceled before promotion: %w; installation rolled back", err)
 	}
 
 	if err := promoteNoReplace(readyRoot, dst); err != nil {
@@ -78,20 +91,23 @@ func install(file string, dst string) (err error) {
 	return nil
 }
 
-func extractArchive(src, dst string) error {
+func extractArchive(ctx context.Context, src, dst string) error {
 	switch getFileExtension(src) {
 	case ".zip":
-		return installFromZip(src, dst)
+		return installFromZip(ctx, src, dst)
 	case ".tar.gz":
-		return installFromTgz(src, dst)
+		return installFromTgz(ctx, src, dst)
 	case ".tar.xz":
-		return installFromTgx(src, dst)
+		return installFromTgx(ctx, src, dst)
 	default:
 		return fmt.Errorf("unsupported file type: %s", src)
 	}
 }
 
-func prepareStagedJDK(extractRoot, transactionDir, goos string) (string, error) {
+func prepareStagedJDK(ctx context.Context, extractRoot, transactionDir, goos string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	if err := assertJavaDistribution(extractRoot, goos); err == nil {
 		return extractRoot, nil
 	}
@@ -102,6 +118,9 @@ func prepareStagedJDK(extractRoot, transactionDir, goos string) (string, error) 
 	}
 	var javaPath string
 	err := filepath.WalkDir(extractRoot, func(current string, entry fs.DirEntry, walkErr error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if walkErr != nil {
 			return walkErr
 		}
@@ -168,12 +187,12 @@ func assertJavaDistribution(dir string, goos string) error {
 	return nil
 }
 
-func installFromTgz(src string, dst string) error {
+func installFromTgz(ctx context.Context, src string, dst string) error {
 	log.Debug("Extracting " + src + " to " + dst)
-	return untgz(src, dst, true)
+	return untgz(ctx, src, dst, true)
 }
 
-func untgz(src string, dst string, strip bool) (err error) {
+func untgz(ctx context.Context, src string, dst string, strip bool) (err error) {
 	gzFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -183,7 +202,7 @@ func untgz(src string, dst string, strip bool) (err error) {
 			err = errors.Join(err, fmt.Errorf("close gzip archive: %w", closeErr))
 		}
 	}()
-	gzr, err := gzip.NewReader(gzFile)
+	gzr, err := gzip.NewReader(&contextReader{ctx: ctx, reader: gzFile})
 	if err != nil {
 		return err
 	}
@@ -192,17 +211,20 @@ func untgz(src string, dst string, strip bool) (err error) {
 			err = errors.Join(err, fmt.Errorf("close gzip stream: %w", closeErr))
 		}
 	}()
-	return extractTar(gzr, dst, strip)
+	return extractTar(ctx, gzr, dst, strip)
 }
 
-func extractTar(r io.Reader, dst string, strip bool) error {
-	return extractTarWithLimits(r, dst, strip, extractionLimits{maxEntries: maxArchiveEntries, maxBytes: maxExtractedSize})
+func extractTar(ctx context.Context, r io.Reader, dst string, strip bool) error {
+	return extractTarWithLimits(ctx, r, dst, strip, extractionLimits{maxEntries: maxArchiveEntries, maxBytes: maxExtractedSize})
 }
 
-func extractTarWithLimits(r io.Reader, dst string, strip bool, limits extractionLimits) error {
-	tr := tar.NewReader(r)
+func extractTarWithLimits(ctx context.Context, r io.Reader, dst string, strip bool, limits extractionLimits) error {
+	tr := tar.NewReader(&contextReader{ctx: ctx, reader: r})
 	state := newExtractionState(dst, strip, limits)
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		header, err := tr.Next()
 		if err == io.EOF {
 			return nil
@@ -252,12 +274,12 @@ func extractTarWithLimits(r io.Reader, dst string, strip bool, limits extraction
 	}
 }
 
-func installFromTgx(src string, dst string) error {
+func installFromTgx(ctx context.Context, src string, dst string) error {
 	log.Debug("Extracting " + src + " to " + dst)
-	return untgx(src, dst, true)
+	return untgx(ctx, src, dst, true)
 }
 
-func untgx(src string, dst string, strip bool) (err error) {
+func untgx(ctx context.Context, src string, dst string, strip bool) (err error) {
 	xzFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -267,23 +289,23 @@ func untgx(src string, dst string, strip bool) (err error) {
 			err = errors.Join(err, fmt.Errorf("close xz archive: %w", closeErr))
 		}
 	}()
-	xzr, err := xz.NewReader(xzFile)
+	xzr, err := xz.NewReader(&contextReader{ctx: ctx, reader: xzFile})
 	if err != nil {
 		return err
 	}
-	return extractTar(xzr, dst, strip)
+	return extractTar(ctx, xzr, dst, strip)
 }
 
-func installFromZip(src string, dst string) error {
+func installFromZip(ctx context.Context, src string, dst string) error {
 	log.Debug("Extracting " + src + " to " + dst)
-	return unzip(src, dst, true)
+	return unzip(ctx, src, dst, true)
 }
 
-func unzip(src string, dst string, strip bool) error {
-	return unzipWithLimits(src, dst, strip, extractionLimits{maxEntries: maxArchiveEntries, maxBytes: maxExtractedSize})
+func unzip(ctx context.Context, src string, dst string, strip bool) error {
+	return unzipWithLimits(ctx, src, dst, strip, extractionLimits{maxEntries: maxArchiveEntries, maxBytes: maxExtractedSize})
 }
 
-func unzipWithLimits(src string, dst string, strip bool, limits extractionLimits) (err error) {
+func unzipWithLimits(ctx context.Context, src string, dst string, strip bool, limits extractionLimits) (err error) {
 	r, err := zip.OpenReader(src)
 	if err != nil {
 		return err
@@ -295,6 +317,9 @@ func unzipWithLimits(src string, dst string, strip bool, limits extractionLimits
 	}()
 	state := newExtractionState(dst, strip, limits)
 	for _, entry := range r.File {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		rel, skip, err := state.entryPath(entry.Name)
 		if err != nil {
 			return err
@@ -322,7 +347,7 @@ func unzipWithLimits(src string, dst string, strip bool, limits extractionLimits
 			return fmt.Errorf("open archive entry %q: %w", entry.Name, err)
 		}
 		if mode&os.ModeSymlink != 0 {
-			linkTarget, readErr := io.ReadAll(io.LimitReader(rc, maxSymlinkSize+1))
+			linkTarget, readErr := io.ReadAll(io.LimitReader(&contextReader{ctx: ctx, reader: rc}, maxSymlinkSize+1))
 			closeErr := rc.Close()
 			if readErr != nil {
 				return fmt.Errorf("read symlink %q: %w", entry.Name, readErr)
@@ -344,7 +369,7 @@ func unzipWithLimits(src string, dst string, strip bool, limits extractionLimits
 				rc.Close(),
 			)
 		}
-		writeErr := state.writeFile(target, mode, rc, int64(entry.UncompressedSize64))
+		writeErr := state.writeFile(target, mode, &contextReader{ctx: ctx, reader: rc}, int64(entry.UncompressedSize64))
 		closeErr := rc.Close()
 		if writeErr != nil {
 			return writeErr

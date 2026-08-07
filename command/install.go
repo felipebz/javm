@@ -161,7 +161,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 	}
 	switch runtime.GOOS {
 	case "darwin", "linux", "windows":
-		err = install(file, dst)
+		err = install(ctx, file, dst)
 	default:
 		err = errors.New(runtime.GOOS + " OS is not supported")
 	}

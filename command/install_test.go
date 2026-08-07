@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,7 +51,7 @@ func TestPrepareStagedJDK(t *testing.T) {
 				if err := touch(extractRoot, "nested", p, "bin", scenario.bin); err != nil {
 					t.Fatal(err)
 				}
-				readyRoot, err := prepareStagedJDK(extractRoot, transactionDir, scenario.os)
+				readyRoot, err := prepareStagedJDK(context.Background(), extractRoot, transactionDir, scenario.os)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -67,7 +68,7 @@ func TestPrepareStagedJDK(t *testing.T) {
 		if err := touch(extractRoot, "bin", "not-java"); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := prepareStagedJDK(extractRoot, transactionDir, runtime.GOOS); err == nil {
+		if _, err := prepareStagedJDK(context.Background(), extractRoot, transactionDir, runtime.GOOS); err == nil {
 			t.Fatal("expected invalid staged JDK to fail")
 		}
 	})
@@ -184,7 +185,7 @@ func TestInstallZip(t *testing.T) {
 
 	destDir := filepath.Join(t.TempDir(), "jdk")
 
-	err = install(zipPath, destDir)
+	err = install(context.Background(), zipPath, destDir)
 	if err != nil {
 		t.Fatalf("Install failed: %v", err)
 	}
@@ -246,7 +247,7 @@ func TestInstallTgz(t *testing.T) {
 
 	destDir := filepath.Join(t.TempDir(), "jdk")
 
-	err = install(tgzPath, destDir)
+	err = install(context.Background(), tgzPath, destDir)
 	if err != nil {
 		t.Fatalf("Install failed: %v", err)
 	}
@@ -311,7 +312,7 @@ func TestInstallTxz(t *testing.T) {
 
 	destDir := filepath.Join(t.TempDir(), "jdk")
 
-	err = install(txzPath, destDir)
+	err = install(context.Background(), txzPath, destDir)
 	if err != nil {
 		t.Fatalf("Install failed: %v", err)
 	}
