@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -15,8 +16,8 @@ type PackagesClient interface {
 }
 
 type PackagesWithInfoClient interface {
-	GetPackages(os, arch, distribution, version string) ([]discoapi.Package, error)
-	GetPackageInfo(id string) (*discoapi.PackageInfo, error)
+	GetPackagesContext(ctx context.Context, os, arch, distribution, version string) ([]discoapi.Package, error)
+	GetPackageInfoContext(ctx context.Context, id string) (*discoapi.PackageInfo, error)
 }
 
 type packageIndex struct {
@@ -29,7 +30,18 @@ func makePackageIndex(client PackagesClient, osFlag, archFlag, distributionFlag 
 	if err != nil {
 		return nil, err
 	}
+	return packageIndexFromPackages(pkgs), nil
+}
 
+func makePackageIndexContext(ctx context.Context, client PackagesWithInfoClient, osFlag, archFlag, distributionFlag string) (*packageIndex, error) {
+	pkgs, err := client.GetPackagesContext(ctx, osFlag, archFlag, distributionFlag, "")
+	if err != nil {
+		return nil, err
+	}
+	return packageIndexFromPackages(pkgs), nil
+}
+
+func packageIndexFromPackages(pkgs []discoapi.Package) *packageIndex {
 	byVersion := make(map[*semver.Version]discoapi.Package)
 	var sorted []*semver.Version
 
@@ -41,10 +53,7 @@ func makePackageIndex(client PackagesClient, osFlag, archFlag, distributionFlag 
 		}
 	}
 	sort.Sort(semver.VersionSlice(sorted))
-	return &packageIndex{
-		ByVersion: byVersion,
-		Sorted:    sorted,
-	}, nil
+	return &packageIndex{ByVersion: byVersion, Sorted: sorted}
 }
 
 func stripBuildSuffix(javaVersion string) string {

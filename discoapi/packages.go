@@ -1,6 +1,7 @@
 package discoapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -9,6 +10,10 @@ import (
 )
 
 func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package, error) {
+	return c.GetPackagesContext(context.Background(), os, arch, distribution, version)
+}
+
+func (c *Client) GetPackagesContext(ctx context.Context, os, arch, distribution, version string) ([]Package, error) {
 	archFilter := map[string]string{
 		"amd64": "amd64,x64",
 		"arm64": "arm64,aarch64",
@@ -49,7 +54,7 @@ func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package,
 	params.Set("release_status", "ga")
 
 	log.Debugf("fetching packages with params: %s", params.Encode())
-	data, err := c.fetch("packages", params)
+	data, err := c.fetchContext(ctx, "packages", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch packages: %w", err)
 	}
@@ -63,7 +68,11 @@ func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package,
 }
 
 func (c *Client) GetPackageInfo(id string) (*PackageInfo, error) {
-	data, err := c.fetch("ids/"+id, nil)
+	return c.GetPackageInfoContext(context.Background(), id)
+}
+
+func (c *Client) GetPackageInfoContext(ctx context.Context, id string) (*PackageInfo, error) {
+	data, err := c.fetchContext(ctx, "ids/"+id, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch package info: %w", err)
 	}
@@ -71,6 +80,9 @@ func (c *Client) GetPackageInfo(id string) (*PackageInfo, error) {
 	var resp PackageInfoResponse
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse package info: %w", err)
+	}
+	if len(resp.PackageInfo) == 0 {
+		return nil, fmt.Errorf("package info response for %q was empty", id)
 	}
 
 	return &resp.PackageInfo[0], nil

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -190,5 +191,17 @@ func TestGetPackageInfo(t *testing.T) {
 				t.Errorf("unexpected checksum type: got %q, want %q", packageInfo.ChecksumType, "sha256")
 			}
 		})
+	}
+}
+
+func TestGetPackageInfoRejectsEmptyResult(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, `{"result":[]}`)
+	}))
+	defer server.Close()
+	client := &Client{BaseURL: server.URL, HTTPClient: server.Client()}
+	if _, err := client.GetPackageInfo("missing"); err == nil || !strings.Contains(err.Error(), "was empty") {
+		t.Fatalf("expected empty package info error, got %v", err)
 	}
 }

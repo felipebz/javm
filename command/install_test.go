@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,19 +13,7 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
-func TestBinJavaRelocation(t *testing.T) {
-	ok := func(err error) {
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	nok := func(err error) {
-		if err == nil {
-			t.Fatal(err)
-		}
-	}
-	dir, err := os.MkdirTemp("", "install_test")
-	ok(err)
+func TestPrepareStagedJDK(t *testing.T) {
 	for _, scenario := range []struct {
 		os     string
 		bin    string
@@ -54,34 +43,34 @@ func TestBinJavaRelocation(t *testing.T) {
 			paths:  []string{""},
 		},
 	} {
-		for _, p := range scenario.paths {
-			test1 := filepath.Join(dir, "test1")
-			ok(touch(test1, p, "bin", scenario.bin))
-			ok(normalizePathToBinJava(test1, scenario.os))
-			ok(file(test1, scenario.prefix, "bin", scenario.bin))
-
-			test2 := filepath.Join(dir, "test2")
-			ok(touch(test2, "subdir", p, "bin", scenario.bin))
-			ok(normalizePathToBinJava(test2, scenario.os))
-			ok(file(test2, scenario.prefix, "bin", scenario.bin))
-
-			test3 := filepath.Join(dir, "test3")
-			ok(touch(test3, "subdir", "subdir", p, "bin", scenario.bin))
-			ok(normalizePathToBinJava(test3, scenario.os))
-			ok(file(test3, scenario.prefix, "bin", scenario.bin))
-
-			test4 := filepath.Join(dir, "test4")
-			ok(touch(test4, "file"))
-			ok(touch(test4, "subdir", "subdir", p, "bin", scenario.bin))
-			ok(normalizePathToBinJava(test4, scenario.os))
-			ok(file(test4, scenario.prefix, "bin", scenario.bin))
-
-			test5 := filepath.Join(dir, "test5")
-			ok(touch(test5, "bin", "file"))
-			nok(normalizePathToBinJava(test5, scenario.os))
-			ok(file(test5, "bin", "file"))
+		for index, p := range scenario.paths {
+			t.Run(fmt.Sprintf("%s-layout-%d", scenario.os, index), func(t *testing.T) {
+				transactionDir := t.TempDir()
+				extractRoot := filepath.Join(transactionDir, "extract")
+				if err := touch(extractRoot, "nested", p, "bin", scenario.bin); err != nil {
+					t.Fatal(err)
+				}
+				readyRoot, err := prepareStagedJDK(extractRoot, transactionDir, scenario.os)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := file(readyRoot, scenario.prefix, "bin", scenario.bin); err != nil {
+					t.Fatal(err)
+				}
+			})
 		}
 	}
+
+	t.Run("missing java", func(t *testing.T) {
+		transactionDir := t.TempDir()
+		extractRoot := filepath.Join(transactionDir, "extract")
+		if err := touch(extractRoot, "bin", "not-java"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := prepareStagedJDK(extractRoot, transactionDir, runtime.GOOS); err == nil {
+			t.Fatal("expected invalid staged JDK to fail")
+		}
+	})
 }
 
 func touch(path ...string) error {
@@ -162,33 +151,6 @@ func TestGetFileExtension(t *testing.T) {
 	}
 }
 
-func TestIsEmptyDir(t *testing.T) {
-	dir, err := os.MkdirTemp("", "empty_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	empty, err := isEmptyDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !empty {
-		t.Error("Expected directory to be empty")
-	}
-
-	f, _ := os.CreateTemp(dir, "file")
-	f.Close()
-
-	empty, err = isEmptyDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if empty {
-		t.Error("Expected directory to not be empty")
-	}
-}
-
 func TestInstallZip(t *testing.T) {
 	zipPath := filepath.Join(t.TempDir(), "test.zip")
 	f, err := os.Create(zipPath)
@@ -220,7 +182,7 @@ func TestInstallZip(t *testing.T) {
 	}
 	f.Close()
 
-	destDir := t.TempDir()
+	destDir := filepath.Join(t.TempDir(), "jdk")
 
 	err = install(zipPath, destDir)
 	if err != nil {
@@ -282,7 +244,7 @@ func TestInstallTgz(t *testing.T) {
 	}
 	f.Close()
 
-	destDir := t.TempDir()
+	destDir := filepath.Join(t.TempDir(), "jdk")
 
 	err = install(tgzPath, destDir)
 	if err != nil {
@@ -347,7 +309,7 @@ func TestInstallTxz(t *testing.T) {
 	}
 	f.Close()
 
-	destDir := t.TempDir()
+	destDir := filepath.Join(t.TempDir(), "jdk")
 
 	err = install(txzPath, destDir)
 	if err != nil {

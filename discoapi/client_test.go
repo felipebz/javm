@@ -1,11 +1,16 @@
 package discoapi
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestClientFetch(t *testing.T) {
@@ -75,4 +80,31 @@ func TestClientFetch(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClientFetchRejectsOversizedAndHonorsContext(t *testing.T) {
+	t.Run("oversized", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Length", fmt.Sprint(maxResponseSize+1))
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+		client := &Client{BaseURL: server.URL, HTTPClient: server.Client()}
+		if _, err := client.fetch("large", nil); err == nil || !strings.Contains(err.Error(), "exceeds") {
+			t.Fatalf("expected response limit error, got %v", err)
+		}
+	})
+
+	t.Run("cancelled", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			<-r.Context().Done()
+		}))
+		defer server.Close()
+		client := &Client{BaseURL: server.URL, HTTPClient: server.Client()}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+		defer cancel()
+		if _, err := client.fetchContext(ctx, "slow", nil); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("expected deadline error, got %v", err)
+		}
+	})
 }

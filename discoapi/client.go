@@ -1,6 +1,8 @@
 package discoapi
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +10,8 @@ import (
 	"os"
 	"time"
 )
+
+const maxResponseSize int64 = 10 << 20
 
 const (
 	DefaultDiscoAPIURL = "https://api.foojay.io/disco/v3.0"
@@ -34,20 +38,45 @@ func NewClient() *Client {
 }
 
 func (c *Client) fetch(endpoint string, params url.Values) ([]byte, error) {
-	fullURL, _ := url.JoinPath(c.BaseURL, endpoint)
+	return c.fetchContext(context.Background(), endpoint, params)
+}
+
+func (c *Client) fetchContext(ctx context.Context, endpoint string, params url.Values) (data []byte, err error) {
+	fullURL, err := url.JoinPath(c.BaseURL, endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("build DiscoAPI URL: %w", err)
+	}
 	if params != nil && len(params) > 0 {
 		fullURL += "?" + params.Encode()
 	}
 
-	resp, err := c.HTTPClient.Get(fullURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build GET %s: %w", fullURL, err)
 	}
-	defer resp.Body.Close()
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", fullURL, err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close GET %s response: %w", fullURL, closeErr))
+		}
+	}()
 
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return nil, fmt.Errorf("GET %s returned %d", fullURL, resp.StatusCode)
 	}
 
-	return io.ReadAll(resp.Body)
+	if resp.ContentLength > maxResponseSize {
+		return nil, fmt.Errorf("GET %s response exceeds %d bytes", fullURL, maxResponseSize)
+	}
+	data, err = io.ReadAll(io.LimitReader(resp.Body, maxResponseSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("read GET %s response: %w", fullURL, err)
+	}
+	if int64(len(data)) > maxResponseSize {
+		return nil, fmt.Errorf("GET %s response exceeds %d bytes", fullURL, maxResponseSize)
+	}
+	return data, nil
 }
