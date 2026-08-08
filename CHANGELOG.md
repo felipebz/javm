@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.1](https://github.com/felipebz/javm/compare/v0.13.0...v0.13.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* prevent path traversal in alias names ([dd26ea7](https://github.com/felipebz/javm/commit/dd26ea732626415e37328888b0fb79b1fa43e77c))
+* prevent usage message when `install` command is canceled ([13b6d3b](https://github.com/felipebz/javm/commit/13b6d3bc274f13c6bab0f6df930bb20740bb7706))
+
 ## [0.13.0](https://github.com/felipebz/javm/compare/v0.12.2...v0.13.0) (2026-08-06)
 
 
