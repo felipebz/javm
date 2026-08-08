@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.2](https://github.com/felipebz/javm/compare/v0.13.1...v0.13.2) (2026-08-08)
+
+
+### Bug Fixes
+
+* **security:** prevent shell injection via default version ([c7ad4da](https://github.com/felipebz/javm/commit/c7ad4da4cb8325b0831245895c57c09e373255cf))
+
 ## [0.13.1](https://github.com/felipebz/javm/compare/v0.13.0...v0.13.1) (2026-08-08)
 
 
