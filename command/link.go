@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/semver"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -22,14 +22,16 @@ func NewLinkCommand() *cobra.Command {
 		Short: "Resolve or update a link",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				if err := linkLatest(); err != nil {
+				if err := linkLatest(cmd.Context()); err != nil {
 					return err
 				}
 				return nil
 			}
 			if len(args) == 1 {
 				if value := getLink(args[0]); value != "" {
-					fmt.Println(value)
+					if _, err := fmt.Fprintln(cmd.OutOrStdout(), value); err != nil {
+						return fmt.Errorf("write link: %w", err)
+					}
 				}
 			} else if err := link(args[0], args[1]); err != nil {
 				return err
@@ -83,10 +85,10 @@ func link(selector string, dir string) error {
 	}
 }
 
-func linkLatest() error {
+func linkLatest(ctx context.Context) error {
 	files, _ := readDir(filepath.Join(cfg.Dir(), "jdk"))
 	if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
-		log.Warn("Failed to delete cache file: ", err)
+		loggerFromContext(ctx).Warn("Failed to delete cache file: ", err)
 	}
 	var jdks, err = Ls(true)
 	if err != nil {
@@ -103,7 +105,7 @@ func linkLatest() error {
 				if err != nil {
 					err := os.Remove(filepath.Join(cfg.Dir(), "jdk", sourceVersion))
 					if err == nil {
-						log.Info(sourceVersion + " -/> " + target)
+						loggerFromContext(ctx).Info(sourceVersion + " -/> " + target)
 					}
 					if !os.IsNotExist(err) {
 						return err
@@ -131,17 +133,17 @@ func linkLatest() error {
 		target := filepath.Join(cfg.Dir(), "jdk", v.String())
 		if v.Prerelease() == "" && cache[sourceVersion] != target && !strings.HasPrefix(sourceVersion, "system@") {
 			source := filepath.Join(cfg.Dir(), "jdk", sourceVersion)
-			log.Info(v.String() + " -> " + target)
+			loggerFromContext(ctx).Info(v.String() + " -> " + target)
 			os.Remove(source)
 			if err := os.Symlink(target, source); err != nil {
 				return err
 			}
 		}
 	}
-	return linkAlias("default", jdks)
+	return linkAlias(ctx, "default", jdks)
 }
 
-func linkAliasName(name string) error {
+func linkAliasName(ctx context.Context, name string) error {
 	if err := validateAliasName(name); err != nil {
 		return err
 	}
@@ -149,10 +151,10 @@ func linkAliasName(name string) error {
 	if err != nil {
 		return err
 	}
-	return linkAlias(name, jdks)
+	return linkAlias(ctx, name, jdks)
 }
 
-func linkAlias(name string, jdks []discovery.JDK) error {
+func linkAlias(ctx context.Context, name string, jdks []discovery.JDK) error {
 	if err := validateAliasName(name); err != nil {
 		return err
 	}
@@ -168,7 +170,7 @@ func linkAlias(name string, jdks []discovery.JDK) error {
 	if defaultAlias != "" {
 		target := filepath.Join(cfg.Dir(), "jdk", defaultAlias)
 		if sourceTarget != target {
-			log.Info(sourceRef + " -> " + target)
+			loggerFromContext(ctx).Info(sourceRef + " -> " + target)
 			os.Remove(source)
 			if err := os.Symlink(target, source); err != nil {
 				return err
@@ -177,7 +179,7 @@ func linkAlias(name string, jdks []discovery.JDK) error {
 	} else {
 		err := os.Remove(source)
 		if err == nil {
-			log.Info(sourceRef + " -/> " + sourceTarget)
+			loggerFromContext(ctx).Info(sourceRef + " -/> " + sourceTarget)
 		}
 		if !os.IsNotExist(err) {
 			return err

@@ -79,11 +79,15 @@ func NewInitCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "& '%s'\n", scriptPath)
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "& '%s'\n", scriptPath); err != nil {
+					return fmt.Errorf("write PowerShell initialization: %w", err)
+				}
 				return nil
 			}
 
-			fmt.Fprint(cmd.OutOrStdout(), script)
+			if _, err := fmt.Fprint(cmd.OutOrStdout(), script); err != nil {
+				return fmt.Errorf("write shell initialization: %w", err)
+			}
 			return nil
 		},
 	}

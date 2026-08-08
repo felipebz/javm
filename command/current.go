@@ -17,11 +17,14 @@ func NewCurrentCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "current",
 		Short: "Display currently 'use'ed version",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ver := current()
 			if ver != "" {
-				fmt.Println(ver)
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), ver); err != nil {
+					return fmt.Errorf("write current version: %w", err)
+				}
 			}
+			return nil
 		},
 	}
 }

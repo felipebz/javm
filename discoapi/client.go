@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"os"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const maxResponseSize int64 = 10 << 20
@@ -21,6 +23,7 @@ const (
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
+	Logger     *log.Logger
 }
 
 func NewClient() *Client {
@@ -34,7 +37,17 @@ func NewClient() *Client {
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		Logger: log.New(),
 	}
+}
+
+func (c *Client) logger() *log.Logger {
+	if c.Logger != nil {
+		return c.Logger
+	}
+	logger := log.New()
+	logger.SetOutput(io.Discard)
+	return logger
 }
 
 func (c *Client) fetch(endpoint string, params url.Values) ([]byte, error) {

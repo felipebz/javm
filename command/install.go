@@ -14,7 +14,6 @@ import (
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/semver"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -47,7 +46,7 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 					return err
 				}
 
-				if err := linkLatest(); err != nil {
+				if err := linkLatest(cmd.Context()); err != nil {
 					return err
 				}
 				// TODO change to call the "use" command after it's refactored
@@ -140,8 +139,8 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			file = strings.Replace(strings.TrimPrefix(file, "/"), "/", "\\", -1)
 		}
 	} else {
-		log.Info("Downloading ", ver)
-		log.Debug("URL: ", url)
+		loggerFromContext(ctx).Info("Downloading ", ver)
+		loggerFromContext(ctx).Debug("URL: ", url)
 		file, err = download(ctx, url)
 		if err != nil {
 			return "", err
@@ -150,7 +149,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 		defer func() {
 			if removeDownload {
 				if removeErr := os.Remove(file); removeErr != nil && !os.IsNotExist(removeErr) {
-					log.Warn("Failed to remove temporary download: ", removeErr)
+					loggerFromContext(ctx).Warn("Failed to remove temporary download: ", removeErr)
 				}
 			}
 		}()
@@ -160,7 +159,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			return "", fmt.Errorf("verify downloaded artifact: %w", err)
 		}
 	} else {
-		log.Warn("No checksum provided by DiscoAPI for this artifact; skipping integrity verification")
+		loggerFromContext(ctx).Warn("No checksum provided by DiscoAPI for this artifact; skipping integrity verification")
 	}
 	switch runtime.GOOS {
 	case "darwin", "linux", "windows":

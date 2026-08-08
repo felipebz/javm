@@ -79,11 +79,10 @@ func runLsRemote(
 		vs = semver.VersionSlice(vs).TrimTo(trimToValue)
 	}
 
-	printVersions(out, vs, packageIndex, r, trimToValue)
-	return nil
+	return printVersions(out, vs, packageIndex, r, trimToValue)
 }
 
-func printVersions(out io.Writer, versions []*semver.Version, packageIndex *packageIndex, r *semver.Range, value semver.VersionPart) {
+func printVersions(out io.Writer, versions []*semver.Version, packageIndex *packageIndex, r *semver.Range, value semver.VersionPart) error {
 	headerPrinted := false
 	for _, v := range versions {
 		if r != nil && !r.Contains(v) {
@@ -92,12 +91,17 @@ func printVersions(out io.Writer, versions []*semver.Version, packageIndex *pack
 		pkg := packageIndex.ByVersion[v]
 
 		if !headerPrinted {
-			fmt.Fprintf(out, "%-20s %-15s %s\n", "Identifier", "Full Version", "Distribution Version")
+			if _, err := fmt.Fprintf(out, "%-20s %-15s %s\n", "Identifier", "Full Version", "Distribution Version"); err != nil {
+				return fmt.Errorf("write remote JDK header: %w", err)
+			}
 			headerPrinted = true
 		}
 
-		fmt.Fprintf(out, "%-20s %-15s %s %s\n", v.TrimTo(value), pkg.JavaVersion, pkg.Distribution, pkg.DistributionVersion)
+		if _, err := fmt.Fprintf(out, "%-20s %-15s %s %s\n", v.TrimTo(value), pkg.JavaVersion, pkg.Distribution, pkg.DistributionVersion); err != nil {
+			return fmt.Errorf("write remote JDK: %w", err)
+		}
 	}
+	return nil
 }
 
 func normalizeOS(os string) string {

@@ -26,14 +26,16 @@ func NewAliasCommand() *cobra.Command {
 					return err
 				}
 				if value != "" {
-					fmt.Fprintln(cmd.OutOrStdout(), value)
+					if _, err := fmt.Fprintln(cmd.OutOrStdout(), value); err != nil {
+						return fmt.Errorf("write alias: %w", err)
+					}
 				}
 				return nil
 			}
 			if err := setAlias(name, args[1]); err != nil {
 				return err
 			}
-			if err := linkAliasName(name); err != nil {
+			if err := linkAliasName(cmd.Context(), name); err != nil {
 				return err
 			}
 			return nil

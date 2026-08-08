@@ -25,9 +25,14 @@ func NewWhichCommand() *cobra.Command {
 			} else {
 				ver = args[0]
 			}
-			dir, _ := Which(ver, whichHome)
+			dir, err := Which(ver, whichHome)
+			if err != nil {
+				return err
+			}
 			if dir != "" {
-				fmt.Fprintln(cmd.OutOrStdout(), dir)
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), dir); err != nil {
+					return fmt.Errorf("write JDK path: %w", err)
+				}
 			}
 			return nil
 		},

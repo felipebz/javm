@@ -33,8 +33,7 @@ func NewLsCommand() *cobra.Command {
 				return err
 			}
 
-			printInstalledVersions(cmd.OutOrStdout(), jdks, rng, showDetails)
-			return nil
+			return printInstalledVersions(cmd.OutOrStdout(), jdks, rng, showDetails)
 		},
 	}
 	cmd.Flags().BoolVarP(&showDetails, "details", "d", false, "Show detailed information about discovered JDKs")
@@ -114,7 +113,7 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 	return discovery.JDK{}, fmt.Errorf("%s isn't installed", rng)
 }
 
-func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range, showDetails bool) {
+func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range, showDetails bool) error {
 	// Filter by range
 	var filtered []discovery.JDK
 	for _, jdk := range jdks {
@@ -142,21 +141,32 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range
 
 	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 	if showDetails {
-		fmt.Fprintln(tw, "SOURCE\tNAME\tVENDOR\tARCHITECTURE\tPATH")
+		if _, err := fmt.Fprintln(tw, "SOURCE\tNAME\tVENDOR\tARCHITECTURE\tPATH"); err != nil {
+			return fmt.Errorf("write installed JDK header: %w", err)
+		}
 		for _, jdk := range jdks {
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+			if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
 				jdk.Source,
 				jdk.Identifier,
 				jdk.Vendor,
 				jdk.Architecture,
 				jdk.Path,
-			)
+			); err != nil {
+				return fmt.Errorf("write installed JDK: %w", err)
+			}
 		}
 	} else {
-		fmt.Fprintln(tw, "NAME\tSOURCE")
+		if _, err := fmt.Fprintln(tw, "NAME\tSOURCE"); err != nil {
+			return fmt.Errorf("write installed JDK header: %w", err)
+		}
 		for _, jdk := range jdks {
-			fmt.Fprintf(tw, "%s\t%s\n", jdk.Identifier, jdk.Source)
+			if _, err := fmt.Fprintf(tw, "%s\t%s\n", jdk.Identifier, jdk.Source); err != nil {
+				return fmt.Errorf("write installed JDK: %w", err)
+			}
 		}
 	}
-	tw.Flush()
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("flush installed JDK output: %w", err)
+	}
+	return nil
 }

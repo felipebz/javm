@@ -46,7 +46,9 @@ func newDiscoverRefreshCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to refresh discovery cache: %w", err)
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "Discovery cache refreshed successfully")
+			if _, err := fmt.Fprintln(cmd.OutOrStdout(), "Discovery cache refreshed successfully"); err != nil {
+				return fmt.Errorf("write discovery result: %w", err)
+			}
 			return nil
 		},
 	}

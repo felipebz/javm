@@ -23,7 +23,9 @@ func NewDefaultCommand() *cobra.Command {
 			if err := SetDefaultVersion(ver); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Default Java version set to %s\n", ver)
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Default Java version set to %s\n", ver); err != nil {
+				return fmt.Errorf("write default version confirmation: %w", err)
+			}
 			return nil
 		},
 	}

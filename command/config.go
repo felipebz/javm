@@ -3,7 +3,6 @@ package command
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 
 	"github.com/felipebz/javm/cfg"
@@ -12,112 +11,99 @@ import (
 
 func NewConfigCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "config",
-		Short: "Manage javm configuration",
+		Use:          "config",
+		Short:        "Manage javm configuration",
+		SilenceUsage: true,
 	}
 
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get effective value for a config key",
-		Run:   runGetConfig,
+		Args:  cobra.ExactArgs(1),
+		RunE:  runGetConfig,
 	}
 
 	setCmd := &cobra.Command{
 		Use:   "set <key> <value>",
 		Short: "Set a config key to a value",
-		Run:   runSetConfig,
+		Args:  cobra.ExactArgs(2),
+		RunE:  runSetConfig,
 	}
 
 	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all effective configuration keys and values",
-		Run:   runListConfig,
+		Args:  cobra.NoArgs,
+		RunE:  runListConfig,
 	}
 
 	unsetCmd := &cobra.Command{
 		Use:   "unset <key>",
 		Short: "Remove a key from the user configuration (revert to default)",
-		Run:   runUnsetConfig,
+		Args:  cobra.ExactArgs(1),
+		RunE:  runUnsetConfig,
 	}
 
 	cmd.AddCommand(getCmd, setCmd, unsetCmd, listCmd)
 	return cmd
 }
 
-func runGetConfig(cmd *cobra.Command, args []string) {
-	if len(args) != 1 {
-		_ = cmd.Usage()
-		os.Exit(0)
-	}
+func runGetConfig(cmd *cobra.Command, args []string) error {
 	key := args[0]
 	if !cfg.IsKnownKey(key) {
-		fmt.Fprintf(os.Stderr, "error: unknown key \"%s\"\n", key)
-		os.Exit(2)
+		return fmt.Errorf("unknown key %q", key)
 	}
 	v, err := cfg.EffectiveValue(key)
 	if err != nil {
-		handleConfigError(err)
+		return configError(err)
 	}
-	fmt.Println(v)
+	_, err = fmt.Fprintln(cmd.OutOrStdout(), v)
+	if err != nil {
+		return fmt.Errorf("write config value: %w", err)
+	}
+	return nil
 }
 
-func runSetConfig(cmd *cobra.Command, args []string) {
-	if len(args) != 2 {
-		_ = cmd.Usage()
-		os.Exit(0)
-	}
+func runSetConfig(cmd *cobra.Command, args []string) error {
 	key := args[0]
 	val := args[1]
 	if !cfg.IsKnownKey(key) {
-		fmt.Fprintf(os.Stderr, "error: unknown key \"%s\"\n", key)
-		os.Exit(2)
+		return fmt.Errorf("unknown key %q", key)
 	}
 	if err := cfg.SetValue(key, val); err != nil {
-		if errors.Is(err, cfg.ErrInvalidConfigFile) {
-			fmt.Fprintf(os.Stderr, "error: invalid config file; please fix or remove: %s\n", cfg.ConfigFile())
-			os.Exit(1)
-		}
-		fmt.Fprintf(os.Stderr, "error: failed to write config: %v\n", err)
-		os.Exit(3)
+		return fmt.Errorf("failed to write config: %w", configError(err))
 	}
+	return nil
 }
 
-func runListConfig(cmd *cobra.Command, args []string) {
+func runListConfig(cmd *cobra.Command, args []string) error {
 	lines, err := cfg.ListEffective()
 	if err != nil {
-		handleConfigError(err)
+		return configError(err)
 	}
 	sort.Strings(lines)
 	for _, l := range lines {
-		fmt.Println(l)
+		if _, err := fmt.Fprintln(cmd.OutOrStdout(), l); err != nil {
+			return fmt.Errorf("write config list: %w", err)
+		}
 	}
+	return nil
 }
 
-func runUnsetConfig(cmd *cobra.Command, args []string) {
-	if len(args) != 1 {
-		_ = cmd.Usage()
-		os.Exit(0)
-	}
+func runUnsetConfig(cmd *cobra.Command, args []string) error {
 	key := args[0]
 	if !cfg.IsKnownKey(key) {
-		fmt.Fprintf(os.Stderr, "error: unknown key \"%s\"\n", key)
-		os.Exit(2)
+		return fmt.Errorf("unknown key %q", key)
 	}
 	if err := cfg.UnsetValue(key); err != nil {
-		if errors.Is(err, cfg.ErrInvalidConfigFile) {
-			fmt.Fprintf(os.Stderr, "error: invalid config file; please fix or remove: %s\n", cfg.ConfigFile())
-			os.Exit(1)
-		}
-		fmt.Fprintf(os.Stderr, "error: failed to write config: %v\n", err)
-		os.Exit(3)
+		return fmt.Errorf("failed to remove config value: %w", configError(err))
 	}
+	return nil
 }
 
-func handleConfigError(err error) {
+func configError(err error) error {
 	if errors.Is(err, cfg.ErrInvalidConfigFile) {
-		fmt.Fprintf(os.Stderr, "error: invalid config file; please fix or remove: %s\n", cfg.ConfigFile())
-		os.Exit(1)
+		return fmt.Errorf("invalid config file; please fix or remove %s: %w", cfg.ConfigFile(), err)
 	}
-	fmt.Fprintf(os.Stderr, "error: %v\n", err)
-	os.Exit(1)
+	return err
 }

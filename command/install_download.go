@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/schollz/progressbar/v3"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -39,7 +38,7 @@ func (r RedirectTracer) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	switch resp.StatusCode {
 	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
-		log.Debug("Following ", resp.StatusCode, " redirect to ", resp.Header.Get("Location"))
+		loggerFromContext(req.Context()).Debug("Following ", resp.StatusCode, " redirect to ", resp.Header.Get("Location"))
 	}
 	return resp, nil
 }
@@ -123,12 +122,30 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL string,
 		}
 	}()
 
-	log.Debug("Saving ", rawURL, " to ", file)
-	bar := progressbar.DefaultBytes(res.ContentLength, "downloading")
+	runtime := RuntimeFromContext(ctx)
+	runtime.Logger.Debug("Saving ", rawURL, " to ", file)
 	limited := io.LimitReader(res.Body, maxBytes+1)
-	written, err := io.Copy(io.MultiWriter(tmp, bar), limited)
+	destination := io.Writer(tmp)
+	var bar *progressbar.ProgressBar
+	if runtime.ShowProgress {
+		bar = progressbar.NewOptions64(
+			res.ContentLength,
+			progressbar.OptionSetWriter(runtime.Err),
+			progressbar.OptionSetDescription("downloading"),
+			progressbar.OptionShowBytes(true),
+			progressbar.OptionSetRenderBlankState(true),
+			progressbar.OptionThrottle(0),
+		)
+		destination = io.MultiWriter(tmp, bar)
+	}
+	written, err := io.Copy(destination, limited)
 	if err != nil {
 		return "", fmt.Errorf("save downloaded artifact: %w", err)
+	}
+	if bar != nil {
+		if err := bar.Finish(); err != nil {
+			return "", fmt.Errorf("finish download progress: %w", err)
+		}
 	}
 	if written > maxBytes {
 		return "", fmt.Errorf("download artifact exceeds %d bytes", maxBytes)
@@ -171,7 +188,6 @@ func validateChecksum(path string, expected string, algorithm string) (err error
 	if actual != expected {
 		return fmt.Errorf("checksum mismatch: expected %s (%s), got %s", expected, algorithm, actual)
 	}
-	log.Debugf("Checksum verified with %s: %s", algorithm, actual)
 	return nil
 }
 

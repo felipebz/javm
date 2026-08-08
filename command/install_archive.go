@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/felipebz/javm/discovery"
-	log "github.com/sirupsen/logrus"
 	"github.com/ulikunitz/xz"
 )
 
@@ -188,7 +187,7 @@ func assertJavaDistribution(dir string, goos string) error {
 }
 
 func installFromTgz(ctx context.Context, src string, dst string) error {
-	log.Debug("Extracting " + src + " to " + dst)
+	loggerFromContext(ctx).Debug("Extracting " + src + " to " + dst)
 	return untgz(ctx, src, dst, true)
 }
 
@@ -275,7 +274,7 @@ func extractTarWithLimits(ctx context.Context, r io.Reader, dst string, strip bo
 }
 
 func installFromTgx(ctx context.Context, src string, dst string) error {
-	log.Debug("Extracting " + src + " to " + dst)
+	loggerFromContext(ctx).Debug("Extracting " + src + " to " + dst)
 	return untgx(ctx, src, dst, true)
 }
 
@@ -297,7 +296,7 @@ func untgx(ctx context.Context, src string, dst string, strip bool) (err error) 
 }
 
 func installFromZip(ctx context.Context, src string, dst string) error {
-	log.Debug("Extracting " + src + " to " + dst)
+	loggerFromContext(ctx).Debug("Extracting " + src + " to " + dst)
 	return unzip(ctx, src, dst, true)
 }
 

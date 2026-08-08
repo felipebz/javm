@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func (c *Client) GetPackages(os, arch, distribution, version string) ([]Package, error) {
@@ -46,14 +44,14 @@ func (c *Client) GetPackagesContext(ctx context.Context, os, arch, distribution,
 			libc = "libc"
 		}
 
-		log.Debugf("OS is %s, libc is %s", os, libc)
+		c.logger().Debugf("OS is %s, libc is %s", os, libc)
 		params.Set("lib_c_type", libc)
 	}
 
 	params.Set("package_type", "jdk")
 	params.Set("release_status", "ga")
 
-	log.Debugf("fetching packages with params: %s", params.Encode())
+	c.logger().Debugf("fetching packages with params: %s", params.Encode())
 	data, err := c.fetchContext(ctx, "packages", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch packages: %w", err)

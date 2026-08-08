@@ -22,15 +22,19 @@ func NewLsDistributionsCommand(client DistributionsClient) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printDistributions(cmd.OutOrStdout(), distributions)
-			return nil
+			return printDistributions(cmd.OutOrStdout(), distributions)
 		},
 	}
 }
 
-func printDistributions(w io.Writer, distributions []discoapi.Distribution) {
-	fmt.Fprintf(w, "%-20s %s\n", "Identifier", "Name")
-	for _, dist := range distributions {
-		fmt.Fprintf(w, "%-20s %s\n", dist.APIParameter, dist.Name)
+func printDistributions(w io.Writer, distributions []discoapi.Distribution) error {
+	if _, err := fmt.Fprintf(w, "%-20s %s\n", "Identifier", "Name"); err != nil {
+		return fmt.Errorf("write distribution header: %w", err)
 	}
+	for _, dist := range distributions {
+		if _, err := fmt.Fprintf(w, "%-20s %s\n", dist.APIParameter, dist.Name); err != nil {
+			return fmt.Errorf("write distribution: %w", err)
+		}
+	}
+	return nil
 }

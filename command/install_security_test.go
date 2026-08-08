@@ -249,6 +249,24 @@ func TestDownloadValidatesStatusSizeAndCancellation(t *testing.T) {
 		}
 	})
 
+	t.Run("progress uses configured diagnostic stream", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Length", "7")
+			_, _ = io.WriteString(w, "archive")
+		}))
+		defer server.Close()
+		var diagnostics bytes.Buffer
+		ctx := WithRuntime(context.Background(), Runtime{Err: &diagnostics, ShowProgress: true})
+		file, err := downloadWithClient(ctx, server.Client(), server.URL+"/jdk.zip", 32)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(file)
+		if diagnostics.Len() == 0 {
+			t.Fatal("progress did not use the configured diagnostic stream")
+		}
+	})
+
 	t.Run("chunked response over limit is removed", func(t *testing.T) {
 		t.Setenv("TMPDIR", t.TempDir())
 		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

@@ -25,7 +25,7 @@ func NewUninstallCommand() *cobra.Command {
 			if err := uninstall(args[0]); err != nil {
 				return err
 			}
-			if err := linkLatest(); err != nil {
+			if err := linkLatest(cmd.Context()); err != nil {
 				return err
 			}
 			return nil
