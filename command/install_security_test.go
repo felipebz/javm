@@ -265,6 +265,9 @@ func TestDownloadValidatesStatusSizeAndCancellation(t *testing.T) {
 		if diagnostics.Len() == 0 {
 			t.Fatal("progress did not use the configured diagnostic stream")
 		}
+		if !bytes.HasSuffix(diagnostics.Bytes(), []byte("\n")) {
+			t.Fatalf("completed progress did not terminate its line: %q", diagnostics.Bytes())
+		}
 	})
 
 	t.Run("chunked response over limit is removed", func(t *testing.T) {

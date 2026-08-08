@@ -138,14 +138,25 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL string,
 		)
 		destination = io.MultiWriter(tmp, bar)
 	}
-	written, err := io.Copy(destination, limited)
-	if err != nil {
-		return "", fmt.Errorf("save downloaded artifact: %w", err)
-	}
+	written, copyErr := io.Copy(destination, limited)
+	var progressErr error
 	if bar != nil {
-		if err := bar.Finish(); err != nil {
-			return "", fmt.Errorf("finish download progress: %w", err)
+		if copyErr != nil {
+			if err := bar.Exit(); err != nil {
+				progressErr = errors.Join(progressErr, fmt.Errorf("stop download progress: %w", err))
+			}
+		} else if err := bar.Finish(); err != nil {
+			progressErr = errors.Join(progressErr, fmt.Errorf("finish download progress: %w", err))
 		}
+		if _, err := fmt.Fprintln(runtime.Err); err != nil {
+			progressErr = errors.Join(progressErr, fmt.Errorf("terminate download progress line: %w", err))
+		}
+	}
+	if copyErr != nil {
+		return "", errors.Join(fmt.Errorf("save downloaded artifact: %w", copyErr), progressErr)
+	}
+	if progressErr != nil {
+		return "", progressErr
 	}
 	if written > maxBytes {
 		return "", fmt.Errorf("download artifact exceeds %d bytes", maxBytes)
