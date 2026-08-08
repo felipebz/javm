@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ func NewUninstallCommand() *cobra.Command {
 			if strings.HasPrefix(args[0], "system@") {
 				return fmt.Errorf("Link to system JDK can only be removed with 'unlink' (e.g. 'javm unlink %s')", args[0])
 			}
-			if err := uninstall(args[0]); err != nil {
+			if err := uninstall(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			if err := linkLatest(cmd.Context()); err != nil {
@@ -34,8 +35,8 @@ func NewUninstallCommand() *cobra.Command {
 	}
 }
 
-func uninstall(selector string) error {
-	ver, err := LsBestMatch(selector, true)
+func uninstall(ctx context.Context, selector string) error {
+	ver, err := LsBestMatchContext(ctx, selector, true)
 	if err != nil {
 		return err
 	}

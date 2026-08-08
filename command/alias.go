@@ -56,6 +56,9 @@ func NewUnaliasCommand() *cobra.Command {
 			if err := setAlias(args[0], ""); err != nil {
 				return err
 			}
+			if err := linkAliasName(cmd.Context(), args[0]); err != nil {
+				return err
+			}
 			return nil
 		},
 	}

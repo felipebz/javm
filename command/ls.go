@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -28,7 +29,7 @@ func NewLsCommand() *cobra.Command {
 				}
 			}
 
-			jdks, err := Ls(false)
+			jdks, err := LsContext(cmd.Context(), false)
 			if err != nil {
 				return err
 			}
@@ -42,24 +43,35 @@ func NewLsCommand() *cobra.Command {
 
 var readDir = os.ReadDir
 
-var lsFunc = func() ([]discovery.JDK, error) {
-	manager := discovery.NewManagerWithAllSources(
-		discovery.GetDefaultCacheFile(cfg.Dir()),
-		discovery.DefaultCacheTTL,
-	)
+var lsFunc = func(ctx context.Context) ([]discovery.JDK, error) {
+	manager, err := discovery.NewConfiguredManager(cfg.Dir())
+	if err != nil {
+		return nil, fmt.Errorf("load discovery configuration: %w", err)
+	}
+	manager.Warn = func(err error) {
+		loggerFromContext(ctx).Warn(err)
+	}
 
 	return manager.DiscoverAll()
 }
 
 func Ls(managedOnly bool) ([]discovery.JDK, error) {
+	return LsContext(context.Background(), managedOnly)
+}
+
+func LsContext(ctx context.Context, managedOnly bool) ([]discovery.JDK, error) {
 	if managedOnly {
 		return discovery.NewJavmSource().Discover()
 	}
-	return lsFunc()
+	return lsFunc(ctx)
 }
 
 func LsBestMatch(selector string, managedOnly bool) (string, error) {
-	jdks, err := Ls(managedOnly)
+	return LsBestMatchContext(context.Background(), selector, managedOnly)
+}
+
+func LsBestMatchContext(ctx context.Context, selector string, managedOnly bool) (string, error) {
+	jdks, err := LsContext(ctx, managedOnly)
 	if err != nil {
 		return "", err
 	}

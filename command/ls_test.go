@@ -2,16 +2,23 @@ package command
 
 import (
 	"bytes"
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
+	log "github.com/sirupsen/logrus"
 )
 
 // Mock Ls for testing purposes
 var mockLsResult []discovery.JDK
 var mockLsError error
 
-func mockLs() ([]discovery.JDK, error) {
+func mockLs(context.Context) ([]discovery.JDK, error) {
 	return mockLsResult, mockLsError
 }
 
@@ -20,6 +27,40 @@ func setupMockLs() func() {
 	lsFunc = mockLs
 	return func() {
 		lsFunc = originalLs
+	}
+}
+
+func TestLsWarnsAndRecoversFromCorruptCache(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("JAVM_HOME", home)
+	if err := os.WriteFile(discovery.GetDefaultCacheFile(home), []byte(`{"broken":`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config := &discovery.Config{
+		Enabled: true,
+		Sources: map[string]bool{
+			"system": false, "jabba": false, "gradle": false, "intellij": false, "javm": false,
+		},
+		CacheTTL: time.Hour,
+	}
+	if err := config.SaveConfig(discovery.GetConfigFile(cfg.Dir())); err != nil {
+		t.Fatal(err)
+	}
+
+	var warnings bytes.Buffer
+	logger := log.New()
+	logger.SetOutput(&warnings)
+	cmd := NewLsCommand()
+	cmd.SetContext(WithRuntime(context.Background(), Runtime{Logger: logger, Err: &warnings}))
+	cmd.SetOut(&bytes.Buffer{})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(warnings.String(), "ignoring corrupt discovery cache") {
+		t.Fatalf("corrupt cache warning was not emitted: %q", warnings.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, "cache.json")); err != nil {
+		t.Fatalf("recovered cache was not persisted: %v", err)
 	}
 }
 

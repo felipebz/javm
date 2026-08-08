@@ -3,6 +3,9 @@ package discovery
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -116,5 +119,55 @@ func TestDiscoveryCache_IsCacheValid(t *testing.T) {
 	}
 	if cache.IsCacheValid(time.Hour) {
 		t.Error("Cache should be invalid with old LastUpdated")
+	}
+}
+
+func TestDiscoveryCache_SaveCacheIsAtomicAndPrivate(t *testing.T) {
+	tempDir := t.TempDir()
+	cacheFile := filepath.Join(tempDir, "cache.json")
+	initial := &Cache{LastUpdated: time.Now(), JDKs: []JDK{{Path: "initial"}}}
+	if err := initial.SaveCache(cacheFile); err != nil {
+		t.Fatal(err)
+	}
+
+	const writers = 16
+	var wg sync.WaitGroup
+	errors := make(chan error, writers)
+	for i := 0; i < writers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cache := &Cache{LastUpdated: time.Now(), JDKs: []JDK{{Path: "updated"}}}
+			if err := cache.SaveCache(cacheFile); err != nil {
+				errors <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errors)
+	for err := range errors {
+		t.Errorf("concurrent SaveCache() returned error: %v", err)
+	}
+
+	if _, err := LoadCache(cacheFile); err != nil {
+		t.Fatalf("atomic cache replacement left invalid JSON: %v", err)
+	}
+	entries, err := os.ReadDir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".cache-") {
+			t.Fatalf("temporary cache file was not removed: %s", entry.Name())
+		}
+	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(cacheFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Fatalf("cache permissions = %o, want 600", got)
+		}
 	}
 }

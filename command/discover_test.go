@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/felipebz/javm/discovery"
 )
@@ -19,9 +18,11 @@ func (f *fakeManager) DiscoverAll() ([]discovery.JDK, error) {
 }
 
 func TestDiscoverRefreshCommand_Success(t *testing.T) {
-	newManagerWithAllSources = func(cacheFile string, ttl time.Duration) discoverRunner {
-		return &fakeManager{}
+	previousFactory := newManagerWithAllSources
+	newManagerWithAllSources = func(configDir string, forceRefresh bool, warn func(error)) (discoverRunner, error) {
+		return &fakeManager{}, nil
 	}
+	t.Cleanup(func() { newManagerWithAllSources = previousFactory })
 
 	cmd := newDiscoverRefreshCommand()
 	var out bytes.Buffer

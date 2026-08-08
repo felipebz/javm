@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -25,7 +26,7 @@ func NewWhichCommand() *cobra.Command {
 			} else {
 				ver = args[0]
 			}
-			dir, err := Which(ver, whichHome)
+			dir, err := WhichContext(cmd.Context(), ver, whichHome)
 			if err != nil {
 				return err
 			}
@@ -42,11 +43,15 @@ func NewWhichCommand() *cobra.Command {
 }
 
 func Which(selector string, home bool) (string, error) {
+	return WhichContext(context.Background(), selector, home)
+}
+
+func WhichContext(ctx context.Context, selector string, home bool) (string, error) {
 	aliasValue := getAlias(selector)
 	if aliasValue != "" {
 		selector = aliasValue
 	}
-	jdks, err := Ls(false)
+	jdks, err := LsContext(ctx, false)
 	if err != nil {
 		return "", err
 	}

@@ -33,7 +33,7 @@ func NewLinkCommand() *cobra.Command {
 						return fmt.Errorf("write link: %w", err)
 					}
 				}
-			} else if err := link(args[0], args[1]); err != nil {
+			} else if err := link(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			return nil
@@ -51,7 +51,7 @@ func NewUnlinkCommand() *cobra.Command {
 			if len(args) == 0 {
 				return pflag.ErrHelp
 			}
-			if err := link(args[0], ""); err != nil {
+			if err := link(cmd.Context(), args[0], ""); err != nil {
 				return err
 			}
 			return nil
@@ -60,7 +60,7 @@ func NewUnlinkCommand() *cobra.Command {
 	}
 }
 
-func link(selector string, dir string) error {
+func link(ctx context.Context, selector string, dir string) error {
 	if !strings.HasPrefix(selector, "system@") {
 		return errors.New("Name must begin with 'system@' (e.g. 'system@1.8.73')")
 	}
@@ -69,11 +69,13 @@ func link(selector string, dir string) error {
 		return err
 	}
 	if dir == "" {
-		ver, err := LsBestMatch(selector, false)
+		ver, err := LsBestMatchContext(ctx, selector, false)
 		if err != nil {
 			return err
 		}
-		return os.Remove(filepath.Join(cfg.Dir(), "jdk", ver))
+		if err := os.Remove(filepath.Join(cfg.Dir(), "jdk", ver)); err != nil {
+			return err
+		}
 	} else {
 		if err := assertJavaDistribution(dir, runtime.GOOS); err != nil {
 			return err
@@ -81,15 +83,24 @@ func link(selector string, dir string) error {
 		if err := os.MkdirAll(filepath.Join(cfg.Dir(), "jdk"), 0755); err != nil {
 			return err
 		}
-		return os.Symlink(dir, filepath.Join(cfg.Dir(), "jdk", selector))
+		if err := os.Symlink(dir, filepath.Join(cfg.Dir(), "jdk", selector)); err != nil {
+			return err
+		}
 	}
+	return invalidateDiscoveryCache()
 }
 
-func linkLatest(ctx context.Context) error {
+func linkLatest(ctx context.Context) (resultErr error) {
+	defer func() {
+		if err := invalidateDiscoveryCache(); err != nil {
+			if resultErr == nil {
+				resultErr = err
+			} else {
+				loggerFromContext(ctx).Warn(err)
+			}
+		}
+	}()
 	files, _ := readDir(filepath.Join(cfg.Dir(), "jdk"))
-	if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
-		loggerFromContext(ctx).Warn("Failed to delete cache file: ", err)
-	}
 	var jdks, err = Ls(true)
 	if err != nil {
 		return err
@@ -147,11 +158,21 @@ func linkAliasName(ctx context.Context, name string) error {
 	if err := validateAliasName(name); err != nil {
 		return err
 	}
-	var jdks, err = Ls(false)
+	var jdks, err = LsContext(ctx, false)
 	if err != nil {
 		return err
 	}
-	return linkAlias(ctx, name, jdks)
+	if err := linkAlias(ctx, name, jdks); err != nil {
+		return err
+	}
+	return invalidateDiscoveryCache()
+}
+
+func invalidateDiscoveryCache() error {
+	if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
+		return fmt.Errorf("invalidate discovery cache: %w", err)
+	}
+	return nil
 }
 
 func linkAlias(ctx context.Context, name string, jdks []discovery.JDK) error {

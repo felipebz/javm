@@ -42,10 +42,6 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 				return err
 			}
 			if customInstallDestination == "" {
-				if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
-					return err
-				}
-
 				if err := linkLatest(cmd.Context()); err != nil {
 					return err
 				}
@@ -114,7 +110,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 
 	// check whether requested version is already installed
 	if dst == "" {
-		local, err := Ls(true)
+		local, err := LsContext(ctx, true)
 		if err != nil {
 			return "", err
 		}

@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -43,7 +44,7 @@ func NewUseCommand() *cobra.Command {
 			}
 			fd3, _ := cmd.Flags().GetString("fd3")
 
-			out, err := Use(ver)
+			out, err := UseContext(cmd.Context(), ver)
 			if err != nil {
 				return err
 			}
@@ -60,12 +61,16 @@ func NewUseCommand() *cobra.Command {
 }
 
 func Use(selector string) ([]string, error) {
+	return UseContext(context.Background(), selector)
+}
+
+func UseContext(ctx context.Context, selector string) ([]string, error) {
 	aliasValue := getAlias(selector)
 	if aliasValue != "" {
 		selector = aliasValue
 	}
 
-	jdks, err := Ls(false)
+	jdks, err := LsContext(ctx, false)
 	if err != nil {
 		return nil, err
 	}

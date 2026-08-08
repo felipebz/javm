@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
@@ -13,8 +12,14 @@ type discoverRunner interface {
 	DiscoverAll() ([]discovery.JDK, error)
 }
 
-var newManagerWithAllSources = func(cacheFile string, cacheTTL time.Duration) discoverRunner {
-	return discovery.NewManagerWithAllSources(cacheFile, cacheTTL)
+var newManagerWithAllSources = func(configDir string, forceRefresh bool, warn func(error)) (discoverRunner, error) {
+	manager, err := discovery.NewConfiguredManager(configDir)
+	if err != nil {
+		return nil, err
+	}
+	manager.IgnoreCache = forceRefresh
+	manager.Warn = warn
+	return manager, nil
 }
 
 func NewDiscoverCommand() *cobra.Command {
@@ -37,12 +42,16 @@ func newDiscoverRefreshCommand() *cobra.Command {
 		Short: "Refresh the discovery cache",
 		Long:  "Force a refresh of the JDK discovery cache",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			manager := newManagerWithAllSources(
-				discovery.GetDefaultCacheFile(cfg.Dir()),
-				0, // Set TTL to 0 to force refresh
+			manager, err := newManagerWithAllSources(
+				cfg.Dir(),
+				true,
+				func(err error) { loggerFromContext(cmd.Context()).Warn(err) },
 			)
+			if err != nil {
+				return fmt.Errorf("failed to load discovery configuration: %w", err)
+			}
 
-			_, err := manager.DiscoverAll()
+			_, err = manager.DiscoverAll()
 			if err != nil {
 				return fmt.Errorf("failed to refresh discovery cache: %w", err)
 			}

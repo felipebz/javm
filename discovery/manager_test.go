@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +12,103 @@ type mockSource struct {
 	name    string
 	enabled bool
 	jdks    []JDK
+	calls   int
+}
+
+func TestManagerRecoversFromCorruptCache(t *testing.T) {
+	cacheFile := filepath.Join(t.TempDir(), "cache.json")
+	if err := os.WriteFile(cacheFile, []byte(`{"last_updated":`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewManager(cacheFile, time.Hour)
+	d.RegisterSource(&mockSource{name: "Mock", jdks: []JDK{{Path: "/jdk", Version: "21.0.1"}}})
+	var warning error
+	d.Warn = func(err error) { warning = err }
+
+	jdks, err := d.DiscoverAll()
+	if err != nil {
+		t.Fatalf("DiscoverAll() returned error for corrupt cache: %v", err)
+	}
+	if len(jdks) != 1 || jdks[0].Path != "/jdk" {
+		t.Fatalf("DiscoverAll() did not recover as a cache miss: %#v", jdks)
+	}
+	if !errors.Is(warning, ErrInvalidCache) {
+		t.Fatalf("warning = %v, want ErrInvalidCache", warning)
+	}
+	if _, err := LoadCache(cacheFile); err != nil {
+		t.Fatalf("corrupt cache was not replaced: %v", err)
+	}
+}
+
+func TestNewConfiguredManagerLoadsPersistedConfig(t *testing.T) {
+	configDir := t.TempDir()
+	config := &Config{
+		Enabled:  true,
+		Sources:  map[string]bool{"system": false, "gradle": true},
+		CacheTTL: 37 * time.Minute,
+	}
+	if err := config.SaveConfig(GetConfigFile(configDir)); err != nil {
+		t.Fatal(err)
+	}
+
+	manager, err := NewConfiguredManager(configDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manager.Config.CacheTTL != config.CacheTTL || manager.Config.IsSourceEnabled("system") {
+		t.Fatalf("persisted discovery config was not applied: %#v", manager.Config)
+	}
+	if len(manager.sources) != 5 {
+		t.Fatalf("configured manager has %d sources, want 5", len(manager.sources))
+	}
+}
+
+func TestManagerInvalidatesCacheWhenConfigChanges(t *testing.T) {
+	cacheFile := filepath.Join(t.TempDir(), "cache.json")
+	config := &Config{Enabled: true, Sources: map[string]bool{}, CacheTTL: time.Hour}
+	d := NewManagerWithConfig(cacheFile, config)
+	d.RegisterSource(&mockSource{name: "Mock", jdks: []JDK{{Path: "/jdk", Version: "21.0.1"}}})
+
+	jdks, err := d.DiscoverAll()
+	if err != nil || len(jdks) != 1 {
+		t.Fatalf("initial DiscoverAll() = %#v, %v", jdks, err)
+	}
+	config.Sources["Mock"] = false
+	jdks, err = d.DiscoverAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jdks) != 0 {
+		t.Fatalf("cache ignored updated source configuration: %#v", jdks)
+	}
+}
+
+func TestManagerForceRefreshPreservesConfigFingerprint(t *testing.T) {
+	cacheFile := filepath.Join(t.TempDir(), "cache.json")
+	config := &Config{Enabled: true, CacheTTL: time.Hour}
+	source := &mockSource{name: "Mock", jdks: []JDK{{Path: "/jdk", Version: "21.0.1"}}}
+	d := NewManagerWithConfig(cacheFile, config)
+	d.RegisterSource(source)
+
+	if _, err := d.DiscoverAll(); err != nil {
+		t.Fatal(err)
+	}
+	d.IgnoreCache = true
+	if _, err := d.DiscoverAll(); err != nil {
+		t.Fatal(err)
+	}
+	if source.calls != 2 {
+		t.Fatalf("source calls = %d, want 2 after forced refresh", source.calls)
+	}
+
+	d.IgnoreCache = false
+	if _, err := d.DiscoverAll(); err != nil {
+		t.Fatal(err)
+	}
+	if source.calls != 2 {
+		t.Fatalf("refreshed cache was not reused; source calls = %d", source.calls)
+	}
 }
 
 func (d *mockSource) Name() string {
@@ -22,6 +120,7 @@ func (d *mockSource) Enabled(config *Config) bool {
 }
 
 func (d *mockSource) Discover() ([]JDK, error) {
+	d.calls++
 	return d.jdks, nil
 }
 

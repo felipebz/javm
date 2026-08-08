@@ -1,14 +1,17 @@
 package discovery
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
 
 type Manager struct {
-	CacheFile string
-	Config    *Config
-	sources   []Source
+	CacheFile   string
+	Config      *Config
+	IgnoreCache bool
+	Warn        func(error)
+	sources     []Source
 }
 
 func NewManager(cacheFile string, cacheTTL time.Duration) *Manager {
@@ -30,19 +33,24 @@ func NewManagerWithConfig(cacheFile string, config *Config) *Manager {
 }
 
 func NewManagerWithAllSources(cacheFile string, cacheTTL time.Duration) *Manager {
-	return &Manager{
-		CacheFile: cacheFile,
-		Config: &Config{
-			Enabled:  true,
-			CacheTTL: cacheTTL,
-		},
-		sources: []Source{
-			NewSystemSource(),
-			NewJabbaSource(),
-			NewGradleSource(),
-			NewIntelliJSource(),
-			NewJavmSource(),
-		},
+	config := DefaultConfig()
+	config.CacheTTL = cacheTTL
+	return NewManagerWithAllSourcesConfig(cacheFile, config)
+}
+
+func NewManagerWithAllSourcesConfig(cacheFile string, config *Config) *Manager {
+	manager := NewManagerWithConfig(cacheFile, config)
+	manager.sources = allSources()
+	return manager
+}
+
+func allSources() []Source {
+	return []Source{
+		NewSystemSource(),
+		NewJabbaSource(),
+		NewGradleSource(),
+		NewIntelliJSource(),
+		NewJavmSource(),
 	}
 }
 
@@ -57,10 +65,20 @@ func (d *Manager) DiscoverAll() ([]JDK, error) {
 
 	cache, err := LoadCache(d.CacheFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load cache: %w", err)
+		if !errors.Is(err, ErrInvalidCache) {
+			return nil, fmt.Errorf("failed to load cache: %w", err)
+		}
+		if d.Warn != nil {
+			d.Warn(fmt.Errorf("ignoring corrupt discovery cache %q: %w", d.CacheFile, err))
+		}
+		cache = &Cache{JDKs: []JDK{}}
 	}
 
-	if cache.IsCacheValid(d.Config.CacheTTL) {
+	configFingerprint, err := d.Config.fingerprint()
+	if err != nil {
+		return nil, err
+	}
+	if !d.IgnoreCache && cache.IsCacheValid(d.Config.CacheTTL) && cache.ConfigFingerprint == configFingerprint {
 		return cache.JDKs, nil
 	}
 
@@ -80,6 +98,7 @@ func (d *Manager) DiscoverAll() ([]JDK, error) {
 
 	cache.JDKs = uniqueJDKs
 	cache.LastUpdated = time.Now()
+	cache.ConfigFingerprint = configFingerprint
 	if err := cache.SaveCache(d.CacheFile); err != nil {
 		return nil, fmt.Errorf("failed to save cache: %w", err)
 	}

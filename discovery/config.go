@@ -1,7 +1,9 @@
 package discovery
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -63,4 +65,12 @@ func (c *Config) IsSourceEnabled(source string) bool {
 	}
 	enabled, ok := c.Sources[source]
 	return !ok || enabled
+}
+
+func (c *Config) fingerprint() (string, error) {
+	data, err := json.Marshal(c)
+	if err != nil {
+		return "", fmt.Errorf("encode discovery configuration: %w", err)
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(data)), nil
 }
