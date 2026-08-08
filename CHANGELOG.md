@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.2](https://github.com/felipebz/javm/compare/v0.13.1...v0.13.2) (2026-08-08)
+
+
+### Bug Fixes
+
+* **discovery:** make cache lifecycle consistent and resilient ([274f4e5](https://github.com/felipebz/javm/commit/274f4e58f337842158d0cf9cca0df8c74965148b))
+* **install:** handle progress termination and copy errors gracefully ([14aac95](https://github.com/felipebz/javm/commit/14aac956d7ba534caa85edfd3979bf80d185b871))
+* **security:** prevent shell injection via default version ([c7ad4da](https://github.com/felipebz/javm/commit/c7ad4da4cb8325b0831245895c57c09e373255cf))
+
 ## [0.13.1](https://github.com/felipebz/javm/compare/v0.13.0...v0.13.1) (2026-08-08)
 
 
