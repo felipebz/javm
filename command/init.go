@@ -4,12 +4,10 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 
-	"github.com/felipebz/javm/cfg"
 	"github.com/spf13/cobra"
 )
 
@@ -61,21 +59,34 @@ func NewInitCommand() *cobra.Command {
 				return err
 			}
 
-			if shell == "cmd" {
-				executable = escapeBatchValue(executable)
+			executable, err = escapeExecutablePath(shell, executable)
+			if err != nil {
+				return err
 			}
 			script = strings.NewReplacer("::JAVM::", executable).Replace(script)
 
-			defaultFile := filepath.Join(cfg.Dir(), "default-version")
-			if data, err := os.ReadFile(defaultFile); err == nil && shell != "cmd" {
-				ver := strings.TrimSpace(string(data))
-				if ver != "" {
-					script += "\n" + "javm use " + ver + "\n"
-				}
+			_, defaultErr := readDefaultVersion()
+			defaultConfigured := defaultErr == nil
+			if defaultErr != nil && !os.IsNotExist(defaultErr) {
+				return defaultErr
+			}
+			if shell == "cmd" {
+				defaultInit := strings.Join([]string{
+					`if /i "%~1"=="use" goto javm_dispatch`,
+					`if /i "%~1"=="deactivate" goto javm_dispatch`,
+					`if not defined _JAVM_DEFAULT_INITIALIZED goto javm_initialize_default`,
+				}, "\n")
+				script = strings.ReplaceAll(script, "::JAVM_DEFAULT_INIT::", defaultInit)
+			} else if defaultConfigured {
+				script += "\njavm use --default\n"
 			}
 
 			if shell == "pwsh" || shell == "powershell" {
 				scriptPath, err := writePowerShellInitScript(script)
+				if err != nil {
+					return err
+				}
+				scriptPath, err = escapeExecutablePath(shell, scriptPath)
 				if err != nil {
 					return err
 				}
@@ -97,6 +108,38 @@ func NewInitCommand() *cobra.Command {
 // quoted SET assignment. Double quotes cannot occur in Windows file names.
 func escapeBatchValue(value string) string {
 	return strings.ReplaceAll(value, "%", "%%")
+}
+
+func escapeExecutablePath(shell, value string) (string, error) {
+	if strings.ContainsAny(value, "\r\n\x00") {
+		return "", fmt.Errorf("executable path contains a forbidden control character")
+	}
+	switch shell {
+	case "cmd":
+		return escapeBatchValue(value), nil
+	case "powershell", "pwsh":
+		return strings.ReplaceAll(value, "'", "''"), nil
+	case "fish":
+		return strings.NewReplacer(
+			`\`, `\\`,
+			`"`, `\"`,
+			`$`, `\$`,
+			`(`, `\(`,
+			`)`, `\)`,
+		).Replace(value), nil
+	case "nu":
+		return strings.NewReplacer(
+			`\`, `\\`,
+			`"`, `\"`,
+		).Replace(value), nil
+	default:
+		return strings.NewReplacer(
+			`\`, `\\`,
+			`"`, `\"`,
+			`$`, `\$`,
+			"`", "\\`",
+		).Replace(value), nil
+	}
 }
 
 func realGetExecutablePath() (string, error) {

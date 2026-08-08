@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -66,5 +67,51 @@ func TestUse(t *testing.T) {
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("actual: %v != expected: %v", actual, expected)
+	}
+}
+
+func TestUseDefaultReadsSelectorAsData(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("JAVM_HOME", home)
+	t.Setenv("PATH", "/usr/bin")
+	if err := SetDefaultVersion("temurin@21"); err != nil {
+		t.Fatal(err)
+	}
+
+	cleanup := setupMockLs()
+	defer cleanup()
+	jdkPath := filepath.Join(home, "jdk", "temurin@21.0.1")
+	mockLsResult = []discovery.JDK{{
+		Identifier: "temurin@21.0.1",
+		Version:    "21.0.1",
+		Source:     "javm",
+		Path:       jdkPath,
+	}}
+
+	environmentFile := filepath.Join(t.TempDir(), "environment")
+	cmd := NewUseCommand()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--default", "--fd3", environmentFile})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(environmentFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedJavaHome := jdkPath
+	if runtime.GOOS == "darwin" {
+		expectedJavaHome = filepath.Join(jdkPath, "Contents", "Home")
+	}
+	if !bytes.Contains(data, []byte("SET\tJAVA_HOME\t"+expectedJavaHome)) {
+		t.Fatalf("environment output did not activate default JDK: %q", data)
+	}
+}
+
+func TestUseDefaultRejectsVersionArgument(t *testing.T) {
+	cmd := NewUseCommand()
+	cmd.SetArgs([]string{"--default", "17"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("--default accepted a positional selector")
 	}
 }

@@ -1,6 +1,8 @@
 package command
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,12 +14,26 @@ import (
 )
 
 func NewUseCommand() *cobra.Command {
+	var useDefault bool
 	cmd := &cobra.Command{
 		Use:   "use [version to use]",
 		Short: "Modify PATH & JAVA_HOME to use specific JDK",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
-			if len(args) == 0 {
+			if useDefault {
+				if len(args) != 0 {
+					return fmt.Errorf("--default cannot be combined with a version argument")
+				}
+				var err error
+				ver, err = readDefaultVersion()
+				if errors.Is(err, os.ErrNotExist) {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+			} else if len(args) == 0 {
 				ver = cfg.ReadJavaVersion()
 				if ver == "" {
 					return pflag.ErrHelp
@@ -38,6 +54,8 @@ func NewUseCommand() *cobra.Command {
 	}
 	cmd.Flags().String("fd3", "", "")
 	_ = cmd.Flags().MarkHidden("fd3")
+	cmd.Flags().BoolVar(&useDefault, "default", false, "use the configured default version")
+	_ = cmd.Flags().MarkHidden("default")
 	return cmd
 }
 
