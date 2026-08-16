@@ -14,33 +14,34 @@ func NewConfigCommand() *cobra.Command {
 		Use:          "config",
 		Short:        "Manage javm configuration",
 		SilenceUsage: true,
+		Args:         UsageArgs(cobra.NoArgs),
 	}
 
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get effective value for a config key",
-		Args:  cobra.ExactArgs(1),
+		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE:  runGetConfig,
 	}
 
 	setCmd := &cobra.Command{
 		Use:   "set <key> <value>",
 		Short: "Set a config key to a value",
-		Args:  cobra.ExactArgs(2),
+		Args:  UsageArgs(cobra.ExactArgs(2)),
 		RunE:  runSetConfig,
 	}
 
 	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all effective configuration keys and values",
-		Args:  cobra.NoArgs,
+		Args:  UsageArgs(cobra.NoArgs),
 		RunE:  runListConfig,
 	}
 
 	unsetCmd := &cobra.Command{
 		Use:   "unset <key>",
 		Short: "Remove a key from the user configuration (revert to default)",
-		Args:  cobra.ExactArgs(1),
+		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE:  runUnsetConfig,
 	}
 
@@ -51,7 +52,7 @@ func NewConfigCommand() *cobra.Command {
 func runGetConfig(cmd *cobra.Command, args []string) error {
 	key := args[0]
 	if !cfg.IsKnownKey(key) {
-		return fmt.Errorf("unknown key %q", key)
+		return UsageError(fmt.Errorf("unknown key %q", key))
 	}
 	v, err := cfg.EffectiveValue(key)
 	if err != nil {
@@ -68,7 +69,7 @@ func runSetConfig(cmd *cobra.Command, args []string) error {
 	key := args[0]
 	val := args[1]
 	if !cfg.IsKnownKey(key) {
-		return fmt.Errorf("unknown key %q", key)
+		return UsageError(fmt.Errorf("unknown key %q", key))
 	}
 	if err := cfg.SetValue(key, val); err != nil {
 		return fmt.Errorf("failed to write config: %w", configError(err))
@@ -93,7 +94,7 @@ func runListConfig(cmd *cobra.Command, args []string) error {
 func runUnsetConfig(cmd *cobra.Command, args []string) error {
 	key := args[0]
 	if !cfg.IsKnownKey(key) {
-		return fmt.Errorf("unknown key %q", key)
+		return UsageError(fmt.Errorf("unknown key %q", key))
 	}
 	if err := cfg.UnsetValue(key); err != nil {
 		return fmt.Errorf("failed to remove config value: %w", configError(err))

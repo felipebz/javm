@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -10,7 +12,53 @@ import (
 	"github.com/felipebz/javm/discoapi"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
+
+func TestExitCodeMapsStableErrorClasses(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{name: "success", want: exitSuccess},
+		{name: "generic failure", err: errors.New("failure"), want: exitFailure},
+		{name: "usage", err: command.UsageError(errors.New("bad arguments")), want: exitUsage},
+		{name: "not found", err: command.NotFoundError(errors.New("missing JDK")), want: exitNotFound},
+		{name: "network", err: command.NetworkError(errors.New("API unavailable")), want: exitNetwork},
+		{name: "discoapi network", err: fmt.Errorf("request failed: %w", discoapi.ErrNetwork), want: exitNetwork},
+		{name: "timeout", err: context.DeadlineExceeded, want: exitTimeout},
+		{name: "interrupted", err: context.Canceled, want: exitInterrupted},
+		{name: "help", err: pflag.ErrHelp, want: exitSuccess},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := exitCode(tt.err); got != tt.want {
+				t.Fatalf("exitCode(%v) = %d, want %d", tt.err, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRootCommandRejectsUnexpectedArguments(t *testing.T) {
+	logger := log.New()
+	root := newRootCommand(application{
+		out:    &bytes.Buffer{},
+		err:    &bytes.Buffer{},
+		logger: logger,
+		client: discoapi.NewClient(),
+	})
+	root.SetArgs([]string{"current", "extra"})
+
+	err := root.Execute()
+	if !errors.Is(err, command.ErrUsage) {
+		t.Fatalf("root.Execute() error = %v, want ErrUsage", err)
+	}
+	if got := exitCode(err); got != exitUsage {
+		t.Fatalf("exitCode(%v) = %d, want %d", err, got, exitUsage)
+	}
+}
 
 func TestSimpleFormatterSortsFields(t *testing.T) {
 	formatter := &simpleFormatter{}

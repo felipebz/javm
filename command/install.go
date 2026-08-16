@@ -24,6 +24,7 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install [version to install]",
 		Short: "Download and install JDK",
+		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
 			if len(args) == 0 {
@@ -69,7 +70,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 
 	rng, err := semver.ParseRange(selector)
 	if err != nil {
-		return "", err
+		return "", UsageError(err)
 	}
 	distribution := rng.Qualifier
 	if distribution == "" {
@@ -89,7 +90,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			ver = v
 			packageInfo, err := client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)
 			if err != nil {
-				return "", err
+				return "", NetworkError(err)
 			}
 
 			downloadUri := packageInfo.DirectDownloadUri
@@ -104,8 +105,8 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 		for i, v := range packageIndex.Sorted {
 			tt[i] = v.String()
 		}
-		return "", errors.New("No compatible version found for " + selector +
-			"\nValid install targets: " + strings.Join(tt, ", "))
+		return "", NotFoundError(errors.New("No compatible version found for " + selector +
+			"\nValid install targets: " + strings.Join(tt, ", ")))
 	}
 
 	// check whether requested version is already installed

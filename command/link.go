@@ -13,13 +13,13 @@ import (
 	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/semver"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func NewLinkCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "link [name] [path]",
 		Short: "Resolve or update a link",
+		Args:  UsageArgs(cobra.RangeArgs(0, 2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				if err := linkLatest(cmd.Context()); err != nil {
@@ -47,10 +47,8 @@ func NewUnlinkCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unlink [name]",
 		Short: "Delete a link",
+		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return pflag.ErrHelp
-			}
 			if err := link(cmd.Context(), args[0], ""); err != nil {
 				return err
 			}
@@ -62,11 +60,11 @@ func NewUnlinkCommand() *cobra.Command {
 
 func link(ctx context.Context, selector string, dir string) error {
 	if !strings.HasPrefix(selector, "system@") {
-		return errors.New("Name must begin with 'system@' (e.g. 'system@1.8.73')")
+		return UsageError(errors.New("Name must begin with 'system@' (e.g. 'system@1.8.73')"))
 	}
 	// <version> has to be valid per semver
 	if _, err := semver.ParseVersion(selector); err != nil {
-		return err
+		return UsageError(err)
 	}
 	if dir == "" {
 		ver, err := LsBestMatchContext(ctx, selector, false)

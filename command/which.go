@@ -16,6 +16,7 @@ func NewWhichCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "which [version]",
 		Short: "Display path to installed JDK",
+		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
 			if len(args) == 0 {

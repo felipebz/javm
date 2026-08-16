@@ -212,6 +212,21 @@ javm link system@1.8.72 /Library/Java/JavaVirtualMachines/jdk1.8.0_72.jdk
 javm uninstall zulu@1.8
 ```
 
+### Exit codes
+
+`javm` uses stable exit codes so scripts can distinguish common failure
+classes:
+
+| Code | Meaning |
+| ---: | --- |
+| 0 | Success, including `--help` |
+| 1 | Unexpected or local operation failure |
+| 2 | Invalid command usage or arguments |
+| 3 | Requested JDK or other resource was not found |
+| 4 | Remote service or download failure |
+| 124 | Operation timed out |
+| 130 | Interrupted with Ctrl+C |
+
 ## Development
 
 Prerequisite: Go **1.26.x**

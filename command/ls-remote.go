@@ -23,6 +23,7 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls-remote",
 		Short: "List remote versions available for install",
+		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rangeArg := ""
 			if len(args) > 0 {
@@ -61,7 +62,7 @@ func runLsRemote(
 	if rangeArg != "" {
 		r, err = semver.ParseRange(rangeArg)
 		if err != nil {
-			return err
+			return UsageError(err)
 		}
 	}
 
@@ -74,6 +75,9 @@ func runLsRemote(
 	}
 
 	trimToValue := parseTrimTo(trimTo)
+	if trimTo != "" && trimToValue < 0 {
+		return UsageError(fmt.Errorf("invalid value for --latest %q: want major, minor or patch", trimTo))
+	}
 	vs := packageIndex.Sorted
 	if trimTo != "" {
 		vs = semver.VersionSlice(vs).TrimTo(trimToValue)

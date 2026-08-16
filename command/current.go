@@ -17,6 +17,7 @@ func NewCurrentCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "current",
 		Short: "Display currently 'use'ed version",
+		Args:  UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ver := current()
 			if ver != "" {

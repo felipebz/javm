@@ -16,7 +16,7 @@ func NewDefaultCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "default [version]",
 		Short: "Set the default Java version to use in new shells",
-		Args:  cobra.ExactArgs(1),
+		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ver := args[0]
 			if err := SetDefaultVersion(ver); err != nil {
@@ -84,14 +84,14 @@ func readDefaultVersion() (string, error) {
 
 func validateDefaultSelector(selector string) error {
 	if strings.ContainsAny(selector, "\r\n\x00") {
-		return fmt.Errorf("default version selector contains a forbidden control character")
+		return UsageError(fmt.Errorf("default version selector contains a forbidden control character"))
 	}
 	selector = strings.TrimSpace(selector)
 	if selector == "" {
-		return fmt.Errorf("default version selector cannot be empty")
+		return UsageError(fmt.Errorf("default version selector cannot be empty"))
 	}
 	if _, err := semver.ParseRange(selector); err != nil {
-		return fmt.Errorf("invalid default version selector %q: %w", selector, err)
+		return UsageError(fmt.Errorf("invalid default version selector %q: %w", selector, err))
 	}
 	return nil
 }

@@ -43,15 +43,15 @@ func NewInitCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init [shell]",
 		Short: "Print shell integration script for javm",
-		Args:  cobra.ExactArgs(1),
+		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			shell := strings.ToLower(args[0])
 			script, ok := shellScripts[shell]
 			if !ok {
-				return fmt.Errorf("unsupported shell: %s\nSupported shells: %s",
+				return UsageError(fmt.Errorf("unsupported shell: %s\nSupported shells: %s",
 					shell,
 					strings.Join(sortedShells(), ", "),
-				)
+				))
 			}
 
 			executable, err := getExecutablePath()

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -22,6 +23,16 @@ var version string
 var commit string
 var date string
 var rootCmd *cobra.Command
+
+const (
+	exitSuccess = iota
+	exitFailure
+	exitUsage
+	exitNotFound
+	exitNetwork
+	exitTimeout     = 124
+	exitInterrupted = 130
+)
 
 type simpleFormatter struct{}
 
@@ -54,6 +65,7 @@ func newRootCommand(app application) *cobra.Command {
 		Use:          "javm",
 		Long:         "Java Version Manager (https://javm.dev).",
 		SilenceUsage: true,
+		Args:         command.UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if showVersion, _ := cmd.Flags().GetBool("version"); !showVersion {
 				return pflag.ErrHelp
@@ -75,6 +87,9 @@ func newRootCommand(app application) *cobra.Command {
 			return nil
 		},
 	}
+	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
+		return command.UsageError(err)
+	})
 	root.SetOut(app.out)
 	root.SetErr(app.err)
 	root.AddCommand(
@@ -123,6 +138,42 @@ func newRootCommand(app application) *cobra.Command {
 	return root
 }
 
+func exitCode(err error) int {
+	if err == nil || errors.Is(err, pflag.ErrHelp) {
+		return exitSuccess
+	}
+
+	switch {
+	case errors.Is(err, context.Canceled):
+		return exitInterrupted
+	case errors.Is(err, context.DeadlineExceeded):
+		return exitTimeout
+	case errors.Is(err, command.ErrUsage) || isCobraUsageError(err):
+		return exitUsage
+	case errors.Is(err, command.ErrNotFound) || errors.Is(err, os.ErrNotExist):
+		return exitNotFound
+	case errors.Is(err, command.ErrNetwork) || errors.Is(err, discoapi.ErrNetwork):
+		return exitNetwork
+	default:
+		return exitFailure
+	}
+}
+
+func isCobraUsageError(err error) bool {
+	message := err.Error()
+	for _, prefix := range []string{
+		"unknown command ",
+		"unknown flag:",
+		"unknown shorthand flag:",
+		"flag needs an argument:",
+	} {
+		if strings.HasPrefix(message, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 type fileDescriptor interface {
 	Fd() uintptr
 }
@@ -144,6 +195,6 @@ func main() {
 	err := rootCmd.ExecuteContext(ctx)
 	stop()
 	if err != nil {
-		os.Exit(-1)
+		os.Exit(exitCode(err))
 	}
 }

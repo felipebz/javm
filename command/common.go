@@ -28,7 +28,7 @@ type packageIndex struct {
 func makePackageIndex(ctx context.Context, client PackagesClient, osFlag, archFlag, distributionFlag string) (*packageIndex, error) {
 	pkgs, err := client.GetPackagesContext(ctx, osFlag, archFlag, distributionFlag, "")
 	if err != nil {
-		return nil, err
+		return nil, NetworkError(err)
 	}
 	return packageIndexFromPackages(pkgs), nil
 }

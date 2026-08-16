@@ -87,7 +87,7 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL string,
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("download artifact: %w", err)
+		return "", NetworkError(fmt.Errorf("download artifact: %w", err))
 	}
 	defer func() {
 		if closeErr := res.Body.Close(); closeErr != nil {
@@ -96,7 +96,7 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL string,
 	}()
 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
-		return "", fmt.Errorf("download artifact returned HTTP %d", res.StatusCode)
+		return "", NetworkError(fmt.Errorf("download artifact returned HTTP %d", res.StatusCode))
 	}
 	if res.ContentLength > maxBytes {
 		return "", fmt.Errorf("download artifact exceeds %d bytes", maxBytes)

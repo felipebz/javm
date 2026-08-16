@@ -27,6 +27,7 @@ func NewDiscoverCommand() *cobra.Command {
 		Use:   "discover",
 		Short: "Manage JDK discovery",
 		Long:  "Discover JDK installations on the system",
+		Args:  UsageArgs(cobra.NoArgs),
 	}
 
 	cmd.AddCommand(
@@ -41,6 +42,7 @@ func newDiscoverRefreshCommand() *cobra.Command {
 		Use:   "refresh",
 		Short: "Refresh the discovery cache",
 		Long:  "Force a refresh of the JDK discovery cache",
+		Args:  UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			manager, err := newManagerWithAllSources(
 				cfg.Dir(),

@@ -13,6 +13,7 @@ func NewDeactivateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deactivate",
 		Short: "Undo effects of `javm` on current shell",
+		Args:  UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out, err := deactivate()
 			if err != nil {

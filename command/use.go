@@ -19,12 +19,12 @@ func NewUseCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "use [version to use]",
 		Short: "Modify PATH & JAVA_HOME to use specific JDK",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
 			if useDefault {
 				if len(args) != 0 {
-					return fmt.Errorf("--default cannot be combined with a version argument")
+					return UsageError(fmt.Errorf("--default cannot be combined with a version argument"))
 				}
 				var err error
 				ver, err = readDefaultVersion()

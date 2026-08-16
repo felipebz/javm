@@ -19,13 +19,14 @@ func NewLsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List installed versions",
+		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var rng *semver.Range
 			if len(args) > 0 {
 				var err error
 				rng, err = semver.ParseRange(args[0])
 				if err != nil {
-					return err
+					return UsageError(err)
 				}
 			}
 
@@ -85,7 +86,7 @@ func LsBestMatchContext(ctx context.Context, selector string, managedOnly bool) 
 func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, error) {
 	rng, err := semver.ParseRange(selector)
 	if err != nil {
-		return discovery.JDK{}, err
+		return discovery.JDK{}, UsageError(err)
 	}
 
 	sort.Slice(jdks, func(i, j int) bool {
@@ -122,7 +123,7 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 		return fallback, nil
 	}
 
-	return discovery.JDK{}, fmt.Errorf("%s isn't installed", rng)
+	return discovery.JDK{}, NotFoundError(fmt.Errorf("%s isn't installed", rng))
 }
 
 func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range, showDetails bool) error {

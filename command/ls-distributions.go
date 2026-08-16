@@ -17,10 +17,11 @@ func NewLsDistributionsCommand(client DistributionsClient) *cobra.Command {
 	return &cobra.Command{
 		Use:   "ls-distributions",
 		Short: "List all available Java distributions",
+		Args:  UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			distributions, err := client.GetDistributionsContext(cmd.Context())
 			if err != nil {
-				return err
+				return NetworkError(err)
 			}
 			return printDistributions(cmd.OutOrStdout(), distributions)
 		},
