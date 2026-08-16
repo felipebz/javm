@@ -157,7 +157,7 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range
 		if _, err := fmt.Fprintln(tw, "SOURCE\tNAME\tVENDOR\tARCHITECTURE\tPATH"); err != nil {
 			return fmt.Errorf("write installed JDK header: %w", err)
 		}
-		for _, jdk := range jdks {
+		for _, jdk := range filtered {
 			if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
 				jdk.Source,
 				jdk.Identifier,
@@ -172,7 +172,7 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range
 		if _, err := fmt.Fprintln(tw, "NAME\tSOURCE"); err != nil {
 			return fmt.Errorf("write installed JDK header: %w", err)
 		}
-		for _, jdk := range jdks {
+		for _, jdk := range filtered {
 			if _, err := fmt.Fprintf(tw, "%s\t%s\n", jdk.Identifier, jdk.Source); err != nil {
 				return fmt.Errorf("write installed JDK: %w", err)
 			}

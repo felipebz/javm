@@ -116,28 +116,81 @@ func TestNewLsCommand_Output(t *testing.T) {
 	}
 
 	got := out.String()
-	// Order: Source (ASC) -> Version (DESC)
-	// Sources: gradle, javm, system
-	// Expected order:
-	// 1. gradle -> c-jdk@21
-	// 2. javm -> a-jdk@17
-	// 3. system -> b-jdk@17
-
-	// We expect simple containment check or specific order
-	expectedLines := []string{
-		"IDENTIFIER\tSOURCE",
-		"c-jdk@21\tgradle",
-		"a-jdk@17\tjavm",
-		"b-jdk@17\tsystem",
+	gotLines := strings.Split(strings.TrimSpace(got), "\n")
+	wantLines := [][]string{
+		{"NAME", "SOURCE"},
+		{"c-jdk@21", "gradle"},
+		{"a-jdk@17", "javm"},
+		{"b-jdk@17", "system"},
 	}
-
-	for _, line := range expectedLines {
-		if !contains(got, line) {
-			t.Errorf("output missing line: %q\nGot:\n%s", line, got)
+	if len(gotLines) != len(wantLines) {
+		t.Fatalf("unexpected number of output lines: got %d, want %d:\n%s", len(gotLines), len(wantLines), got)
+	}
+	for i, wantFields := range wantLines {
+		gotFields := strings.Fields(gotLines[i])
+		if len(gotFields) != len(wantFields) {
+			t.Fatalf("unexpected fields on output line %d: got %q, want %q:\n%s", i, gotFields, wantFields, got)
+		}
+		for j, want := range wantFields {
+			if gotFields[j] != want {
+				t.Fatalf("unexpected output line %d: got %q, want %q:\n%s", i, gotFields, wantFields, got)
+			}
 		}
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[0:len(s)] == s && (s == substr || len(s) > len(substr))
+func TestNewLsCommand_FiltersRangeAndDetails(t *testing.T) {
+	cleanup := setupMockLs()
+	defer cleanup()
+
+	mockLsResult = []discovery.JDK{
+		{
+			Identifier:   "temurin@17.0.1",
+			Version:      "17.0.1",
+			Source:       "javm",
+			Vendor:       "Eclipse Adoptium",
+			Architecture: "amd64",
+			Path:         "/jdks/temurin@17.0.1",
+		},
+		{
+			Identifier:   "temurin@21.0.1",
+			Version:      "21.0.1",
+			Source:       "javm",
+			Vendor:       "Eclipse Adoptium",
+			Architecture: "amd64",
+			Path:         "/jdks/temurin@21.0.1",
+		},
+	}
+
+	cmd := NewLsCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"21"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected filtered output error: %v", err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "temurin@21.0.1") {
+		t.Fatalf("filtered output does not contain matching JDK:\n%s", got)
+	}
+	if strings.Contains(got, "temurin@17.0.1") {
+		t.Fatalf("filtered output contains excluded JDK:\n%s", got)
+	}
+
+	details := NewLsCommand()
+	var detailsOut bytes.Buffer
+	details.SetOut(&detailsOut)
+	details.SetArgs([]string{"--details", "21"})
+	if err := details.Execute(); err != nil {
+		t.Fatalf("unexpected detailed filtered output error: %v", err)
+	}
+	gotDetails := detailsOut.String()
+	for _, value := range []string{"SOURCE", "NAME", "Eclipse Adoptium", "/jdks/temurin@21.0.1"} {
+		if !strings.Contains(gotDetails, value) {
+			t.Fatalf("detailed output missing %q:\n%s", value, gotDetails)
+		}
+	}
+	if strings.Contains(gotDetails, "temurin@17.0.1") || strings.Contains(gotDetails, "/jdks/temurin@17.0.1") {
+		t.Fatalf("detailed output contains excluded JDK:\n%s", gotDetails)
+	}
 }
