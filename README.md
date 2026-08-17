@@ -19,7 +19,7 @@ and switch workflow for JDKs on Linux, macOS and Windows.
 
 - Install & switch between multiple JDK distributions (Zulu, OpenJDK, GraalVM, Temurin, etc.) using semver ranges
 - Per‑project JDK via `.java-version`
-- Remote discovery (DiscoAPI integration) + custom URLs
+- Remote discovery through the Foojay DiscoAPI
 - Supports semantic version ranges (`1.8.x`, `~17.0.2`, `>=21 <22`)
 - Clean removal (`uninstall`, `deactivate`) without touching system JDK
 - Static Go binary: fast cold start and no additional dependency
@@ -170,10 +170,19 @@ javm install graalvm@21             # GraalVM
 javm install openjdk@21             # Upstream OpenJDK
 ```
 
+To install a JDK in a new directory outside the managed `JAVM_HOME`, use
+`--output`. The destination must not exist, and the resulting JDK is unmanaged
+until it is linked explicitly:
+
+```sh
+javm install temurin@21 --output /opt/jdks/temurin-21
+```
+
 ### Using / Switching
 
 ```sh
 javm ls                              # list installed
+javm ls --details                    # include vendor, architecture and path
 javm use zulu@1.8
 javm use temurin@17
 javm deactivate                      # restore previous JAVA_HOME / PATH
@@ -197,7 +206,22 @@ javm use   # picks version from .java-version
 
 ```sh
 javm alias default 17       # sets default JDK for new shells
-javm alias list
+javm alias default          # shows the alias value
+javm unalias default
+```
+
+### Inspecting and configuring
+
+```sh
+javm current                      # show the JDK selected in the current shell
+javm which temurin@21             # show the selected JDK path
+javm which --home temurin@21      # use the platform-specific JAVA_HOME path
+javm config list                  # list effective configuration
+javm config get java.default_distribution
+javm config set java.default_distribution temurin
+javm config unset java.default_distribution
+javm discover refresh             # refresh the discovery cache
+javm default temurin@21           # set the default for newly initialized shells
 ```
 
 ### Linking Existing System JDK
