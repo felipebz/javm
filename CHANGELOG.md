@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.13.3](https://github.com/felipebz/javm/compare/v0.13.2...v0.13.3) (2026-08-17)
+
+
+### Bug Fixes
+
+* **cli:** apply ls filters and strengthen output tests ([b369f67](https://github.com/felipebz/javm/commit/b369f6735fd60b246d6c4bcd5fb7d899a1f8e1e3))
+* **cli:** improve shell integration error handling and add detailed tests ([50b6970](https://github.com/felipebz/javm/commit/50b697086f8be5c4cb1759136622d3b76f7d71ae))
+* **cli:** standardize argument validation and error handling across commands ([19b3b71](https://github.com/felipebz/javm/commit/19b3b7128208cd28831a7627b3fe5271db32943f))
+* **deps:** update module github.com/sirupsen/logrus to v1.10.0 ([d927432](https://github.com/felipebz/javm/commit/d927432f224fd3e3a8ba4719759a57436ba5059a))
+* **deps:** update module github.com/sirupsen/logrus to v1.10.0 ([13de4c1](https://github.com/felipebz/javm/commit/13de4c11647968640224695a127f63b10d8c048e))
+* **deps:** update module golang.org/x/sys to v0.47.0 ([5dc292a](https://github.com/felipebz/javm/commit/5dc292a6a483470de943a2021cd102e8c97da5b6))
+* **deps:** update module golang.org/x/sys to v0.47.0 ([93e70e2](https://github.com/felipebz/javm/commit/93e70e220354e8787da9d06c8bbb2ab153b35d00))
+* **deps:** update module golang.org/x/term to v0.45.0 ([5b480f9](https://github.com/felipebz/javm/commit/5b480f9d460da34c45c41368c571be936db5c399))
+* **deps:** update module golang.org/x/term to v0.45.0 ([cf17474](https://github.com/felipebz/javm/commit/cf174749124fc91dd727f8fc6109772da433cd71))
+* **discovery:** propagate context through scans and subprocesses ([afbdf46](https://github.com/felipebz/javm/commit/afbdf4646d3358cdf63d3cd7f2002d1ef91379af))
+* **install:** handle macOS-specific Java home path for legal file validation ([eb6d186](https://github.com/felipebz/javm/commit/eb6d1862dfd80407fbed71de16744b93d81c71a9))
+* **install:** support Windows archive path separators ([7892e34](https://github.com/felipebz/javm/commit/7892e348f7693fe2a4366184b1f707edca986908))
+* **state:** make configuration writes atomic and concurrency-safe ([668e2da](https://github.com/felipebz/javm/commit/668e2da247692e0664af3b9be9836d94369e33b7))
+
 ## [0.13.2](https://github.com/felipebz/javm/compare/v0.13.1...v0.13.2) (2026-08-08)
 
 
