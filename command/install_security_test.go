@@ -189,7 +189,11 @@ func TestInstallZipWithWindowsSeparators(t *testing.T) {
 	if err := assertJavaDistribution(dst, runtime.GOOS); err != nil {
 		t.Fatal(err)
 	}
-	if data, err := os.ReadFile(filepath.Join(dst, "legal", "NOTICE")); err != nil || string(data) != "notice" {
+	javaHome := dst
+	if runtime.GOOS == "darwin" {
+		javaHome = filepath.Join(javaHome, "Contents", "Home")
+	}
+	if data, err := os.ReadFile(filepath.Join(javaHome, "legal", "NOTICE")); err != nil || string(data) != "notice" {
 		t.Fatalf("legal file = %q, err = %v", data, err)
 	}
 }
