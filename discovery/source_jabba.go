@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path"
@@ -23,9 +24,9 @@ func NewJabbaSource() *JabbaSource {
 
 func (s *JabbaSource) Name() string { return "jabba" }
 
-func (s *JabbaSource) Discover() ([]JDK, error) {
+func (s *JabbaSource) Discover(ctx context.Context) ([]JDK, error) {
 	roots := []string{path.Join(".jabba", "jdk")}
-	return ScanLocationsForJDKs(s.root, s.vfs, s.runner, roots, s.Name())
+	return ScanLocationsForJDKsContext(ctx, s.root, s.vfs, s.runner, roots, s.Name())
 }
 
 func mustHome() string {

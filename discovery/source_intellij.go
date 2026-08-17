@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path"
@@ -24,12 +25,12 @@ func NewIntelliJSource() *IntelliJSource {
 
 func (s *IntelliJSource) Name() string { return "intellij" }
 
-func (s *IntelliJSource) Discover() ([]JDK, error) {
+func (s *IntelliJSource) Discover(ctx context.Context) ([]JDK, error) {
 	var locations []string
 	if runtime.GOOS == "darwin" {
 		locations = append(locations, path.Join("Library", "Java", "JavaVirtualMachines"))
 	} else {
 		locations = append(locations, ".jdks")
 	}
-	return ScanLocationsForJDKs(s.root, s.vfs, s.runner, locations, s.Name())
+	return ScanLocationsForJDKsContext(ctx, s.root, s.vfs, s.runner, locations, s.Name())
 }

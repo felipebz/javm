@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"runtime"
@@ -23,9 +24,9 @@ func NewSystemSource() *SystemSource {
 
 func (s *SystemSource) Name() string { return "system" }
 
-func (s *SystemSource) Discover() ([]JDK, error) {
+func (s *SystemSource) Discover(ctx context.Context) ([]JDK, error) {
 	if len(s.locations) > 0 {
-		return ScanLocationsForJDKs(s.root, s.vfs, s.runner, s.locations, s.Name())
+		return ScanLocationsForJDKsContext(ctx, s.root, s.vfs, s.runner, s.locations, s.Name())
 	}
 
 	type root struct {
@@ -55,7 +56,7 @@ func (s *SystemSource) Discover() ([]JDK, error) {
 
 	var all []JDK
 	for _, r := range roots {
-		jdks, err := ScanLocationsForJDKs(s.root, r.vfs, s.runner, []string{r.path}, s.Name())
+		jdks, err := ScanLocationsForJDKsContext(ctx, s.root, r.vfs, s.runner, []string{r.path}, s.Name())
 		if err != nil {
 			return nil, err
 		}

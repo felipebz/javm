@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -16,8 +17,18 @@ type fakeRunner struct {
 	err error
 }
 
-func (f fakeRunner) CombinedOutput(name string, args ...string) ([]byte, error) {
+func (f fakeRunner) CombinedOutput(context.Context, string, ...string) ([]byte, error) {
 	return []byte(f.out), f.err
+}
+
+type blockingRunner struct {
+	started chan struct{}
+}
+
+func (r blockingRunner) CombinedOutput(ctx context.Context, _ string, _ ...string) ([]byte, error) {
+	close(r.started)
+	<-ctx.Done()
+	return nil, ctx.Err()
 }
 
 func createFakeJDK(t *testing.T, vfs fstest.MapFS, baseDir, name string) string {

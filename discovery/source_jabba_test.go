@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"path"
 	"testing"
 	"testing/fstest"
@@ -25,7 +26,7 @@ func TestJabbaSource_getLocations_RealHome(t *testing.T) {
 
 	src := &JabbaSource{vfs: vfs}
 
-	jdks, err := src.Discover()
+	jdks, err := src.Discover(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

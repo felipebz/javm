@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"path"
 	"testing"
 	"testing/fstest"
@@ -23,7 +24,7 @@ func TestGradleSource_Discover_DefaultGradleHome(t *testing.T) {
 
 	src := &GradleSource{vfs: vfs}
 
-	jdks, err := src.Discover()
+	jdks, err := src.Discover(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -48,7 +49,7 @@ func TestGradleSource_Discover_WithEnvOverride(t *testing.T) {
 
 	src := &GradleSource{vfs: vfs}
 
-	jdks, err := src.Discover()
+	jdks, err := src.Discover(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

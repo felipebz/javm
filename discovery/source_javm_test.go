@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"testing"
 	"testing/fstest"
 )
@@ -21,7 +22,7 @@ func TestJavmSource_Discover(t *testing.T) {
 
 	src := &JavmSource{vfs: vfs}
 
-	jdks, err := src.Discover()
+	jdks, err := src.Discover(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -45,7 +46,7 @@ func TestJavmSource_Discover_NoJDKs(t *testing.T) {
 
 	src := &JavmSource{vfs: vfs}
 
-	jdks, err := src.Discover()
+	jdks, err := src.Discover(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestJavmSource_Discover_DirectoryDoesNotExist(t *testing.T) {
 
 	src := &JavmSource{vfs: vfs}
 
-	jdks, err := src.Discover()
+	jdks, err := src.Discover(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

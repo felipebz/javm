@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -13,7 +14,7 @@ type fakeManager struct {
 	err  error
 }
 
-func (f *fakeManager) DiscoverAll() ([]discovery.JDK, error) {
+func (f *fakeManager) DiscoverAll(context.Context) ([]discovery.JDK, error) {
 	return f.jdks, f.err
 }
 

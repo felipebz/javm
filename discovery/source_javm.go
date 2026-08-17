@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"io/fs"
 	"os"
 
@@ -26,6 +27,6 @@ func (s *JavmSource) Name() string {
 	return "javm"
 }
 
-func (s *JavmSource) Discover() ([]JDK, error) {
-	return ScanLocationsForJDKs(s.root, s.vfs, s.runner, []string{"jdk"}, s.Name())
+func (s *JavmSource) Discover(ctx context.Context) ([]JDK, error) {
+	return ScanLocationsForJDKsContext(ctx, s.root, s.vfs, s.runner, []string{"jdk"}, s.Name())
 }

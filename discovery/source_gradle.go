@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path"
@@ -30,10 +31,10 @@ func NewGradleSource() *GradleSource {
 
 func (s *GradleSource) Name() string { return "gradle" }
 
-func (s *GradleSource) Discover() ([]JDK, error) {
+func (s *GradleSource) Discover(ctx context.Context) ([]JDK, error) {
 	locations := []string{
 		"jdks",
 		path.Join(".gradle", "jdks"),
 	}
-	return ScanLocationsForJDKs(s.root, s.vfs, s.runner, locations, s.Name())
+	return ScanLocationsForJDKsContext(ctx, s.root, s.vfs, s.runner, locations, s.Name())
 }

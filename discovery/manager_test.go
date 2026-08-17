@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -26,7 +27,7 @@ func TestManagerRecoversFromCorruptCache(t *testing.T) {
 	var warning error
 	d.Warn = func(err error) { warning = err }
 
-	jdks, err := d.DiscoverAll()
+	jdks, err := d.DiscoverAll(context.Background())
 	if err != nil {
 		t.Fatalf("DiscoverAll() returned error for corrupt cache: %v", err)
 	}
@@ -70,12 +71,12 @@ func TestManagerInvalidatesCacheWhenConfigChanges(t *testing.T) {
 	d := NewManagerWithConfig(cacheFile, config)
 	d.RegisterSource(&mockSource{name: "Mock", jdks: []JDK{{Path: "/jdk", Version: "21.0.1"}}})
 
-	jdks, err := d.DiscoverAll()
+	jdks, err := d.DiscoverAll(context.Background())
 	if err != nil || len(jdks) != 1 {
 		t.Fatalf("initial DiscoverAll() = %#v, %v", jdks, err)
 	}
 	config.Sources["Mock"] = false
-	jdks, err = d.DiscoverAll()
+	jdks, err = d.DiscoverAll(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,11 +92,11 @@ func TestManagerForceRefreshPreservesConfigFingerprint(t *testing.T) {
 	d := NewManagerWithConfig(cacheFile, config)
 	d.RegisterSource(source)
 
-	if _, err := d.DiscoverAll(); err != nil {
+	if _, err := d.DiscoverAll(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	d.IgnoreCache = true
-	if _, err := d.DiscoverAll(); err != nil {
+	if _, err := d.DiscoverAll(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if source.calls != 2 {
@@ -103,7 +104,7 @@ func TestManagerForceRefreshPreservesConfigFingerprint(t *testing.T) {
 	}
 
 	d.IgnoreCache = false
-	if _, err := d.DiscoverAll(); err != nil {
+	if _, err := d.DiscoverAll(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if source.calls != 2 {
@@ -119,9 +120,39 @@ func (d *mockSource) Enabled(config *Config) bool {
 	return d.enabled && config.Enabled
 }
 
-func (d *mockSource) Discover() ([]JDK, error) {
+func (d *mockSource) Discover(context.Context) ([]JDK, error) {
 	d.calls++
 	return d.jdks, nil
+}
+
+type blockingSource struct {
+	started chan struct{}
+}
+
+func (s blockingSource) Name() string { return "blocking" }
+
+func (s blockingSource) Discover(ctx context.Context) ([]JDK, error) {
+	close(s.started)
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestManagerDiscoverAllPropagatesCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	source := blockingSource{started: make(chan struct{})}
+	d := NewManager(filepath.Join(t.TempDir(), "cache.json"), time.Hour)
+	d.RegisterSource(source)
+	done := make(chan error, 1)
+	go func() {
+		_, err := d.DiscoverAll(ctx)
+		done <- err
+	}()
+
+	<-source.started
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
+	}
 }
 
 func TestNewManager(t *testing.T) {
@@ -267,7 +298,7 @@ func TestManager_DiscoverAll(t *testing.T) {
 		jdks:    []JDK{},
 	})
 
-	jdks, err := d.DiscoverAll()
+	jdks, err := d.DiscoverAll(context.Background())
 	if err != nil {
 		t.Error("DiscoverAll should not return error")
 	}
@@ -324,7 +355,7 @@ func TestManager_DiscoverAll(t *testing.T) {
 		t.Error("SaveCache should not return error")
 	}
 
-	jdksFromCache, err := d.DiscoverAll()
+	jdksFromCache, err := d.DiscoverAll(context.Background())
 	if err != nil {
 		t.Error("DiscoverAll should not return error")
 	}
@@ -334,7 +365,7 @@ func TestManager_DiscoverAll(t *testing.T) {
 
 	// Test with disabled source
 	d.Config.Enabled = false
-	jdks, err = d.DiscoverAll()
+	jdks, err = d.DiscoverAll(context.Background())
 	if err != nil {
 		t.Error("DiscoverAll should not return error")
 	}

@@ -1,6 +1,8 @@
 package discovery
 
 import (
+	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"path"
@@ -271,6 +273,22 @@ os.arch=x64`
 	}
 	if got := metadata["architecture"]; got != "x64" {
 		t.Errorf("architecture = %v, want x64", got)
+	}
+}
+
+func TestExtractMetadataFromJavaVersionContextCancelsRunner(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	runner := blockingRunner{started: make(chan struct{})}
+	done := make(chan error, 1)
+	go func() {
+		_, err := ExtractMetadataFromJavaVersionContext(ctx, runner, "java")
+		done <- err
+	}()
+
+	<-runner.started
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
 	}
 }
 

@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"testing"
 	"testing/fstest"
 )
@@ -21,7 +22,7 @@ func TestSystemSource_Discover_FindsJDK(t *testing.T) {
 		locations: []string{fakeJDK},
 	}
 
-	jdks, err := src.Discover()
+	jdks, err := src.Discover(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -1,16 +1,20 @@
 package discovery
 
 import (
+	"context"
 	"os/exec"
 )
 
 type Runner interface {
-	CombinedOutput(name string, args ...string) ([]byte, error)
+	CombinedOutput(ctx context.Context, name string, args ...string) ([]byte, error)
 }
 
 type ExecRunner struct{}
 
-func (ExecRunner) CombinedOutput(name string, args ...string) ([]byte, error) {
-	cmd := exec.Command(name, args...)
+func (ExecRunner) CombinedOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	cmd := exec.CommandContext(ctx, name, args...)
 	return cmd.CombinedOutput()
 }

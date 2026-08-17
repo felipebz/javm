@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"path"
 	"runtime"
 	"testing"
@@ -27,7 +28,7 @@ func TestIntelliJSource_Discover(t *testing.T) {
 
 	src := &IntelliJSource{vfs: vfs}
 
-	jdks, err := src.Discover()
+	jdks, err := src.Discover(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

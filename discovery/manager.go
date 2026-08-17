@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -58,7 +59,13 @@ func (d *Manager) RegisterSource(source Source) {
 	d.sources = append(d.sources, source)
 }
 
-func (d *Manager) DiscoverAll() ([]JDK, error) {
+func (d *Manager) DiscoverAll(ctx context.Context) ([]JDK, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if !d.Config.Enabled {
 		return []JDK{}, nil
 	}
@@ -78,6 +85,9 @@ func (d *Manager) DiscoverAll() ([]JDK, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if !d.IgnoreCache && cache.IsCacheValid(d.Config.CacheTTL) && cache.ConfigFingerprint == configFingerprint {
 		return cache.JDKs, nil
 	}
@@ -85,8 +95,11 @@ func (d *Manager) DiscoverAll() ([]JDK, error) {
 	var allJDKs []JDK
 
 	for _, source := range d.sources {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if d.Config.IsSourceEnabled(source.Name()) {
-			jdks, err := source.Discover()
+			jdks, err := source.Discover(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to discover from %s: %w", source.Name(), err)
 			}
@@ -95,6 +108,9 @@ func (d *Manager) DiscoverAll() ([]JDK, error) {
 	}
 
 	uniqueJDKs := DeduplicateJDKs(allJDKs)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	cache.JDKs = uniqueJDKs
 	cache.LastUpdated = time.Now()

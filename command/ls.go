@@ -53,7 +53,7 @@ var lsFunc = func(ctx context.Context) ([]discovery.JDK, error) {
 		loggerFromContext(ctx).Warn(err)
 	}
 
-	return manager.DiscoverAll()
+	return manager.DiscoverAll(ctx)
 }
 
 func Ls(managedOnly bool) ([]discovery.JDK, error) {
@@ -62,7 +62,7 @@ func Ls(managedOnly bool) ([]discovery.JDK, error) {
 
 func LsContext(ctx context.Context, managedOnly bool) ([]discovery.JDK, error) {
 	if managedOnly {
-		return discovery.NewJavmSource().Discover()
+		return discovery.NewJavmSource().Discover(ctx)
 	}
 	return lsFunc(ctx)
 }

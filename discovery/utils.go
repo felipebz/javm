@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io/fs"
 	"path"
@@ -14,16 +15,29 @@ import (
 var identifierRegexp = regexp.MustCompile("[^a-z0-9]+")
 
 func ScanLocationsForJDKs(root string, vfs fs.FS, runner Runner, locations []string, sourceName string) ([]JDK, error) {
+	return ScanLocationsForJDKsContext(context.Background(), root, vfs, runner, locations, sourceName)
+}
+
+func ScanLocationsForJDKsContext(ctx context.Context, root string, vfs fs.FS, runner Runner, locations []string, sourceName string) ([]JDK, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	var jdks []JDK
 
 	for _, location := range locations {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if _, err := fs.Stat(vfs, location); err != nil {
 			continue
 		}
 
-		err := fs.WalkDir(vfs, location, makeJDKWalkFunc(vfs, runner, root, sourceName, &jdks))
+		err := fs.WalkDir(vfs, location, makeJDKWalkFunc(ctx, vfs, runner, root, sourceName, &jdks))
 
 		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return nil, ctxErr
+			}
 			return nil, fmt.Errorf("failed to walk directory %s: %w", location, err)
 		}
 	}
@@ -31,16 +45,22 @@ func ScanLocationsForJDKs(root string, vfs fs.FS, runner Runner, locations []str
 	return jdks, nil
 }
 
-func makeJDKWalkFunc(vfs fs.FS, runner Runner, root, sourceName string, jdks *[]JDK) fs.WalkDirFunc {
+func makeJDKWalkFunc(ctx context.Context, vfs fs.FS, runner Runner, root, sourceName string, jdks *[]JDK) fs.WalkDirFunc {
 	return func(p string, d fs.DirEntry, err error) error {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
 		if err != nil {
 			return nil // Skip this path on error
 		}
 		if !d.IsDir() {
 			return nil
 		}
-		jdk, ok, err := ValidateJDK(vfs, runner, root, p, sourceName)
+		jdk, ok, err := ValidateJDKContext(ctx, vfs, runner, root, p, sourceName)
 		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return ctxErr
+			}
 			return nil // Skip this path on error
 		}
 		if ok {
@@ -68,6 +88,16 @@ func ExpectedJavaPath(dir string, goos string) string {
 }
 
 func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, error) {
+	return ValidateJDKContext(context.Background(), vfs, runner, root, p, source)
+}
+
+func ValidateJDKContext(ctx context.Context, vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return JDK{}, false, err
+	}
 	jdkPath := ExpectedJDKDir(p, runtime.GOOS)
 	javaPath := ExpectedJavaPath(p, runtime.GOOS)
 	if _, err := fs.Stat(vfs, javaPath); err != nil {
@@ -75,6 +105,9 @@ func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, e
 	}
 
 	md, err := ExtractMetadataFromReleaseFile(vfs, jdkPath)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return JDK{}, false, ctxErr
+	}
 
 	fullPath := filepath.Join(root, filepath.FromSlash(p))
 
@@ -88,7 +121,7 @@ func ValidateJDK(vfs fs.FS, runner Runner, root, p, source string) (JDK, bool, e
 
 	if result.Version == "" || result.Vendor == "" || result.Architecture == "" {
 		execPath := filepath.Join(root, filepath.FromSlash(javaPath))
-		md, err = ExtractMetadataFromJavaVersion(runner, execPath)
+		md, err = ExtractMetadataFromJavaVersionContext(ctx, runner, execPath)
 		if err != nil {
 			return JDK{}, false, fmt.Errorf("failed to extract metadata: %w", err)
 		}
@@ -137,7 +170,14 @@ func ExtractMetadataFromReleaseFile(vfs fs.FS, jdkDir string) (map[string]string
 }
 
 func ExtractMetadataFromJavaVersion(runner Runner, javaPath string) (map[string]string, error) {
-	out, err := runner.CombinedOutput(javaPath, "-XshowSettings:properties", "-version")
+	return ExtractMetadataFromJavaVersionContext(context.Background(), runner, javaPath)
+}
+
+func ExtractMetadataFromJavaVersionContext(ctx context.Context, runner Runner, javaPath string) (map[string]string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	out, err := runner.CombinedOutput(ctx, javaPath, "-XshowSettings:properties", "-version")
 	if err != nil {
 		return nil, fmt.Errorf("failed to run java -version: %w", err)
 	}

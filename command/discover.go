@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/felipebz/javm/cfg"
@@ -9,7 +10,7 @@ import (
 )
 
 type discoverRunner interface {
-	DiscoverAll() ([]discovery.JDK, error)
+	DiscoverAll(ctx context.Context) ([]discovery.JDK, error)
 }
 
 var newManagerWithAllSources = func(configDir string, forceRefresh bool, warn func(error)) (discoverRunner, error) {
@@ -53,7 +54,7 @@ func newDiscoverRefreshCommand() *cobra.Command {
 				return fmt.Errorf("failed to load discovery configuration: %w", err)
 			}
 
-			_, err = manager.DiscoverAll()
+			_, err = manager.DiscoverAll(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("failed to refresh discovery cache: %w", err)
 			}

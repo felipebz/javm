@@ -1,6 +1,8 @@
 package discovery
 
+import "context"
+
 type Source interface {
 	Name() string
-	Discover() ([]JDK, error)
+	Discover(ctx context.Context) ([]JDK, error)
 }
