@@ -21,6 +21,32 @@ type JDK struct {
 	Identifier   string `json:"identifier"`
 }
 
+// DiscoveryWarning describes a non-fatal failure while discovering JDKs.
+// Callers can inspect its fields with errors.As to provide actionable diagnostics.
+type DiscoveryWarning struct {
+	Source   string
+	Location string
+	Path     string
+	Err      error
+}
+
+func (w *DiscoveryWarning) Error() string {
+	where := ""
+	if w.Path != "" {
+		where = fmt.Sprintf(" at path %q", w.Path)
+	} else if w.Location != "" {
+		where = fmt.Sprintf(" at location %q", w.Location)
+	}
+	if w.Source != "" {
+		return fmt.Sprintf("discover JDKs from source %q%s: %v", w.Source, where, w.Err)
+	}
+	return fmt.Sprintf("discover JDKs%s: %v", where, w.Err)
+}
+
+func (w *DiscoveryWarning) Unwrap() error {
+	return w.Err
+}
+
 type Cache struct {
 	LastUpdated       time.Time `json:"last_updated"`
 	ConfigFingerprint string    `json:"config_fingerprint,omitempty"`

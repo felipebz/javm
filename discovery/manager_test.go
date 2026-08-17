@@ -13,6 +13,7 @@ type mockSource struct {
 	name    string
 	enabled bool
 	jdks    []JDK
+	err     error
 	calls   int
 }
 
@@ -122,7 +123,46 @@ func (d *mockSource) Enabled(config *Config) bool {
 
 func (d *mockSource) Discover(context.Context) ([]JDK, error) {
 	d.calls++
-	return d.jdks, nil
+	return d.jdks, d.err
+}
+
+func TestManagerDiscoverAllWarnsAndContinuesAfterSourceFailure(t *testing.T) {
+	cacheFile := filepath.Join(t.TempDir(), "cache.json")
+	failure := errors.New("source unavailable")
+	manager := NewManager(cacheFile, time.Hour)
+	manager.RegisterSource(&mockSource{
+		name: "broken",
+		jdks: []JDK{{Path: "/partial-jdk", Version: "17"}},
+		err:  failure,
+	})
+	manager.RegisterSource(&mockSource{
+		name: "healthy",
+		jdks: []JDK{{Path: "/healthy-jdk", Version: "21"}},
+	})
+
+	var warnings []error
+	manager.Warn = func(err error) { warnings = append(warnings, err) }
+
+	jdks, err := manager.DiscoverAll(context.Background())
+	if err != nil {
+		t.Fatalf("DiscoverAll() error = %v, want nil", err)
+	}
+	if len(jdks) != 2 {
+		t.Fatalf("DiscoverAll() returned %d JDKs, want partial and healthy results", len(jdks))
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %d, want 1", len(warnings))
+	}
+	if !errors.Is(warnings[0], failure) {
+		t.Fatalf("warning = %v, want wrapped source error", warnings[0])
+	}
+	var warning *DiscoveryWarning
+	if !errors.As(warnings[0], &warning) {
+		t.Fatalf("warning = %T, want DiscoveryWarning", warnings[0])
+	}
+	if warning.Source != "broken" {
+		t.Fatalf("warning source = %q, want %q", warning.Source, "broken")
+	}
 }
 
 type blockingSource struct {

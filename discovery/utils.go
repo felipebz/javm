@@ -3,6 +3,7 @@ package discovery
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -23,35 +24,53 @@ func ScanLocationsForJDKsContext(ctx context.Context, root string, vfs fs.FS, ru
 		ctx = context.Background()
 	}
 	var jdks []JDK
+	var warnings []error
+	warn := func(location, candidatePath string, err error) {
+		warnings = append(warnings, &DiscoveryWarning{
+			Source:   sourceName,
+			Location: location,
+			Path:     candidatePath,
+			Err:      err,
+		})
+	}
 
 	for _, location := range locations {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		if _, err := fs.Stat(vfs, location); err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				warn(location, "", fmt.Errorf("stat location: %w", err))
+			}
 			continue
 		}
 
-		err := fs.WalkDir(vfs, location, makeJDKWalkFunc(ctx, vfs, runner, root, sourceName, &jdks))
+		err := fs.WalkDir(vfs, location, makeJDKWalkFunc(ctx, vfs, runner, root, sourceName, &jdks, func(candidatePath string, err error) {
+			warn(location, candidatePath, err)
+		}))
 
 		if err != nil {
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return nil, ctxErr
 			}
-			return nil, fmt.Errorf("failed to walk directory %s: %w", location, err)
+			warn(location, "", fmt.Errorf("walk directory: %w", err))
 		}
 	}
 
-	return jdks, nil
+	return jdks, errors.Join(warnings...)
 }
 
-func makeJDKWalkFunc(ctx context.Context, vfs fs.FS, runner Runner, root, sourceName string, jdks *[]JDK) fs.WalkDirFunc {
+func makeJDKWalkFunc(ctx context.Context, vfs fs.FS, runner Runner, root, sourceName string, jdks *[]JDK, warn func(string, error)) fs.WalkDirFunc {
 	return func(p string, d fs.DirEntry, err error) error {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return ctxErr
 		}
 		if err != nil {
-			return nil // Skip this path on error
+			warn(p, fmt.Errorf("walk path: %w", err))
+			if d != nil && d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 		if !d.IsDir() {
 			return nil
@@ -61,7 +80,8 @@ func makeJDKWalkFunc(ctx context.Context, vfs fs.FS, runner Runner, root, source
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return ctxErr
 			}
-			return nil // Skip this path on error
+			warn(p, fmt.Errorf("validate JDK: %w", err))
+			return nil
 		}
 		if ok {
 			*jdks = append(*jdks, jdk)

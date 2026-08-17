@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"runtime"
@@ -12,6 +13,12 @@ type SystemSource struct {
 	vfs       fs.FS
 	runner    Runner
 	locations []string
+}
+
+type systemRoot struct {
+	root     string
+	vfs      fs.FS
+	location string
 }
 
 func NewSystemSource() *SystemSource {
@@ -29,38 +36,46 @@ func (s *SystemSource) Discover(ctx context.Context) ([]JDK, error) {
 		return ScanLocationsForJDKsContext(ctx, s.root, s.vfs, s.runner, s.locations, s.Name())
 	}
 
-	type root struct {
-		vfs  fs.FS
-		path string
-	}
-	var roots []root
+	return s.discoverRoots(ctx, systemRoots(runtime.GOOS, os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")))
+}
 
-	switch runtime.GOOS {
-	case "linux":
-		roots = append(roots,
-			root{vfs: os.DirFS("/"), path: "usr/lib/jvm"},
-			root{vfs: os.DirFS("/"), path: "opt/java"},
-		)
-	case "darwin":
-		roots = append(roots,
-			root{vfs: os.DirFS("/"), path: "Library/Java/JavaVirtualMachines"},
-		)
-	case "windows":
-		if pf := os.Getenv("ProgramFiles"); pf != "" {
-			roots = append(roots, root{vfs: os.DirFS(pf), path: "Java"})
-		}
-		if pf86 := os.Getenv("ProgramFiles(x86)"); pf86 != "" {
-			roots = append(roots, root{vfs: os.DirFS(pf86), path: "Java"})
-		}
-	}
-
+func (s *SystemSource) discoverRoots(ctx context.Context, roots []systemRoot) ([]JDK, error) {
 	var all []JDK
-	for _, r := range roots {
-		jdks, err := ScanLocationsForJDKsContext(ctx, s.root, r.vfs, s.runner, []string{r.path}, s.Name())
-		if err != nil {
-			return nil, err
-		}
+	var warnings []error
+	for _, root := range roots {
+		jdks, err := ScanLocationsForJDKsContext(ctx, root.root, root.vfs, s.runner, []string{root.location}, s.Name())
 		all = append(all, jdks...)
+		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return nil, ctxErr
+			}
+			warnings = append(warnings, err)
+		}
 	}
-	return all, nil
+	return all, errors.Join(warnings...)
+}
+
+func systemRoots(goos, programFiles, programFilesX86 string) []systemRoot {
+	switch goos {
+	case "linux":
+		return []systemRoot{
+			{root: "/", vfs: os.DirFS("/"), location: "usr/lib/jvm"},
+			{root: "/", vfs: os.DirFS("/"), location: "opt/java"},
+		}
+	case "darwin":
+		return []systemRoot{
+			{root: "/", vfs: os.DirFS("/"), location: "Library/Java/JavaVirtualMachines"},
+		}
+	case "windows":
+		var roots []systemRoot
+		if programFiles != "" {
+			roots = append(roots, systemRoot{root: programFiles, vfs: os.DirFS(programFiles), location: "Java"})
+		}
+		if programFilesX86 != "" {
+			roots = append(roots, systemRoot{root: programFilesX86, vfs: os.DirFS(programFilesX86), location: "Java"})
+		}
+		return roots
+	default:
+		return nil
+	}
 }

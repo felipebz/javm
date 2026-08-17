@@ -55,6 +55,60 @@ func TestScanLocationsForJDKs_IgnoresMissingLocations(t *testing.T) {
 	}
 }
 
+func TestScanLocationsForJDKsWarnsAboutInvalidCandidateAndKeepsValidJDKs(t *testing.T) {
+	vfs := fstest.MapFS{}
+	validJDK := createFakeJDK(t, vfs, ".", "valid-jdk")
+	createFakeJDKWithVendor(t, vfs, ".", "broken-jdk", "21", "")
+	runnerErr := errors.New("java metadata unavailable")
+
+	jdks, err := ScanLocationsForJDKs("", vfs, fakeRunner{err: runnerErr}, []string{"."}, "testsource")
+	if len(jdks) != 1 || jdks[0].Path != validJDK {
+		t.Fatalf("JDKs = %#v, want only %q", jdks, validJDK)
+	}
+	if !errors.Is(err, runnerErr) {
+		t.Fatalf("error = %v, want wrapped runner error", err)
+	}
+	var warning *DiscoveryWarning
+	if !errors.As(err, &warning) {
+		t.Fatalf("error = %T, want DiscoveryWarning", err)
+	}
+	if warning.Source != "testsource" || warning.Path != "broken-jdk" {
+		t.Fatalf("warning = %#v, want source testsource and path broken-jdk", warning)
+	}
+}
+
+func TestScanLocationsForJDKsWarnsAboutWalkErrors(t *testing.T) {
+	walkErr := errors.New("directory not readable")
+	vfs := readDirErrorFS{
+		FS:  fstest.MapFS{".": {Mode: fs.ModeDir | 0o755}},
+		err: walkErr,
+	}
+
+	jdks, err := ScanLocationsForJDKs("", vfs, fakeRunner{}, []string{"."}, "testsource")
+	if len(jdks) != 0 {
+		t.Fatalf("JDKs = %#v, want none", jdks)
+	}
+	if !errors.Is(err, walkErr) {
+		t.Fatalf("error = %v, want wrapped walk error", err)
+	}
+	var warning *DiscoveryWarning
+	if !errors.As(err, &warning) {
+		t.Fatalf("error = %T, want DiscoveryWarning", err)
+	}
+	if warning.Source != "testsource" || warning.Location != "." || warning.Path != "." {
+		t.Fatalf("warning = %#v, want source and root path", warning)
+	}
+}
+
+type readDirErrorFS struct {
+	fs.FS
+	err error
+}
+
+func (f readDirErrorFS) ReadDir(string) ([]fs.DirEntry, error) {
+	return nil, f.err
+}
+
 func TestValidateJDK(t *testing.T) {
 	vfs := fstest.MapFS{}
 

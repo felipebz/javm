@@ -100,10 +100,15 @@ func (d *Manager) DiscoverAll(ctx context.Context) ([]JDK, error) {
 		}
 		if d.Config.IsSourceEnabled(source.Name()) {
 			jdks, err := source.Discover(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to discover from %s: %w", source.Name(), err)
-			}
 			allJDKs = append(allJDKs, jdks...)
+			if err != nil {
+				if ctxErr := ctx.Err(); ctxErr != nil {
+					return nil, ctxErr
+				}
+				if d.Warn != nil {
+					d.Warn(discoveryWarningForSource(source.Name(), err))
+				}
+			}
 		}
 	}
 
@@ -120,4 +125,12 @@ func (d *Manager) DiscoverAll(ctx context.Context) ([]JDK, error) {
 	}
 
 	return uniqueJDKs, nil
+}
+
+func discoveryWarningForSource(source string, err error) error {
+	var warning *DiscoveryWarning
+	if errors.As(err, &warning) {
+		return err
+	}
+	return &DiscoveryWarning{Source: source, Err: err}
 }
