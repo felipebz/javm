@@ -10,9 +10,10 @@ import (
 // The sentinels below are the command-layer error classes consumed by the
 // process entry point when it chooses an exit status.
 var (
-	ErrUsage    = errors.New("usage error")
-	ErrNotFound = errors.New("not found")
-	ErrNetwork  = errors.New("network error")
+	ErrUsage            = errors.New("usage error")
+	ErrShellIntegration = errors.New("shell integration is not active")
+	ErrNotFound         = errors.New("not found")
+	ErrNetwork          = errors.New("network error")
 )
 
 // UsageError marks an error caused by invalid user input or command usage.

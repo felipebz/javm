@@ -148,7 +148,7 @@ func exitCode(err error) int {
 		return exitInterrupted
 	case errors.Is(err, context.DeadlineExceeded):
 		return exitTimeout
-	case errors.Is(err, command.ErrUsage) || isCobraUsageError(err):
+	case errors.Is(err, command.ErrUsage) || errors.Is(err, command.ErrShellIntegration) || isCobraUsageError(err):
 		return exitUsage
 	case errors.Is(err, command.ErrNotFound) || errors.Is(err, os.ErrNotExist):
 		return exitNotFound

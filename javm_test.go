@@ -24,6 +24,7 @@ func TestExitCodeMapsStableErrorClasses(t *testing.T) {
 		{name: "success", want: exitSuccess},
 		{name: "generic failure", err: errors.New("failure"), want: exitFailure},
 		{name: "usage", err: command.UsageError(errors.New("bad arguments")), want: exitUsage},
+		{name: "inactive shell integration", err: fmt.Errorf("context: %w", command.ErrShellIntegration), want: exitUsage},
 		{name: "not found", err: command.NotFoundError(errors.New("missing JDK")), want: exitNotFound},
 		{name: "network", err: command.NetworkError(errors.New("API unavailable")), want: exitNetwork},
 		{name: "discoapi network", err: fmt.Errorf("request failed: %w", discoapi.ErrNetwork), want: exitNetwork},

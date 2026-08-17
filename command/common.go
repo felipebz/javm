@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -70,17 +71,35 @@ func parseTrimTo(value string) semver.VersionPart {
 
 func printForShellToEval(out []string, fd3 string) error {
 	if fd3 != "" {
-		return os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0600)
+		if err := os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0600); err != nil {
+			return fmt.Errorf("write fd3 %q: %w", fd3, err)
+		}
+		return nil
 	}
 
 	fd := os.NewFile(3, "fd3")
 	if fd == nil {
-		return fmt.Errorf("shell integration is not active; run `javm init <shell>` first")
+		return shellIntegrationUnavailable()
 	}
+	return writeShellEnvironment(fd, out)
+}
+
+func writeShellEnvironment(w io.Writer, out []string) error {
 	for _, line := range out {
-		if _, err := fmt.Fprintln(fd, line); err != nil {
-			return err
+		if _, err := fmt.Fprintln(w, line); err != nil {
+			return shellIntegrationUnavailable()
 		}
 	}
 	return nil
+}
+
+func shellIntegrationUnavailable() error {
+	return shellIntegrationError(detectedShellHint())
+}
+
+func shellIntegrationError(hint shellIntegrationHint, ok bool) error {
+	if ok {
+		return fmt.Errorf("%w; enable javm for %s with:\n%s", ErrShellIntegration, hint.name, hint.command)
+	}
+	return fmt.Errorf("%w; run `javm init <shell>` and invoke javm through the generated shell wrapper", ErrShellIntegration)
 }
