@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/internal/state"
 	"github.com/spf13/cobra"
 )
 
@@ -97,18 +98,19 @@ func setAlias(name string, ver string) error {
 		return err
 	}
 	if ver == "" {
-		if err := os.Remove(path); err != nil {
-			return fmt.Errorf("remove alias %q: %w", name, err)
+		return state.WithFileLock(path, func() error {
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("remove alias %q: %w", name, err)
+			}
+			return nil
+		})
+	}
+	return state.WithFileLock(path, func() error {
+		if err := state.AtomicWriteFile(path, []byte(ver), 0o600); err != nil {
+			return fmt.Errorf("write alias %q: %w", name, err)
 		}
 		return nil
-	}
-	if err := os.MkdirAll(cfg.Dir(), 0700); err != nil {
-		return fmt.Errorf("create configuration directory: %w", err)
-	}
-	if err := os.WriteFile(path, []byte(ver), 0600); err != nil {
-		return fmt.Errorf("write alias %q: %w", name, err)
-	}
-	return nil
+	})
 }
 
 func readAlias(name string) (string, error) {

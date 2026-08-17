@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/internal/state"
 	"github.com/felipebz/javm/semver"
 	"github.com/spf13/cobra"
 )
@@ -39,35 +40,13 @@ func SetDefaultVersion(selector string) error {
 	selector = strings.TrimSpace(selector)
 
 	dir := cfg.Dir()
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("create configuration directory: %w", err)
-	}
-	tmp, err := os.CreateTemp(dir, ".default-version-*")
-	if err != nil {
-		return fmt.Errorf("create temporary default version: %w", err)
-	}
-	tmpPath := tmp.Name()
-	defer func() { _ = os.Remove(tmpPath) }()
-
-	if err := tmp.Chmod(0o600); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("restrict temporary default version permissions: %w", err)
-	}
-	if _, err := tmp.WriteString(selector); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("write default version: %w", err)
-	}
-	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("sync default version: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close default version: %w", err)
-	}
-	if err := os.Rename(tmpPath, filepath.Join(dir, "default-version")); err != nil {
-		return fmt.Errorf("replace default version: %w", err)
-	}
-	return nil
+	path := filepath.Join(dir, "default-version")
+	return state.WithFileLock(path, func() error {
+		if err := state.AtomicWriteFile(path, []byte(selector), 0o600); err != nil {
+			return fmt.Errorf("write default version: %w", err)
+		}
+		return nil
+	})
 }
 
 func readDefaultVersion() (string, error) {

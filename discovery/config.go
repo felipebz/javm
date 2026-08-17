@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/felipebz/javm/internal/state"
 )
 
 type Config struct {
@@ -47,16 +49,14 @@ func LoadConfig(configFile string) (*Config, error) {
 }
 
 func (c *Config) SaveConfig(configFile string) error {
-	if err := os.MkdirAll(filepath.Dir(configFile), 0755); err != nil {
-		return err
-	}
-
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
 	}
-
-	return os.WriteFile(configFile, data, 0644)
+	data = append(data, '\n')
+	return state.WithFileLock(configFile, func() error {
+		return state.AtomicWriteFile(configFile, data, 0o600)
+	})
 }
 
 func (c *Config) IsSourceEnabled(source string) bool {

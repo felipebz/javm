@@ -3,6 +3,7 @@ package discovery
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -96,6 +97,15 @@ func TestConfig_SaveAndLoadConfig(t *testing.T) {
 	}
 	if _, err := os.Stat(nonExistentDir); os.IsNotExist(err) {
 		t.Error("Config file should exist after SaveConfig with non-existent directory")
+	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(configFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Fatalf("config permissions = %o, want 600", got)
+		}
 	}
 }
 

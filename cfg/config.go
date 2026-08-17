@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/felipebz/javm/internal/state"
 )
 
 var schemaTypes = map[string]string{
@@ -92,76 +94,53 @@ func SetValue(key string, value string) error {
 	if !IsKnownKey(key) {
 		return fmt.Errorf("unknown key")
 	}
-	overrides, err := LoadUserOverrides()
-	if err != nil {
-		return err
-	}
+	return updateUserOverrides(func(overrides map[string]any) {
+		setByPath(overrides, strings.Split(key, "."), value)
 
-	setByPath(overrides, strings.Split(key, "."), value)
-
-	defVal, _ := getByPath(defaults, strings.Split(key, "."))
-	if s, ok := defVal.(string); ok && s == value {
-		deleteByPath(overrides, strings.Split(key, "."))
-	}
-
-	pruneEmptyMaps(overrides)
-
-	if len(overrides) == 0 {
-		_ = os.Remove(ConfigFile())
-		return nil
-	}
-	return writeAtomicJSON(ConfigFile(), overrides)
+		defVal, _ := getByPath(defaults, strings.Split(key, "."))
+		if s, ok := defVal.(string); ok && s == value {
+			deleteByPath(overrides, strings.Split(key, "."))
+		}
+	})
 }
 
 func UnsetValue(key string) error {
 	if !IsKnownKey(key) {
 		return fmt.Errorf("unknown key")
 	}
-	overrides, err := LoadUserOverrides()
-	if err != nil {
-		return err
-	}
+	return updateUserOverrides(func(overrides map[string]any) {
+		deleteByPath(overrides, strings.Split(key, "."))
+	})
+}
 
-	deleteByPath(overrides, strings.Split(key, "."))
+func updateUserOverrides(update func(map[string]any)) error {
+	path := ConfigFile()
+	return state.WithFileLock(path, func() error {
+		overrides, err := LoadUserOverrides()
+		if err != nil {
+			return err
+		}
 
-	pruneEmptyMaps(overrides)
+		update(overrides)
+		pruneEmptyMaps(overrides)
 
-	if len(overrides) == 0 {
-		_ = os.Remove(ConfigFile())
-		return nil
-	}
-	return writeAtomicJSON(ConfigFile(), overrides)
+		if len(overrides) == 0 {
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("remove empty configuration: %w", err)
+			}
+			return nil
+		}
+		return writeAtomicJSON(path, overrides)
+	})
 }
 
 func writeAtomicJSON(dst string, data any) error {
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
-	}
-
-	tmp := dst + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o666)
+	encoded, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("encode configuration: %w", err)
 	}
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(data); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	// On Windows, rename fails if target exists
-	_ = os.Remove(dst)
-	if err := os.Rename(tmp, dst); err != nil {
-		return err
-	}
-	return nil
+	encoded = append(encoded, '\n')
+	return state.AtomicWriteFile(dst, encoded, 0o600)
 }
 
 func IsKnownKey(key string) bool {

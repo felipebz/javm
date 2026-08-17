@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/felipebz/javm/internal/state"
 )
 
 const DefaultCacheTTL = 24 * time.Hour
@@ -24,11 +26,11 @@ func NewConfiguredManager(configDir string) (*Manager, error) {
 
 func DeleteCacheFile(configDir string) error {
 	cacheFile := GetDefaultCacheFile(configDir)
-	err := os.Remove(cacheFile)
-
-	if os.IsNotExist(err) {
-		return nil
-	}
-
-	return err
+	return state.WithFileLock(cacheFile, func() error {
+		err := os.Remove(cacheFile)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	})
 }
