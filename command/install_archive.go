@@ -334,7 +334,7 @@ func unzipWithLimits(ctx context.Context, src string, dst string, strip bool, li
 		}
 		target := filepath.Join(state.root, filepath.FromSlash(rel))
 		mode := entry.Mode()
-		if entry.FileInfo().IsDir() {
+		if isArchiveDirectory(entry.Name, entry.FileInfo()) {
 			if err := state.makeDir(target); err != nil {
 				return err
 			}
@@ -446,9 +446,7 @@ func safeArchiveName(name string) (string, error) {
 	if name == "" || strings.ContainsRune(name, '\x00') {
 		return "", fmt.Errorf("empty path or NUL byte")
 	}
-	if strings.Contains(name, "\\") {
-		return "", fmt.Errorf("backslash path separators are not allowed")
-	}
+	name = normalizeArchiveSeparators(name)
 	if path.IsAbs(name) || hasWindowsVolume(name) {
 		return "", fmt.Errorf("absolute paths are not allowed")
 	}
@@ -457,6 +455,14 @@ func safeArchiveName(name string) (string, error) {
 		return "", fmt.Errorf("path traversal is not allowed")
 	}
 	return clean, nil
+}
+
+func normalizeArchiveSeparators(name string) string {
+	return strings.ReplaceAll(name, "\\", "/")
+}
+
+func isArchiveDirectory(name string, info fs.FileInfo) bool {
+	return info.IsDir() || strings.HasSuffix(normalizeArchiveSeparators(name), "/")
 }
 
 func hasWindowsVolume(name string) bool {
@@ -525,7 +531,8 @@ func (s *extractionState) writeFile(target string, mode os.FileMode, source io.R
 }
 
 func (s *extractionState) makeSymlink(rel, target, linkTarget string) error {
-	if linkTarget == "" || strings.ContainsRune(linkTarget, '\x00') || strings.Contains(linkTarget, "\\") || path.IsAbs(linkTarget) || hasWindowsVolume(linkTarget) {
+	linkTarget = normalizeArchiveSeparators(linkTarget)
+	if linkTarget == "" || strings.ContainsRune(linkTarget, '\x00') || path.IsAbs(linkTarget) || hasWindowsVolume(linkTarget) {
 		return fmt.Errorf("archive contains unsafe symlink %q -> %q", rel, linkTarget)
 	}
 	resolved := path.Clean(path.Join(path.Dir(rel), linkTarget))

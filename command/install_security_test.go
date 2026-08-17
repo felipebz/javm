@@ -143,6 +143,11 @@ func TestArchiveRejectsUnsafePathsAndSymlinks(t *testing.T) {
 		assertUnsafeInstall(t, archive, "unsafe archive path")
 	})
 
+	t.Run("zip traversal with Windows separators", func(t *testing.T) {
+		archive := makeZipArchive(t, []zipTestEntry{{name: `jdk\..\..\outside`, body: "owned", mode: 0644}})
+		assertUnsafeInstall(t, archive, "unsafe archive path")
+	})
+
 	t.Run("tar escaping symlink", func(t *testing.T) {
 		archive := makeTarGzArchive(t, []tarTestEntry{{name: "jdk/link", linkname: "../../outside", typeflag: tar.TypeSymlink}})
 		assertUnsafeInstall(t, archive, "unsafe symlink")
@@ -162,6 +167,31 @@ func TestArchiveRejectsUnsafePathsAndSymlinks(t *testing.T) {
 		archive := makeTarXzArchive(t, []tarTestEntry{{name: "jdk/link", linkname: "/outside", typeflag: tar.TypeSymlink}})
 		assertUnsafeInstall(t, archive, "unsafe symlink")
 	})
+}
+
+func TestInstallZipWithWindowsSeparators(t *testing.T) {
+	root := "mandrel-java23-24.1.1.0-Final"
+	javaName := "java"
+	if runtime.GOOS == "windows" {
+		javaName = "java.exe"
+	}
+	archive := makeZipArchive(t, []zipTestEntry{
+		{name: root + `\legal\`, mode: os.ModeDir | 0755},
+		{name: root + `\bin\`, mode: os.ModeDir | 0755},
+		{name: root + `\bin\` + javaName, body: "java", mode: 0755},
+		{name: root + `\legal\NOTICE`, body: "notice", mode: 0644},
+	})
+	dst := filepath.Join(t.TempDir(), "jdk")
+
+	if err := install(context.Background(), archive, dst); err != nil {
+		t.Fatalf("install failed: %v", err)
+	}
+	if err := assertJavaDistribution(dst, runtime.GOOS); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(filepath.Join(dst, "legal", "NOTICE")); err != nil || string(data) != "notice" {
+		t.Fatalf("legal file = %q, err = %v", data, err)
+	}
 }
 
 func TestTarRejectsWriteThroughArchiveSymlink(t *testing.T) {
