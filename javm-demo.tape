@@ -4,7 +4,7 @@ Set FontSize 20
 Set Width 1200
 Set Height 450
 Set Padding 20
-Set FontFamily "JetBrains Mono"
+Set FontFamily "JetBrainsMono Nerd Font"
 Set Theme "Catppuccin Mocha"
 Set CursorBlink false
 
@@ -29,6 +29,7 @@ Wait
 
 Type "javm use 25"
 Enter
+Wait
 
 Type "java -version"
 Enter
