@@ -50,8 +50,8 @@ func packageIndexFromPackages(pkgs []discoapi.Package) *packageIndex {
 }
 
 func stripBuildSuffix(javaVersion string) string {
-	if idx := strings.Index(javaVersion, "+"); idx != -1 {
-		return javaVersion[:idx]
+	if before, _, ok := strings.Cut(javaVersion, "+"); ok {
+		return before
 	}
 	return javaVersion
 }

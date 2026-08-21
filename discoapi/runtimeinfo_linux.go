@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"syscall"
 )
 
@@ -43,12 +44,7 @@ func looksLikeMuslFilesystem() bool {
 		"/usr/lib/ld-musl-x86_64.so.1",
 		"/usr/lib/ld-musl-aarch64.so.1",
 	}
-	for _, p := range candidates {
-		if fileExistsFn(p) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(candidates, fileExistsFn)
 }
 
 func looksLikeGlibcFilesystem() bool {
@@ -60,12 +56,7 @@ func looksLikeGlibcFilesystem() bool {
 		"/lib64/ld-linux-aarch64.so.1",
 		"/usr/lib/ld-linux-aarch64.so.1",
 	}
-	for _, p := range candidates {
-		if fileExistsFn(p) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(candidates, fileExistsFn)
 }
 
 func safeLddVersion() ([]byte, bool) {
@@ -124,10 +115,5 @@ func safeLddVersion() ([]byte, bool) {
 }
 
 func isInList(s string, list []string) bool {
-	for _, v := range list {
-		if s == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, s)
 }

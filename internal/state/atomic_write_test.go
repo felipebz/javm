@@ -20,7 +20,7 @@ func TestAtomicWriteFileConcurrentWritersKeepCompleteData(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make(chan error, writers)
 	wantValues := make([][]byte, writers)
-	for i := 0; i < writers; i++ {
+	for i := range writers {
 		value := []byte("{\"writer\":\"" + string(rune('a'+i)) + "\"}\n")
 		wantValues[i] = value
 		wg.Add(1)
@@ -80,10 +80,8 @@ func TestWithFileLockSerializesCallbacks(t *testing.T) {
 	var maximum atomic.Int32
 	errs := make(chan error, writers)
 
-	for i := 0; i < writers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range writers {
+		wg.Go(func() {
 			err := WithFileLock(path, func() error {
 				current := active.Add(1)
 				for {
@@ -99,7 +97,7 @@ func TestWithFileLockSerializesCallbacks(t *testing.T) {
 			if err != nil {
 				errs <- err
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	close(errs)

@@ -133,15 +133,13 @@ func TestDiscoveryCache_SaveCacheIsAtomicAndPrivate(t *testing.T) {
 	const writers = 16
 	var wg sync.WaitGroup
 	errors := make(chan error, writers)
-	for i := 0; i < writers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range writers {
+		wg.Go(func() {
 			cache := &Cache{LastUpdated: time.Now(), JDKs: []JDK{{Path: "updated"}}}
 			if err := cache.SaveCache(cacheFile); err != nil {
 				errors <- err
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	close(errors)

@@ -580,7 +580,7 @@ func (s *extractionState) ensureParents(target string) error {
 	if rel == "." {
 		return nil
 	}
-	for _, component := range strings.Split(rel, string(os.PathSeparator)) {
+	for component := range strings.SplitSeq(rel, string(os.PathSeparator)) {
 		current = filepath.Join(current, component)
 		info, statErr := os.Lstat(current)
 		if os.IsNotExist(statErr) {

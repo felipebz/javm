@@ -128,8 +128,7 @@ func (d *Manager) DiscoverAll(ctx context.Context) ([]JDK, error) {
 }
 
 func discoveryWarningForSource(source string, err error) error {
-	var warning *DiscoveryWarning
-	if errors.As(err, &warning) {
+	if _, ok := errors.AsType[*DiscoveryWarning](err); ok {
 		return err
 	}
 	return &DiscoveryWarning{Source: source, Err: err}
