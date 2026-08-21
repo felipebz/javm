@@ -248,7 +248,7 @@ func extractTarWithLimits(ctx context.Context, r io.Reader, dst string, strip bo
 			if err := state.makeDir(target); err != nil {
 				return err
 			}
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			if header.Size < 0 {
 				return fmt.Errorf("archive entry %q has a negative size", header.Name)
 			}
