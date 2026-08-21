@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.4](https://github.com/felipebz/javm/compare/v0.13.3...v0.13.4) (2026-08-21)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/sirupsen/logrus to v1.10.1 ([da504cf](https://github.com/felipebz/javm/commit/da504cf201200735157e8b8b1079ef2ffbd90357))
+* **deps:** update module github.com/sirupsen/logrus to v1.10.1 ([f2d0b1f](https://github.com/felipebz/javm/commit/f2d0b1f6cb244f6160d46f2861d443e01850f7af))
+* **discovery:** add JDK discovery warnings and improve error propagation ([3a51c68](https://github.com/felipebz/javm/commit/3a51c68c524bcef2fe3c381bd2bba589aca47e0f))
+
 ## [0.13.3](https://github.com/felipebz/javm/compare/v0.13.2...v0.13.3) (2026-08-17)
 
 
