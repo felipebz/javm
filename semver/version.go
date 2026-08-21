@@ -2,9 +2,10 @@ package semver
 
 import (
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"sort"
 	"strings"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 type Version struct {

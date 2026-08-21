@@ -2,9 +2,10 @@ package semver
 
 import (
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"regexp"
 	"strings"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 var pre070CompatRegexp = regexp.MustCompile("(^|,\\s*)\\d+([.]\\d+)?[.]?")
