@@ -326,7 +326,7 @@ func unzipWithLimits(ctx context.Context, src string, dst string, strip bool, li
 		if skip {
 			continue
 		}
-		if entry.UncompressedSize64 > uint64(^uint64(0)>>1) {
+		if entry.UncompressedSize64 > ^uint64(0)>>1 {
 			return fmt.Errorf("archive entry %q is too large", entry.Name)
 		}
 		if err := state.addEntry(int64(entry.UncompressedSize64)); err != nil {
