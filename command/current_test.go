@@ -11,13 +11,25 @@ import (
 func TestCurrent(t *testing.T) {
 	previousLookPath := lookPath
 	defer func() { lookPath = previousLookPath }()
-	lookPath = func(string) (string, error) {
-		return filepath.Join(cfg.Dir(), "jdk", "1.8.0", "Contents", "Home", "bin", "java"), nil
+
+	tests := []struct {
+		name       string
+		javaSubdir string
+		want       string
+	}{
+		{name: "managed bin directory", javaSubdir: filepath.Join("1.8.0", "bin"), want: "1.8.0"},
+		{name: "macOS Contents/Home layout", javaSubdir: filepath.Join("1.8.0", "Contents", "Home", "bin"), want: "1.8.0"},
 	}
-	actual := current()
-	expected := "1.8.0"
-	if actual != expected {
-		t.Fatalf("actual: %v != expected: %v", actual, expected)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lookPath = func(string) (string, error) {
+				return filepath.Join(cfg.Dir(), "jdk", tt.javaSubdir, "java"), nil
+			}
+			if got := current(); got != tt.want {
+				t.Fatalf("current() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
