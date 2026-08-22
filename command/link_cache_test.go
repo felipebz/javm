@@ -2,6 +2,8 @@ package command
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,6 +12,37 @@ import (
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
 )
+
+func TestLinkLatestTreatsMissingManagedDirectoryAsEmpty(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+
+	t.Setenv("JAVM_HOME", t.TempDir())
+	cleanup := setupMockLs()
+	defer cleanup()
+	mockLsResult = nil
+
+	if err := linkLatest(context.Background()); err != nil {
+		t.Fatalf("linkLatest() error = %v", err)
+	}
+}
+
+func TestLinkLatestPropagatesReadDirectoryError(t *testing.T) {
+	t.Setenv("JAVM_HOME", t.TempDir())
+
+	expected := fs.ErrPermission
+	originalReadDir := readDir
+	readDir = func(string) ([]os.DirEntry, error) {
+		return nil, expected
+	}
+	t.Cleanup(func() { readDir = originalReadDir })
+
+	err := linkLatest(context.Background())
+	if !errors.Is(err, expected) {
+		t.Fatalf("linkLatest() error = %v, want %v", err, expected)
+	}
+}
 
 func TestLinkAndUnlinkInvalidateDiscoveryCache(t *testing.T) {
 	if runtime.GOOS == "windows" {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -98,10 +99,16 @@ func linkLatest(ctx context.Context) (resultErr error) {
 			}
 		}
 	}()
-	files, _ := readDir(filepath.Join(cfg.Dir(), "jdk"))
-	var jdks, err = Ls(true)
-	if err != nil {
-		return err
+	files, err := readDir(filepath.Join(cfg.Dir(), "jdk"))
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		files = nil
+	case err != nil:
+		return fmt.Errorf("read managed JDK directory: %w", err)
+	}
+	jdks, lsErr := Ls(true)
+	if lsErr != nil {
+		return lsErr
 	}
 	cache := make(map[string]string)
 	for _, f := range files {
