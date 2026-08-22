@@ -253,7 +253,7 @@ classes:
 
 ## Development
 
-Prerequisite: Go **1.26.x**
+Prerequisite: Go **1.27**
 
 ```sh
 git clone https://github.com/felipebz/javm
