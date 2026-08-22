@@ -44,6 +44,61 @@ func TestLinkLatestPropagatesReadDirectoryError(t *testing.T) {
 	}
 }
 
+func TestLinkLatestChecksRemoveBeforeCreatingSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+
+	home := t.TempDir()
+	t.Setenv("JAVM_HOME", home)
+	jdkDir := filepath.Join(home, "jdk")
+	if err := os.MkdirAll(jdkDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	target := filepath.Join(home, "target")
+	source := filepath.Join(jdkDir, "default")
+	if err := os.Symlink(target, source); err != nil {
+		t.Fatal(err)
+	}
+
+	cleanupLs := setupMockLs()
+	defer cleanupLs()
+	mockLsResult = []discovery.JDK{{
+		Identifier: "21.0.1",
+		Version:    "21.0.1",
+		Source:     "javm",
+		Path:       target,
+	}}
+
+	if err := os.WriteFile(filepath.Join(home, "default.alias"), []byte("21.0.1"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := fs.ErrPermission
+	cleanupRemove := setupRemoveError(expected)
+	defer cleanupRemove()
+
+	err := linkLatest(context.Background())
+	if !errors.Is(err, expected) {
+		t.Fatalf("linkLatest() error = %v, want %v", err, expected)
+	}
+
+	linkTarget, err := os.Readlink(source)
+	if err != nil {
+		t.Fatalf("source was removed before failed replacement: %v", err)
+	}
+	if linkTarget != target {
+		t.Fatalf("source changed: got %q, want %q", linkTarget, target)
+	}
+}
+
+func setupRemoveError(expected error) func() {
+	originalRemove := removePath
+	removePath = func(string) error { return expected }
+	return func() { removePath = originalRemove }
+}
+
 func TestLinkAndUnlinkInvalidateDiscoveryCache(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("creating symlinks requires privileges on Windows")

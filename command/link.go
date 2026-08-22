@@ -16,6 +16,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var removePath = os.Remove
+
+func replaceSymlink(target, source string) error {
+	err := removePath(source)
+	switch {
+	case err == nil:
+	case errors.Is(err, fs.ErrNotExist):
+	default:
+		return fmt.Errorf("remove existing symlink %q: %w", source, err)
+	}
+	if err := os.Symlink(target, source); err != nil {
+		return fmt.Errorf("create symlink %q -> %q: %w", source, target, err)
+	}
+	return nil
+}
+
 func NewLinkCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "link [name] [path]",
@@ -150,8 +166,7 @@ func linkLatest(ctx context.Context) (resultErr error) {
 		if v.Prerelease() == "" && cache[sourceVersion] != target && !strings.HasPrefix(sourceVersion, "system@") {
 			source := filepath.Join(cfg.Dir(), "jdk", sourceVersion)
 			loggerFromContext(ctx).Info(v.String() + " -> " + target)
-			os.Remove(source)
-			if err := os.Symlink(target, source); err != nil {
+			if err := replaceSymlink(target, source); err != nil {
 				return err
 			}
 		}
@@ -197,8 +212,7 @@ func linkAlias(ctx context.Context, name string, jdks []discovery.JDK) error {
 		target := filepath.Join(cfg.Dir(), "jdk", defaultAlias)
 		if sourceTarget != target {
 			loggerFromContext(ctx).Info(sourceRef + " -> " + target)
-			os.Remove(source)
-			if err := os.Symlink(target, source); err != nil {
+			if err := replaceSymlink(target, source); err != nil {
 				return err
 			}
 		}
