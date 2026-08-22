@@ -62,8 +62,8 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 }
 
 func runInstall(ctx context.Context, client PackagesWithInfoClient, selector string, dst string) (string, error) {
-	var releaseMap map[*semver.Version]string
 	var ver *semver.Version
+	var url string
 	var err error
 	var expectedChecksum string
 	var checksumType string
@@ -93,10 +93,9 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 				return "", NetworkError(err)
 			}
 
-			downloadUri := packageInfo.DirectDownloadUri
 			expectedChecksum = packageInfo.Checksum
 			checksumType = packageInfo.ChecksumType
-			releaseMap = map[*semver.Version]string{ver: downloadUri}
+			url = packageInfo.DirectDownloadUri
 			break
 		}
 	}
@@ -123,7 +122,6 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			return ver.String(), nil
 		}
 	}
-	url := releaseMap[ver]
 	if dst == "" {
 		dst = filepath.Join(cfg.Dir(), "jdk", ver.String())
 	}
