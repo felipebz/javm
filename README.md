@@ -34,7 +34,7 @@ You can install `javm` using the provided install scripts. They automatically de
 
 ### Linux and macOS
 
-By default, installs the latest release to `~/.javm`.
+By default, installs the latest release to `$HOME/.local/bin/javm`.
 
 To install the latest release:
 
