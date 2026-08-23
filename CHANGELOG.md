@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/felipebz/javm/compare/v0.14.0...v0.14.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **discovery:** include linked JDKs in local discovery ([35cbca2](https://github.com/felipebz/javm/commit/35cbca27e218469e4fbfad42633fc3ab0280bd72))
+
 ## [0.14.0](https://github.com/felipebz/javm/compare/v0.13.4...v0.14.0) (2026-08-23)
 
 
