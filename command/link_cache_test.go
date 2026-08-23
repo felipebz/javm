@@ -145,3 +145,50 @@ func TestLinkAndUnlinkInvalidateDiscoveryCache(t *testing.T) {
 		t.Fatalf("cache still exists after unlink: %v", err)
 	}
 }
+
+func TestLinkMakesExternalJDKDiscoverable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+
+	home := t.TempDir()
+	t.Setenv("JAVM_HOME", home)
+	target := t.TempDir()
+	javaPath := filepath.FromSlash(discovery.ExpectedJavaPath(target, runtime.GOOS))
+	if err := os.MkdirAll(filepath.Dir(javaPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(javaPath, []byte("java"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	releasePath := filepath.Join(target, filepath.FromSlash(discovery.ExpectedJDKDir(".", runtime.GOOS)), "release")
+	if err := os.WriteFile(releasePath, []byte("JAVA_VERSION=\"21.0.1\"\nJAVA_VENDOR=\"TestVendor\"\nOS_ARCH=\"x64\""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	selector := "system@21.0.1"
+	if err := link(context.Background(), selector, target); err != nil {
+		t.Fatalf("link() error = %v", err)
+	}
+
+	jdks, err := discovery.NewJavmSource().Discover(context.Background())
+	if err != nil {
+		t.Fatalf("JavmSource.Discover() error = %v", err)
+	}
+	jdk, err := FindBestMatchJDK(jdks, selector)
+	if err != nil {
+		t.Fatalf("FindBestMatchJDK() error = %v", err)
+	}
+	wantPath := filepath.Join(home, "jdk", selector)
+	if jdk.Path != wantPath {
+		t.Fatalf("linked JDK path = %q, want %q", jdk.Path, wantPath)
+	}
+
+	managed, err := LsContext(context.Background(), true)
+	if err != nil {
+		t.Fatalf("managed LsContext() error = %v", err)
+	}
+	if len(managed) != 0 {
+		t.Fatalf("managed JDK listing unexpectedly included linked JDK: %+v", managed)
+	}
+}

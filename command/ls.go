@@ -62,7 +62,7 @@ func Ls(managedOnly bool) ([]discovery.JDK, error) {
 
 func LsContext(ctx context.Context, managedOnly bool) ([]discovery.JDK, error) {
 	if managedOnly {
-		return discovery.NewJavmSource().Discover(ctx)
+		return discovery.NewJavmSource().DiscoverManaged(ctx)
 	}
 	return lsFunc(ctx)
 }
