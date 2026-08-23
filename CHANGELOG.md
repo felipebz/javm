@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/felipebz/javm/compare/v0.13.4...v0.14.0) (2026-08-23)
+
+
+### Features
+
+* **installer:** make attestation verification opt-in ([cf0864a](https://github.com/felipebz/javm/commit/cf0864a7a9b0b45a508dabe15af9753131a6bf01))
+
 ## [0.13.4](https://github.com/felipebz/javm/compare/v0.13.3...v0.13.4) (2026-08-21)
 
 
