@@ -30,10 +30,32 @@ For each tagged release, we publish:
 * **SBOM** (Software Bill of Materials):  A dependency inventory for the built binary. You can archive it for
   audit/compliance, or feed it into scanners.
 
-Nightly / pre-release / experimental builds does not include full attestation and should not be treated as
-production-grade.
+Nightly artifacts produced from the default branch include checksums and build provenance, but remain development
+snapshots and should not be treated as production-grade releases. Pull-request artifacts are not attested.
 
 ## How to verify a release
+
+### Installer behavior
+
+The Bash and PowerShell installers always verify the SHA-256 checksum of the downloaded archive before extracting it.
+For tagged releases, they do not execute GitHub CLI merely because it is installed. Selecting the nightly channel does
+use an authenticated `gh run download`, because nightly packages are GitHub Actions artifacts rather than release assets;
+that download requirement is independent from the provenance opt-in.
+
+To additionally require provenance verification, explicitly opt in:
+
+```bash
+curl -fsSL https://javm.dev/install.sh | JAVM_VERIFY_ATTESTATION=1 bash
+```
+
+```powershell
+$env:JAVM_VERIFY_ATTESTATION = "1"
+irm https://javm.dev/install.ps1 | iex
+```
+
+Opt-in verification is fail-closed: GitHub CLI must be installed and authenticated, and the archive must have a valid
+attestation linked to this repository. Any verification error stops installation. The accepted values for
+`JAVM_VERIFY_ATTESTATION` are `0` (the default) and `1`.
 
 When you download an official `javm` binary:
 
@@ -45,14 +67,25 @@ When you download an official `javm` binary:
 
 2. **Verify provenance / attestation**
 
-    * Use `gh attestation verify` (or equivalent tooling) against the downloaded artifact.
+    * Use `gh attestation verify` (or equivalent tooling) against the downloaded archive.
     * This confirms that:
         * the artifact was built in CI for this repository,
         * using the expected GitHub Actions workflow,
         * and signed by GitHub's OIDC identity for that workflow.
     * This protects you from "someone uploaded a random binary and called it javm.exe".
 
-   Note: today `gh attestation verify` shows you the repo/workflow/ref that produced the artifact, but it may not print
+   Verify that the artifact is linked to the official repository:
+
+   ```bash
+   gh attestation verify \
+     --repo felipebz/javm \
+     javm-linux-x86_64.tar.gz
+   ```
+
+   GitHub CLI currently requires authentication to retrieve attestations, including those associated with public
+   repositories.
+
+   Note: `gh attestation verify` shows you the repo/workflow/ref that produced the artifact, but it may not print
    the commit SHA directly in the summary. You can still retrieve the full attestation bundle and inspect it if you need
    to map the artifact to an exact git commit.
 

@@ -44,6 +44,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          JAVM_VERIFY_ATTESTATION: "1"
         run: |
           set -euo pipefail
           ./install.sh nightly
@@ -102,6 +103,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          JAVM_VERIFY_ATTESTATION: "1"
         run: |
           set -euo pipefail
           ./install.sh nightly
@@ -138,6 +140,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          JAVM_VERIFY_ATTESTATION: "1"
         run: |
           $ErrorActionPreference = 'Stop'
           ./install.ps1 nightly

@@ -187,6 +187,11 @@ You can verify that a binary you downloaded:
 Full details on how to verify a release, and what guarantees you get from the attestation, are documented in
 [`ATTESTATION.md`](ATTESTATION.md).
 
+The install scripts always verify the archive checksum. Provenance verification is explicit: set
+`JAVM_VERIFY_ATTESTATION=1` to authorize the installer to invoke an authenticated GitHub CLI. When enabled, any missing
+dependency, authentication problem, unexpected repository identity, or invalid attestation aborts installation.
+Without that opt-in, a stable installation never invokes `gh` merely because it is present on the system.
+
 ## Hardening recommendations for people running `javm`
 
 You can reduce risk by doing the following:

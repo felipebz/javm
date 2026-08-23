@@ -3,6 +3,15 @@ set -euo pipefail
 
 REPO="felipebz/javm"
 MODE="${1:-latest}"
+VERIFY_ATTESTATION="${JAVM_VERIFY_ATTESTATION:-0}"
+
+case "$VERIFY_ATTESTATION" in
+  0|1) ;;
+  *)
+    echo "JAVM_VERIFY_ATTESTATION must be 0 or 1." >&2
+    exit 1
+    ;;
+esac
 
 OS="$(uname | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
@@ -63,8 +72,19 @@ download_nightly() {
     exit 1
   fi
 
+  CHECKSUM_PATH=""
+  for checksum_path in "$DOWNLOAD_DIR"/javm_*_checksums.txt; do
+    if [[ -f "$checksum_path" ]]; then
+      CHECKSUM_PATH="$checksum_path"
+      break
+    fi
+  done
+  if [[ -z "$CHECKSUM_PATH" ]]; then
+    echo "Nightly checksum file not found in downloaded artifact." >&2
+    exit 1
+  fi
+
   RELEASE_TAG="nightly"
-  CHECKSUM_PATH="" # nightly ainda não obriga checksum
 }
 
 get_latest_tag() {
@@ -145,25 +165,27 @@ extract_to_temp() {
 }
 
 verify_attestation() {
-  if ! command -v gh >/dev/null 2>&1; then
-    echo "Skipping attestation verification (GitHub CLI not found)."
+  local artifact="$1"
+
+  if [[ "$VERIFY_ATTESTATION" != "1" ]]; then
+    echo "Provenance verification skipped. Set JAVM_VERIFY_ATTESTATION=1 to verify with GitHub CLI."
     return
   fi
 
-  local exe_path
-  if [[ -f "$EXTRACT_DIR/javm" ]]; then
-    exe_path="$EXTRACT_DIR/javm"
-  else
-    exe_path="$(find "$EXTRACT_DIR" -type f -name javm | head -n1 || true)"
+  if ! command -v gh >/dev/null 2>&1; then
+    echo "GitHub CLI (gh) is required when JAVM_VERIFY_ATTESTATION=1." >&2
+    exit 1
   fi
 
-  if [[ -z "$exe_path" || ! -f "$exe_path" ]]; then
-    echo "javm binary not found after extract; cannot verify attestation. Archive layout may have changed." >&2
+  if [[ ! -f "$artifact" ]]; then
+    echo "Artifact not found; cannot verify attestation: $artifact" >&2
     exit 1
   fi
 
   echo "Verifying attestation and provenance..."
-  if ! gh attestation verify --repo $REPO "$exe_path" >/dev/null; then
+  if ! gh attestation verify \
+        --repo "$REPO" \
+        "$artifact" >/dev/null; then
     echo "Attestation verification failed." >&2
     exit 1
   fi
@@ -200,6 +222,8 @@ install_to_final() {
 case "$MODE" in
   nightly)
     download_nightly
+    verify_checksum "$TARBALL_PATH" "$CHECKSUM_PATH" "$FILENAME"
+    verify_attestation "$TARBALL_PATH"
     extract_to_temp
     ;;
   latest)
@@ -210,15 +234,15 @@ case "$MODE" in
     fi
     download_release "$TAG"
     verify_checksum "$TARBALL_PATH" "$CHECKSUM_PATH" "$FILENAME"
+    verify_attestation "$TARBALL_PATH"
     extract_to_temp
-    verify_attestation
     ;;
   v*|[0-9]*)
     TAG="$MODE"
     download_release "$TAG"
     verify_checksum "$TARBALL_PATH" "$CHECKSUM_PATH" "$FILENAME"
+    verify_attestation "$TARBALL_PATH"
     extract_to_temp
-    verify_attestation
     ;;
   *)
     echo "Usage: $0 [nightly|latest|<version>]" >&2

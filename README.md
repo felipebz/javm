@@ -49,6 +49,12 @@ curl -fsSL https://javm.dev/install.sh | bash -s nightly
 curl -fsSL https://javm.dev/install.sh | bash -s v0.1.0
 ```
 
+To also verify build provenance with an authenticated [GitHub CLI](https://cli.github.com/):
+
+```bash
+curl -fsSL https://javm.dev/install.sh | JAVM_VERIFY_ATTESTATION=1 bash
+```
+
 ### Windows
 
 By default, installs the latest release to `%LOCALAPPDATA%\Programs\javm`.
@@ -65,6 +71,24 @@ To install a specific version or channel:
 iex "& { $(irm https://javm.dev/install.ps1) } nightly"
 iex "& { $(irm https://javm.dev/install.ps1) } v0.1.0"
 ```
+
+To also verify build provenance with an authenticated [GitHub CLI](https://cli.github.com/):
+
+```powershell
+$env:JAVM_VERIFY_ATTESTATION = "1"
+irm https://javm.dev/install.ps1 | iex
+```
+
+### Installation verification
+
+The installers always verify the SHA-256 checksum before extracting a release or nightly archive. Nightly installation
+requires an authenticated GitHub CLI because GitHub Actions artifacts are downloaded with `gh run download`.
+
+Provenance verification is opt-in because `gh attestation verify` uses the GitHub CLI authentication and network
+configuration. Merely having `gh` installed never causes the stable installer to execute it. Set
+`JAVM_VERIFY_ATTESTATION=1` to request verification; in that mode, a missing or unauthenticated `gh`, an unexpected
+repository identity, or an invalid attestation aborts installation. See [ATTESTATION.md](ATTESTATION.md) for the trust
+model and manual verification instructions.
 
 ## Shell Setup
 

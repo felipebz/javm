@@ -4,6 +4,11 @@ param (
 
 $ErrorActionPreference = 'Stop'
 
+$verifyAttestation = if ($env:JAVM_VERIFY_ATTESTATION) { $env:JAVM_VERIFY_ATTESTATION } else { "0" }
+if ($verifyAttestation -notin @("0", "1")) {
+    Write-Error "JAVM_VERIFY_ATTESTATION must be 0 or 1."
+}
+
 $repo = "felipebz/javm"
 $os = "windows"
 $arch = (Get-CimInstance Win32_Processor).Architecture
@@ -47,10 +52,17 @@ function Download-Nightly {
         exit 1
     }
 
+    $checksumPath = Get-ChildItem -Path $tempDownloadDir -File -Filter "javm_*_checksums.txt" |
+        Select-Object -First 1 -ExpandProperty FullName
+    if (-not $checksumPath) {
+        Write-Error "Nightly checksum file not found in downloaded artifact."
+        exit 1
+    }
+
     return @{
         Tag          = "nightly"
         ZipPath      = $tempFile
-        ChecksumPath = $null
+        ChecksumPath = $checksumPath
     }
 }
 
@@ -116,24 +128,22 @@ function Extract-ToTemp {
     Expand-Archive -Path $tempFile -DestinationPath $tempExtractDir -Force
 }
 
-function Verify-Attestation {
-    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        Write-Warning "Skipping attestation verification (GitHub CLI not found)."
+function Verify-Attestation([string]$ArtifactPath) {
+    if ($verifyAttestation -ne "1") {
+        Write-Host "Provenance verification skipped. Set JAVM_VERIFY_ATTESTATION=1 to verify with GitHub CLI."
         return
     }
 
-    $exePath = Join-Path $tempExtractDir "javm.exe"
-    if (-not (Test-Path $exePath)) {
-        $exePath = Get-ChildItem -Path $tempExtractDir -Recurse -Filter "javm.exe" | Select-Object -First 1 | ForEach-Object { $_.FullName }
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+        Write-Error "GitHub CLI (gh) is required when JAVM_VERIFY_ATTESTATION=1."
     }
 
-    if (-not $exePath) {
-        Write-Error "javm.exe not found after extract; cannot verify attestation. Archive layout may have changed."
-        exit 1
+    if (-not (Test-Path -LiteralPath $ArtifactPath -PathType Leaf)) {
+        Write-Error "Artifact not found; cannot verify attestation: $ArtifactPath"
     }
 
     Write-Host "Verifying attestation and provenance..."
-    gh attestation verify --repo $repo "$exePath" | Out-Host
+    gh attestation verify --repo $repo $ArtifactPath | Out-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Attestation verification failed."
         exit 1
@@ -152,6 +162,8 @@ $result = $null
 switch ($Mode) {
     "nightly" {
         $result = Download-Nightly
+        Verify-Checksum -ZipPath $result.ZipPath -ChecksumPath $result.ChecksumPath -ExpectedFileName $filename
+        Verify-Attestation -ArtifactPath $result.ZipPath
         Extract-ToTemp
     }
 
@@ -164,8 +176,8 @@ switch ($Mode) {
 
         $result = Download-Release $tag
         Verify-Checksum -ZipPath $result.ZipPath -ChecksumPath $result.ChecksumPath -ExpectedFileName $filename
+        Verify-Attestation -ArtifactPath $result.ZipPath
         Extract-ToTemp
-        Verify-Attestation
     }
 
     default {
@@ -173,8 +185,8 @@ switch ($Mode) {
             $tag = $Mode
             $result = Download-Release $tag
             Verify-Checksum -ZipPath $result.ZipPath -ChecksumPath $result.ChecksumPath -ExpectedFileName $filename
+            Verify-Attestation -ArtifactPath $result.ZipPath
             Extract-ToTemp
-            Verify-Attestation
         } else {
             Write-Error "Usage: install.ps1 [nightly|latest|<version>]"
             exit 1
