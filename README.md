@@ -161,6 +161,7 @@ call javm deactivate
 Generate the script file using `javm init nu`:
 
 ```nushell
+mkdir ~/.local/share/javm
 javm init nu | save -f ~/.local/share/javm/javm.nu
 ```
 
