@@ -19,6 +19,7 @@ func TestContains(t *testing.T) {
 	assertWithinRange(t, "a@1.7.x", "a@1.8.72", false)
 	assertWithinRange(t, "a@>=1.7 <=1.8.75", "a@1.8.72", true)
 	assertWithinRange(t, "a@>=1.7 <=1.8.75", "a@1.8.80", false)
+	assertWithinRange(t, "*@>=1.6.45 <1.9", "temurin@1.8.72", true)
 }
 
 func TestPre070Compat(t *testing.T) {
