@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
-	"regexp"
-	"runtime"
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/spf13/cobra"
@@ -65,16 +62,7 @@ func Use(selector string) ([]string, error) {
 }
 
 func UseContext(ctx context.Context, selector string) ([]string, error) {
-	aliasValue := getAlias(selector)
-	if aliasValue != "" {
-		selector = aliasValue
-	}
-
-	jdks, err := LsContext(ctx, false)
-	if err != nil {
-		return nil, err
-	}
-	jdk, err := FindBestMatchJDK(jdks, selector)
+	jdk, err := resolveJDKContext(ctx, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -82,25 +70,18 @@ func UseContext(ctx context.Context, selector string) ([]string, error) {
 }
 
 func usePath(path string) ([]string, error) {
-	sep := string(os.PathListSeparator)
-	path, err := filepath.Abs(path)
+	env := os.Environ()
+	selected, err := buildJDKEnvironment(path, env)
 	if err != nil {
 		return nil, err
 	}
-	pth, _ := os.LookupEnv("PATH")
-	rgxp := regexp.MustCompile(regexp.QuoteMeta(filepath.Join(cfg.Dir(), "jdk")) + "[^" + sep + "]+[" + sep + "]")
-	// strip references to managed jdks dir, otherwise leave unchanged
-	pth = rgxp.ReplaceAllString(pth, "")
-	if runtime.GOOS == "darwin" {
-		path = filepath.Join(path, "Contents", "Home")
-	}
-	systemJavaHome, overrideWasSet := os.LookupEnv("JAVA_HOME_BEFORE_JAVM")
+	systemJavaHome, overrideWasSet := lookupEnvironmentValue(env, "JAVA_HOME_BEFORE_JAVM")
 	if !overrideWasSet {
-		systemJavaHome, _ = os.LookupEnv("JAVA_HOME")
+		systemJavaHome, _ = lookupEnvironmentValue(env, "JAVA_HOME")
 	}
 	return []string{
-		"SET\tPATH\t" + filepath.Join(path, "bin") + string(os.PathListSeparator) + pth,
-		"SET\tJAVA_HOME\t" + path,
+		"SET\tPATH\t" + selected.Path,
+		"SET\tJAVA_HOME\t" + selected.JavaHome,
 		"SET\tJAVA_HOME_BEFORE_JAVM\t" + systemJavaHome,
 	}, nil
 }

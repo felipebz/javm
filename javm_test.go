@@ -30,6 +30,7 @@ func TestExitCodeMapsStableErrorClasses(t *testing.T) {
 		{name: "discoapi network", err: fmt.Errorf("request failed: %w", discoapi.ErrNetwork), want: exitNetwork},
 		{name: "timeout", err: context.DeadlineExceeded, want: exitTimeout},
 		{name: "interrupted", err: context.Canceled, want: exitInterrupted},
+		{name: "child process", err: fakeExitError{code: 7}, want: 7},
 		{name: "help", err: pflag.ErrHelp, want: exitSuccess},
 	}
 
@@ -41,6 +42,11 @@ func TestExitCodeMapsStableErrorClasses(t *testing.T) {
 		})
 	}
 }
+
+type fakeExitError struct{ code int }
+
+func (e fakeExitError) Error() string { return "child exited" }
+func (e fakeExitError) ExitCode() int { return e.code }
 
 func TestRootCommandRejectsUnexpectedArguments(t *testing.T) {
 	logger := log.New()

@@ -29,6 +29,7 @@ func TestCommandArgumentValidationUsesUsageClass(t *testing.T) {
 		{name: "alias", cmd: NewAliasCommand(), args: []string{"default", "17", "extra"}},
 		{name: "unalias", cmd: NewUnaliasCommand(), args: []string{"default", "extra"}},
 		{name: "which", cmd: NewWhichCommand(), args: []string{"17", "21"}},
+		{name: "exec", cmd: NewExecCommand(), args: []string{"17", "java"}},
 		{name: "init", cmd: NewInitCommand(), args: nil},
 		{name: "default", cmd: NewDefaultCommand(), args: nil},
 		{name: "discover", cmd: discover, args: []string{"extra"}},

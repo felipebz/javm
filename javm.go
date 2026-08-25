@@ -106,6 +106,7 @@ func newRootCommand(app application) *cobra.Command {
 		command.NewUnaliasCommand(),
 		command.NewLsDistributionsCommand(app.client),
 		command.NewWhichCommand(),
+		command.NewExecCommand(),
 		command.NewInitCommand(),
 		command.NewDiscoverCommand(),
 		command.NewDefaultCommand(),
@@ -142,6 +143,9 @@ func exitCode(err error) int {
 	if err == nil || errors.Is(err, pflag.ErrHelp) {
 		return exitSuccess
 	}
+	if code := processExitCode(err); code >= 0 {
+		return code
+	}
 
 	switch {
 	case errors.Is(err, context.Canceled):
@@ -157,6 +161,14 @@ func exitCode(err error) int {
 	default:
 		return exitFailure
 	}
+}
+
+func processExitCode(err error) int {
+	var exitErr interface{ ExitCode() int }
+	if !errors.As(err, &exitErr) {
+		return -1
+	}
+	return exitErr.ExitCode()
 }
 
 func isCobraUsageError(err error) bool {

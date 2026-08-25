@@ -48,15 +48,7 @@ func Which(selector string, home bool) (string, error) {
 }
 
 func WhichContext(ctx context.Context, selector string, home bool) (string, error) {
-	aliasValue := getAlias(selector)
-	if aliasValue != "" {
-		selector = aliasValue
-	}
-	jdks, err := LsContext(ctx, false)
-	if err != nil {
-		return "", err
-	}
-	jdk, err := FindBestMatchJDK(jdks, selector)
+	jdk, err := resolveJDKContext(ctx, selector)
 	if err != nil {
 		return "", err
 	}
