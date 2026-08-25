@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/felipebz/javm/compare/v0.14.1...v0.15.0) (2026-08-25)
+
+
+### Features
+
+* **exec:** add `javm exec` command to execute with specific JDK context ([e6b9059](https://github.com/felipebz/javm/commit/e6b9059ea968a55c05913a42c57dca13ad5cacef))
+
 ## [0.14.1](https://github.com/felipebz/javm/compare/v0.14.0...v0.14.1) (2026-08-23)
 
 
