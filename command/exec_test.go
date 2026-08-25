@@ -147,7 +147,7 @@ func TestBuildJDKEnvironmentDoesNotMutateParent(t *testing.T) {
 		t.Fatalf("parent JAVA_HOME changed to %q", got)
 	}
 
-	wantPrefix := filepath.Join(selectedPath, "bin") + string(os.PathListSeparator)
+	wantPrefix := filepath.Join(jdkHomeForTest(selectedPath), "bin") + string(os.PathListSeparator)
 	if !strings.HasPrefix(selected.Path, wantPrefix) {
 		t.Fatalf("selected PATH = %q, want prefix %q", selected.Path, wantPrefix)
 	}
@@ -166,7 +166,7 @@ func TestBuildJDKEnvironmentDoesNotCreateCurrentDirectoryEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(selectedPath, "bin")
+	want := filepath.Join(jdkHomeForTest(selectedPath), "bin")
 	if selected.Path != want {
 		t.Fatalf("selected PATH = %q, want %q", selected.Path, want)
 	}
@@ -234,6 +234,10 @@ func TestExecFindsExecutableUsingChildPathAndPreservesInvocation(t *testing.T) {
 	if err := os.Chdir(workspace); err != nil {
 		t.Fatal(err)
 	}
+	expectedWorkingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() { _ = os.Chdir(oldWD) })
 
 	t.Setenv("JAVM_HOME", home)
@@ -272,7 +276,7 @@ func TestExecFindsExecutableUsingChildPathAndPreservesInvocation(t *testing.T) {
 	if !strings.Contains(output, "ARGS=[\"--foo\" \"value with spaces\" \"--bar=baz\"]\n") {
 		t.Fatalf("child arguments were not preserved:\n%s", output)
 	}
-	if !strings.Contains(output, "PWD="+workspace+"\n") {
+	if !strings.Contains(output, "PWD="+expectedWorkingDirectory+"\n") {
 		t.Fatalf("child working directory changed:\n%s", output)
 	}
 	if got := os.Getenv("PATH"); got != wrongBin {
