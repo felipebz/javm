@@ -175,7 +175,7 @@ func TestBuildJDKEnvironmentDoesNotCreateCurrentDirectoryEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want = filepath.Join(selectedPath, "bin") + string(os.PathListSeparator)
+	want = filepath.Join(jdkHomeForTest(selectedPath), "bin") + string(os.PathListSeparator)
 	if selected.Path != want {
 		t.Fatalf("selected PATH with original empty entry = %q, want %q", selected.Path, want)
 	}
