@@ -276,6 +276,18 @@ classes:
 | 124 | Operation timed out |
 | 130 | Interrupted with Ctrl+C |
 
+## Coding agents
+
+`javm` includes an agent skill for coding agents that need to run Java tools with a predictable JDK.
+
+Install it with:
+
+```bash
+npx skills add felipebz/javm --skill javm -g
+```
+
+The skill teaches agents to prefer `javm exec` for builds, tests and other non-interactive Java commands.
+
 ## Development
 
 Prerequisite: Go **1.27**
