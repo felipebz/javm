@@ -29,7 +29,6 @@ func TestCommandArgumentValidationUsesUsageClass(t *testing.T) {
 		{name: "alias", cmd: NewAliasCommand(), args: []string{"default", "17", "extra"}},
 		{name: "unalias", cmd: NewUnaliasCommand(), args: []string{"default", "extra"}},
 		{name: "which", cmd: NewWhichCommand(), args: []string{"17", "21"}},
-		{name: "exec", cmd: NewExecCommand(), args: []string{"17", "java"}},
 		{name: "init", cmd: NewInitCommand(), args: nil},
 		{name: "default", cmd: NewDefaultCommand(), args: nil},
 		{name: "discover", cmd: discover, args: []string{"extra"}},
@@ -44,6 +43,15 @@ func TestCommandArgumentValidationUsesUsageClass(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("exec", func(t *testing.T) {
+		cmd := NewExecCommand()
+		cmd.SetArgs([]string{"17", "java"})
+		err := cmd.Execute()
+		if !errors.Is(err, ErrUsage) {
+			t.Fatalf("Execute() = %v, want ErrUsage", err)
+		}
+	})
 }
 
 func TestFindBestMatchJDKClassifiesMissingVersion(t *testing.T) {

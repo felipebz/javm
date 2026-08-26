@@ -18,14 +18,28 @@ import (
 func TestParseExecArgsRequiresDashAndCommand(t *testing.T) {
 	cmd := NewExecCommand()
 	cmd.SetArgs([]string{"21", "java"})
-	if err := cmd.ValidateArgs([]string{"21", "java"}); !errors.Is(err, ErrUsage) {
-		t.Fatalf("ValidateArgs() = %v, want usage error", err)
+	if err := cmd.Execute(); !errors.Is(err, ErrUsage) {
+		t.Fatalf("Execute() = %v, want usage error", err)
 	}
 
 	cmd = NewExecCommand()
 	cmd.SetArgs([]string{"21", "--"})
 	if err := cmd.Execute(); !errors.Is(err, ErrUsage) || !strings.Contains(err.Error(), "no command specified") {
 		t.Fatalf("Execute() = %v, want clear missing-command usage error", err)
+	}
+}
+
+func TestExecHelpWorksWithDisabledFlagParsing(t *testing.T) {
+	var out bytes.Buffer
+	cmd := NewExecCommand()
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"--help"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() = %v, want help", err)
+	}
+	if !strings.Contains(out.String(), "Select a JDK and execute a process") {
+		t.Fatalf("help output = %q", out.String())
 	}
 }
 
@@ -120,10 +134,7 @@ func TestExecUsesJavaVersionWhenSelectorIsOmitted(t *testing.T) {
 func parseExecArgsForTest(args []string) (string, []string, error) {
 	cmd := NewExecCommand()
 	cmd.SetArgs(args)
-	if err := cmd.ParseFlags(args); err != nil {
-		return "", nil, err
-	}
-	return parseExecArgs(cmd, cmd.Flags().Args())
+	return parseExecArgs(cmd, args)
 }
 
 func TestBuildJDKEnvironmentDoesNotMutateParent(t *testing.T) {
