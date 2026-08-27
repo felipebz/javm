@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.1](https://github.com/felipebz/javm/compare/v0.15.0...v0.15.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/sirupsen/logrus to v1.10.2 ([d3bb559](https://github.com/felipebz/javm/commit/d3bb5598eec16b9efab520cd0f488051b98c5049))
+* **deps:** update module github.com/sirupsen/logrus to v1.10.2 ([e4a3812](https://github.com/felipebz/javm/commit/e4a381210aefe7d34c2548edb814b83daacabe93))
+* **exec:** preserve child arguments after separator ([f4c469c](https://github.com/felipebz/javm/commit/f4c469cff7dd8a7590cf019cdc39627de91a898b))
+* **exec:** replace separator with explicit JDK option ([272c795](https://github.com/felipebz/javm/commit/272c795aba7864927a7f86582f3bfe7f39c5d456))
+* **pwsh:** preserve single arguments in shell integration ([cff69f9](https://github.com/felipebz/javm/commit/cff69f96137d714270eb02a8d7f7f49e1c5d5ac1))
+* **shell:** ensure `--fd3` flag is correctly placed and scoped in environment commands ([e741cf7](https://github.com/felipebz/javm/commit/e741cf7af16c5b53f06cd844ee8416096391869b))
+
 ## [0.15.0](https://github.com/felipebz/javm/compare/v0.14.1...v0.15.0) (2026-08-25)
 
 
