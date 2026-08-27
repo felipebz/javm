@@ -109,7 +109,10 @@ func TestPowerShellIntegrationUsesCanonicalExecSyntax(t *testing.T) {
 	if err != nil {
 		t.Skip("go is not installed")
 	}
-	probe := createRootExecFixture(t)
+	probe, fixtureHome := createRootExecFixtureWithHome(t)
+	if err := os.WriteFile(filepath.Join(fixtureHome, "default-version"), []byte("21"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	_, testFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -131,13 +134,16 @@ func TestPowerShellIntegrationUsesCanonicalExecSyntax(t *testing.T) {
 $ErrorActionPreference = 'Stop'
 $init = & $env:JAVM_BINARY init pwsh
 Invoke-Expression ($init -join [Environment]::NewLine)
+if ($LASTEXITCODE -ne 0) { throw "PowerShell initialization failed with exit code $LASTEXITCODE" }
 
 javm exec %s -Pcustom-profile package
 javm exec --jdk 21 %s -Dfoo=bar test
 
 javm use 21
+if ($LASTEXITCODE -ne 0) { throw "javm use failed with exit code $LASTEXITCODE" }
 if (-not $env:JAVA_HOME) { throw 'javm use did not set JAVA_HOME' }
 javm deactivate
+if ($LASTEXITCODE -ne 0) { throw "javm deactivate failed with exit code $LASTEXITCODE" }
 if ($env:JAVA_HOME -ne '/parent/java') { throw "javm deactivate restored $env:JAVA_HOME instead of /parent/java" }
 `, filepath.Base(probe), filepath.Base(probe))
 	if err := os.WriteFile(runner, []byte(script), 0o600); err != nil {
@@ -160,6 +166,11 @@ if ($env:JAVA_HOME -ne '/parent/java') { throw "javm deactivate restored $env:JA
 }
 
 func createRootExecFixture(t *testing.T) string {
+	probe, _ := createRootExecFixtureWithHome(t)
+	return probe
+}
+
+func createRootExecFixtureWithHome(t *testing.T) (string, string) {
 	t.Helper()
 
 	home := t.TempDir()
@@ -214,5 +225,5 @@ func createRootExecFixture(t *testing.T) string {
 	t.Setenv("JAVA_HOME", "/parent/java")
 	t.Setenv("JAVM_TEST_EXIT", "")
 
-	return filepath.Join(bin, probe)
+	return filepath.Join(bin, probe), home
 }
