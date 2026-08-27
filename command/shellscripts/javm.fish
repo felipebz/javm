@@ -5,7 +5,8 @@ function javm
         set -l cmd $argv[1]
         if test "$cmd" = use -o "$cmd" = deactivate
             set -l fd3 (mktemp)
-            $javm_executable --fd3 $fd3 $argv
+            set -l remaining $argv[2..-1]
+            $javm_executable $cmd --fd3 $fd3 $remaining
             set -l exit_code $status
 
             if test -s $fd3

@@ -3,7 +3,9 @@ def --env --wrapped javm [...args] {
 
     if ($args | length) > 0 and ($args.0 == "use" or $args.0 == "deactivate") {
         let fd3 = (mktemp)
-        ^$javm_executable --fd3 $fd3 ...$args
+        let command = $args.0
+        let remaining = ($args | skip 1)
+        ^$javm_executable $command --fd3 $fd3 ...$remaining
         let exit_code = $env.LAST_EXIT_CODE
 
         if ($fd3 | path exists) {

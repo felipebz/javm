@@ -28,11 +28,11 @@ if errorlevel 1 goto javm_environment_command
 set "_JAVM_ENV_FILE=%_JAVM_TEMP_DIR%\environment"
 
 if defined _JAVM_APPLY_DEFAULT goto javm_run_default
-"%_JAVM_EXECUTABLE%" --fd3 "%_JAVM_ENV_FILE%" %*
+"%_JAVM_EXECUTABLE%" %~1 --fd3 "%_JAVM_ENV_FILE%" %2 %3 %4 %5 %6 %7 %8 %9
 goto javm_environment_result
 
 :javm_run_default
-"%_JAVM_EXECUTABLE%" --fd3 "%_JAVM_ENV_FILE%" use --default
+"%_JAVM_EXECUTABLE%" use --fd3 "%_JAVM_ENV_FILE%" --default
 
 :javm_environment_result
 set "_JAVM_EXIT_CODE=%ERRORLEVEL%"

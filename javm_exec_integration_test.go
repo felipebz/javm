@@ -63,6 +63,43 @@ func TestRootExecPassesChildArgumentsOpaque(t *testing.T) {
 	}
 }
 
+func TestRootUseAcceptsLocalTransportFlag(t *testing.T) {
+	createRootExecFixture(t)
+	envFile := filepath.Join(t.TempDir(), "javm-env")
+	var stdout, stderr bytes.Buffer
+	root := newRootCommand(application{
+		out:    &stdout,
+		err:    &stderr,
+		logger: log.New(),
+		client: discoapi.NewClient(),
+	})
+	root.SetArgs([]string{"use", "--fd3", envFile, "21"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("root.Execute() = %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+	data, err := os.ReadFile(envFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "SET\tJAVA_HOME\t") {
+		t.Fatalf("use did not write environment updates through local --fd3: %q", data)
+	}
+}
+
+func TestRootRejectsTransportFlagOutsideEnvironmentCommands(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	root := newRootCommand(application{
+		out:    &stdout,
+		err:    &stderr,
+		logger: log.New(),
+		client: discoapi.NewClient(),
+	})
+	root.SetArgs([]string{"--fd3", filepath.Join(t.TempDir(), "environment"), "install", "21"})
+	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "unknown flag: --fd3") {
+		t.Fatalf("root.Execute() = %v, want unknown transport flag outside use/deactivate", err)
+	}
+}
+
 func TestPowerShellIntegrationUsesCanonicalExecSyntax(t *testing.T) {
 	pwsh, err := osExec.LookPath("pwsh")
 	if err != nil {

@@ -65,9 +65,9 @@ func TestInitUsesDefaultAsData(t *testing.T) {
 			}
 			defaultInvocation := "javm use --default"
 			if shell == "cmd" {
-				defaultInvocation = "use --default"
+				defaultInvocation = "use --fd3"
 			}
-			if !strings.Contains(output.String(), defaultInvocation) {
+			if !strings.Contains(output.String(), defaultInvocation) || !strings.Contains(output.String(), "--default") {
 				t.Fatalf("%s init does not invoke the static default path", shell)
 			}
 			if strings.Contains(output.String(), selector) {
@@ -91,7 +91,7 @@ func TestInitCMDInitializesDefaultWithoutRecursion(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := output.String()
-	if !strings.Contains(script, `"%_JAVM_EXECUTABLE%" --fd3 "%_JAVM_ENV_FILE%" use --default`) {
+	if !strings.Contains(script, `"%_JAVM_EXECUTABLE%" use --fd3 "%_JAVM_ENV_FILE%" --default`) {
 		t.Fatal("CMD init does not invoke the executable directly for default initialization")
 	}
 	if strings.Contains(script, "call javm use --default") {
@@ -114,7 +114,7 @@ func TestInitCMDWithoutDefaultKeepsRuntimeInitialization(t *testing.T) {
 	if strings.Contains(output.String(), "::JAVM_DEFAULT_INIT::") {
 		t.Fatal("CMD init left the default initialization placeholder in the wrapper")
 	}
-	if !strings.Contains(output.String(), "use --default") {
+	if !strings.Contains(output.String(), "use --fd3") || !strings.Contains(output.String(), "--default") {
 		t.Fatal("CMD init cannot pick up a default configured after wrapper generation")
 	}
 }
@@ -248,6 +248,9 @@ func TestInitCommand_CMD(t *testing.T) {
 	}
 	if !strings.Contains(output, `exit /b %_JAVM_EXIT_CODE%`) {
 		t.Errorf("cmd wrapper does not propagate the exit code, got: %s", output)
+	}
+	if !strings.Contains(output, `"%_JAVM_EXECUTABLE%" %~1 --fd3 "%_JAVM_ENV_FILE%" %2 %3 %4 %5 %6 %7 %8 %9`) {
+		t.Errorf("cmd wrapper does not keep --fd3 local to the environment command, got: %s", output)
 	}
 	if strings.Contains(output, "::JAVM::") {
 		t.Errorf("placeholder was not replaced: %s", output)

@@ -4,8 +4,10 @@ javm() {
     if [ "$1" = "use" ] || [ "$1" = "deactivate" ]; then
         local fd3
         fd3=$(mktemp)
+        local command=$1
+        shift
 
-        "$javm_executable" --fd3 "$fd3" "$@"
+        "$javm_executable" "$command" --fd3 "$fd3" "$@"
         local rc=$?
 
         if [ -s "$fd3" ]; then

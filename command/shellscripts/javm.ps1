@@ -4,7 +4,9 @@ function global:javm
 
     if ($args.Length -gt 0 -and ($args[0] -eq 'use' -or $args[0] -eq 'deactivate')) {
         $fd3 = [System.IO.Path]::GetTempFileName()
-        & $javmExecutable --fd3 "$fd3" @args
+        $command = $args[0]
+        $remainingArgs = if ($args.Length -gt 1) { $args[1..($args.Length - 1)] } else { @() }
+        & $javmExecutable $command --fd3 "$fd3" @remainingArgs
         $code = $LASTEXITCODE
         Get-Content $fd3 | ForEach-Object {
             $parts = $_ -split "`t",3
