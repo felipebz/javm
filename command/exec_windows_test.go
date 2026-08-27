@@ -60,7 +60,7 @@ func TestExecWindowsRunsBatchWrappers(t *testing.T) {
 			var out bytes.Buffer
 			cmd := NewExecCommand()
 			cmd.SetOut(&out)
-			cmdArgs := append([]string{"21", "--", "probe"}, argsToPreserve...)
+			cmdArgs := append([]string{"--jdk", "21", "probe"}, argsToPreserve...)
 			cmd.SetArgs(cmdArgs)
 			if err := cmd.Execute(); err != nil {
 				t.Fatalf("exec %s failed: %v", extension, err)
