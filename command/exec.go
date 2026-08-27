@@ -17,12 +17,13 @@ import (
 
 func NewExecCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:                "exec [selector] -- <command> [args...]",
+		Use:                "exec [--jdk <selector>] <command> [args...]",
 		Short:              "Execute a command with a selected JDK",
 		DisableFlagParsing: true,
 		Long: "Select a JDK and execute a process with JAVA_HOME and PATH set only for that process.\n" +
 			"Native executables run directly; Windows .cmd and .bat wrappers use the system command interpreter.\n" +
-			"The current shell and its environment are not modified, and javm init is not required.",
+			"Use --jdk to select a JDK explicitly; otherwise the selector is read from .java-version.\n" +
+			"JAVA_HOME and PATH are changed only for the child process; javm init is not required.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if isExecHelpRequest(args) {
 				return pflag.ErrHelp
@@ -33,41 +34,33 @@ func NewExecCommand() *cobra.Command {
 			}
 			return runExec(cmd.Context(), cmd, selector, childArgs)
 		},
-		Example: "  javm exec 21 -- java --version\n" +
-			"  javm exec temurin@21 -- mvn test\n" +
-			"  javm exec -- ./gradlew build",
+		Example: "  javm exec java --version\n" +
+			"  javm exec ./gradlew test\n" +
+			"  javm exec --jdk 21 java --version\n" +
+			"  javm exec --jdk temurin@21 mvn test",
 	}
 }
 
 func parseExecArgs(cmd *cobra.Command, args []string) (string, []string, error) {
-	atDash := -1
-	for index, arg := range args {
-		if arg == "--" {
-			atDash = index
-			break
-		}
-	}
-	if atDash < 0 {
-		return "", nil, UsageError(errors.New("exec requires `--` before the command; usage: javm exec [selector] -- <command> [args...]"))
-	}
-	commandIndex := atDash + 1
-	if commandIndex >= len(args) || args[commandIndex] == "" {
-		return "", nil, UsageError(errors.New("no command specified; usage: javm exec [selector] -- <command> [args...]"))
-	}
-
-	selectorFlags := cmd.InheritedFlags()
-	if err := selectorFlags.Parse(args[:atDash]); err != nil {
-		return "", nil, UsageError(err)
-	}
-	selectorArgs := selectorFlags.Args()
-	if len(selectorArgs) > 1 {
-		return "", nil, UsageError(errors.New("exec accepts at most one selector before `--`"))
+	const usage = "usage: javm exec [--jdk <selector>] <command> [args...]"
+	if len(args) == 0 {
+		return "", nil, UsageError(errors.New("no command specified; " + usage))
 	}
 
 	selector := ""
-	if len(selectorArgs) == 1 {
-		selector = selectorArgs[0]
-	} else {
+	commandIndex := 0
+	if args[0] == "--jdk" {
+		if len(args) < 2 || args[1] == "" {
+			return "", nil, UsageError(errors.New("--jdk requires a selector; " + usage))
+		}
+		selector = args[1]
+		commandIndex = 2
+	}
+	if commandIndex >= len(args) || args[commandIndex] == "" {
+		return "", nil, UsageError(errors.New("no command specified; " + usage))
+	}
+
+	if selector == "" {
 		selector = cfg.ReadJavaVersion()
 		if selector == "" {
 			return "", nil, UsageError(errors.New("no JDK selector specified; provide a selector or create .java-version"))
@@ -77,15 +70,7 @@ func parseExecArgs(cmd *cobra.Command, args []string) (string, []string, error) 
 }
 
 func isExecHelpRequest(args []string) bool {
-	for _, arg := range args {
-		if arg == "--" {
-			return false
-		}
-		if arg == "--help" || arg == "-h" {
-			return true
-		}
-	}
-	return false
+	return len(args) == 1 && (args[0] == "--help" || args[0] == "-h")
 }
 
 func runExec(ctx context.Context, cmd *cobra.Command, selector string, childArgs []string) error {

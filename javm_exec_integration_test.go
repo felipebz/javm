@@ -14,23 +14,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func TestRootExecPassesDashArgumentsOpaque(t *testing.T) {
+func TestRootExecPassesChildArgumentsOpaque(t *testing.T) {
 	probe := createRootExecFixture(t)
 
 	tests := []struct {
-		name            string
-		prefix          []string
-		beforeSeparator []string
-		selector        string
-		arguments       []string
+		name      string
+		prefix    []string
+		selector  string
+		arguments []string
 	}{
-		{name: "implicit Maven profile", arguments: []string{"-Pfrontend-api-client", "package"}},
+		{name: "implicit Maven profile", arguments: []string{"-Pcustom-profile", "package"}},
 		{name: "implicit system property", arguments: []string{"-Dfoo=bar"}},
 		{name: "implicit stacktrace", arguments: []string{"--stacktrace"}},
 		{name: "implicit JVM option", arguments: []string{"-Xmx2g"}},
-		{name: "explicit selector", selector: "21", arguments: []string{"-Pfrontend-api-client"}},
-		{name: "root persistent flag before command", prefix: []string{"--quiet"}, arguments: []string{"-Pfrontend-api-client"}},
-		{name: "root persistent flag after command", beforeSeparator: []string{"--quiet"}, arguments: []string{"-Pfrontend-api-client"}},
+		{name: "explicit selector", selector: "21", arguments: []string{"-Pcustom-profile"}},
+		{name: "root persistent flag before command", prefix: []string{"--quiet"}, arguments: []string{"-Pcustom-profile"}},
 	}
 
 	for _, tt := range tests {
@@ -47,10 +45,8 @@ func TestRootExecPassesDashArgumentsOpaque(t *testing.T) {
 			args := append([]string{}, tt.prefix...)
 			args = append(args, "exec")
 			if tt.selector != "" {
-				args = append(args, tt.selector)
+				args = append(args, "--jdk", tt.selector)
 			}
-			args = append(args, tt.beforeSeparator...)
-			args = append(args, "--")
 			args = append(args, filepath.Base(probe))
 			args = append(args, tt.arguments...)
 			root.SetArgs(args)
@@ -64,6 +60,65 @@ func TestRootExecPassesDashArgumentsOpaque(t *testing.T) {
 				t.Fatalf("child arguments = %q, want line %q", stdout.String(), want)
 			}
 		})
+	}
+}
+
+func TestPowerShellIntegrationUsesCanonicalExecSyntax(t *testing.T) {
+	pwsh, err := osExec.LookPath("pwsh")
+	if err != nil {
+		t.Skip("pwsh is not installed")
+	}
+	goBinary, err := osExec.LookPath("go")
+	if err != nil {
+		t.Skip("go is not installed")
+	}
+	probe := createRootExecFixture(t)
+
+	_, testFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	binaryName := "javm"
+	if runtime.GOOS == "windows" {
+		binaryName += ".exe"
+	}
+	binary := filepath.Join(t.TempDir(), binaryName)
+	build := osExec.Command(goBinary, "build", "-o", binary, ".")
+	build.Dir = filepath.Dir(testFile)
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build javm: %v\n%s", err, output)
+	}
+
+	runner := filepath.Join(t.TempDir(), "pwsh-exec-test.ps1")
+	script := fmt.Sprintf(`
+$ErrorActionPreference = 'Stop'
+$init = & $env:JAVM_BINARY init pwsh
+Invoke-Expression ($init -join [Environment]::NewLine)
+
+javm exec %s -Pcustom-profile package
+javm exec --jdk 21 %s -Dfoo=bar test
+
+javm use 21
+if (-not $env:JAVA_HOME) { throw 'javm use did not set JAVA_HOME' }
+javm deactivate
+if ($env:JAVA_HOME -ne '/parent/java') { throw "javm deactivate restored $env:JAVA_HOME instead of /parent/java" }
+`, filepath.Base(probe), filepath.Base(probe))
+	if err := os.WriteFile(runner, []byte(script), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := osExec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", runner)
+	cmd.Env = append(os.Environ(), "JAVM_BINARY="+binary)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("PowerShell integration failed: %v\n%s", err, output)
+	}
+	text := string(output)
+	if !strings.Contains(text, `ARGS=["-Pcustom-profile" "package"]`) {
+		t.Fatalf("implicit exec arguments were not preserved:\n%s", text)
+	}
+	if !strings.Contains(text, `ARGS=["-Dfoo=bar" "test"]`) {
+		t.Fatalf("explicit --jdk exec arguments were not preserved:\n%s", text)
 	}
 }
 

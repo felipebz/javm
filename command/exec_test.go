@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	osExec "os/exec"
 	"path/filepath"
@@ -15,17 +14,84 @@ import (
 	"github.com/felipebz/javm/discovery"
 )
 
-func TestParseExecArgsRequiresDashAndCommand(t *testing.T) {
-	cmd := NewExecCommand()
-	cmd.SetArgs([]string{"21", "java"})
-	if err := cmd.Execute(); !errors.Is(err, ErrUsage) {
-		t.Fatalf("Execute() = %v, want usage error", err)
+func TestParseExecArgsUsesCanonicalGrammar(t *testing.T) {
+	workspace := t.TempDir()
+	if err := os.WriteFile(filepath.Join(workspace, ".java-version"), []byte("system@21\n"), 0o600); err != nil {
+		t.Fatal(err)
 	}
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(workspace); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
 
-	cmd = NewExecCommand()
-	cmd.SetArgs([]string{"21", "--"})
-	if err := cmd.Execute(); !errors.Is(err, ErrUsage) || !strings.Contains(err.Error(), "no command specified") {
-		t.Fatalf("Execute() = %v, want clear missing-command usage error", err)
+	tests := []struct {
+		name     string
+		args     []string
+		selector string
+		command  []string
+	}{
+		{name: "implicit java", args: []string{"java", "--version"}, selector: "system@21", command: []string{"java", "--version"}},
+		{name: "implicit Maven profile", args: []string{"mvn", "-Pcustom-profile", "package"}, selector: "system@21", command: []string{"mvn", "-Pcustom-profile", "package"}},
+		{name: "implicit Maven property", args: []string{"mvn", "-Dfoo=bar", "test"}, selector: "system@21", command: []string{"mvn", "-Dfoo=bar", "test"}},
+		{name: "implicit Gradle flags", args: []string{"./gradlew", "--stacktrace", "test"}, selector: "system@21", command: []string{"./gradlew", "--stacktrace", "test"}},
+		{name: "implicit JVM flags", args: []string{"java", "-Xmx2g", "-Dfoo=bar", "Main"}, selector: "system@21", command: []string{"java", "-Xmx2g", "-Dfoo=bar", "Main"}},
+		{name: "numeric command is not a selector", args: []string{"21", "java", "--version"}, selector: "system@21", command: []string{"21", "java", "--version"}},
+		{name: "explicit selector", args: []string{"--jdk", "21", "java", "--version"}, selector: "21", command: []string{"java", "--version"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			selector, command, err := parseExecArgsForTest(tt.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if selector != tt.selector {
+				t.Fatalf("selector = %q, want %q", selector, tt.selector)
+			}
+			if strings.Join(command, "\x00") != strings.Join(tt.command, "\x00") {
+				t.Fatalf("command = %#v, want %#v", command, tt.command)
+			}
+		})
+	}
+}
+
+func TestParseExecArgsReportsUsageErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "no command", args: nil, want: "no command specified; usage: javm exec [--jdk <selector>] <command> [args...]"},
+		{name: "jdk without selector", args: []string{"--jdk"}, want: "--jdk requires a selector; usage: javm exec [--jdk <selector>] <command> [args...]"},
+		{name: "jdk without command", args: []string{"--jdk", "21"}, want: "no command specified; usage: javm exec [--jdk <selector>] <command> [args...]"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := parseExecArgsForTest(tt.args)
+			if !errors.Is(err, ErrUsage) || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("parseExecArgs() = %v, want usage containing %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseExecArgsReportsMissingImplicitSelector(t *testing.T) {
+	workspace := t.TempDir()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(workspace); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+
+	_, _, err = parseExecArgsForTest([]string{"mvn", "test"})
+	if !errors.Is(err, ErrUsage) || !strings.Contains(err.Error(), "no JDK selector specified") {
+		t.Fatalf("parseExecArgs() = %v, want missing implicit selector error", err)
 	}
 }
 
@@ -40,6 +106,9 @@ func TestExecHelpWorksWithDisabledFlagParsing(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Select a JDK and execute a process") {
 		t.Fatalf("help output = %q", out.String())
+	}
+	if !strings.Contains(out.String(), "exec [--jdk <selector>] <command> [args...]") {
+		t.Fatalf("help output has stale usage: %q", out.String())
 	}
 }
 
@@ -122,11 +191,11 @@ func TestExecUsesJavaVersionWhenSelectorIsOmitted(t *testing.T) {
 		Path:       filepath.Join(home, "jdk", "system@21.0.1"),
 	}}
 
-	selector, childArgs, err := parseExecArgsForTest([]string{"--", "java", "--version"})
+	selector, childArgs, err := parseExecArgsForTest([]string{"java", "--version"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if selector != "system@21" || fmt.Sprint(childArgs) != "[java --version]" {
+	if selector != "system@21" || strings.Join(childArgs, " ") != "java --version" {
 		t.Fatalf("omitted selector parsed as %q %v", selector, childArgs)
 	}
 }
@@ -268,7 +337,7 @@ func TestExecFindsExecutableUsingChildPathAndPreservesInvocation(t *testing.T) {
 	cmd := NewExecCommand()
 	cmd.SetOut(&out)
 	cmd.SetErr(&errOut)
-	cmd.SetArgs([]string{"21", "--", "probe", "--foo", "value with spaces", "--bar=baz"})
+	cmd.SetArgs([]string{"--jdk", "21", "probe", "--foo", "value with spaces", "--bar=baz"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("exec failed: %v\nstderr: %s", err, errOut.String())
 	}
@@ -317,7 +386,7 @@ func TestExecPropagatesChildExitCode(t *testing.T) {
 
 	cmd := NewExecCommand()
 	cmd.SetOut(&bytes.Buffer{})
-	cmd.SetArgs([]string{"21", "--", "probe"})
+	cmd.SetArgs([]string{"--jdk", "21", "probe"})
 	err := cmd.Execute()
 	var exitErr *osExec.ExitError
 	if !errors.As(err, &exitErr) {
@@ -341,7 +410,7 @@ func TestExecReportsMissingChildCommand(t *testing.T) {
 	mockLsResult = []discovery.JDK{{Identifier: "temurin@21.0.1", Version: "21.0.1", Source: "javm", Path: root}}
 
 	cmd := NewExecCommand()
-	cmd.SetArgs([]string{"21", "--", "definitely-not-installed"})
+	cmd.SetArgs([]string{"--jdk", "21", "definitely-not-installed"})
 	err := cmd.Execute()
 	if !errors.Is(err, ErrNotFound) || !strings.Contains(err.Error(), `command "definitely-not-installed" was not found`) {
 		t.Fatalf("missing child command error = %v", err)
@@ -362,7 +431,7 @@ func TestExecReportsInaccessibleSelectedJDK(t *testing.T) {
 	}}
 
 	cmd := NewExecCommand()
-	cmd.SetArgs([]string{"system@21", "--", "java"})
+	cmd.SetArgs([]string{"--jdk", "system@21", "java"})
 	err := cmd.Execute()
 	if !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), `selected JDK "system@21.0.1" is inaccessible`) {
 		t.Fatalf("inaccessible JDK error = %v", err)

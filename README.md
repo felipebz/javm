@@ -227,6 +227,23 @@ Then:
 javm use   # picks version from .java-version
 ```
 
+### Run a command with a JDK
+
+Run a child process with `JAVA_HOME` and `PATH` configured for a selected JDK;
+the current shell is unchanged and shell integration is not required:
+
+```sh
+javm exec java --version
+javm exec ./gradlew test
+javm exec mvn test
+javm exec --jdk 21 java --version
+javm exec --jdk temurin@21 ./gradlew build
+```
+
+Without `--jdk`, `javm exec` reads the selector from `.java-version` in the
+current directory. The child command and all of its arguments are passed
+through unchanged.
+
 ### Aliases
 
 ```sh

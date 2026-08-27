@@ -15,20 +15,20 @@ description: Use javm when a Java project contains .java-version, explicitly use
 
    **Basic Syntax**:
    ```sh
-   javm exec [selector] -- <command> [args...]
+   javm exec [--jdk <selector>] <command> [args...]
    ```
 
    **Examples**:
    * Leveraging the project's `.java-version`:
      ```sh
-     javm exec -- java --version
-     javm exec -- ./gradlew test
-     javm exec -- mvn test
+     javm exec java --version
+     javm exec ./gradlew test
+     javm exec mvn test
      ```
    * Passing an explicit version:
      ```sh
-     javm exec 21 -- java --version
-     javm exec temurin@21 -- ./gradlew build
+     javm exec --jdk 21 java --version
+     javm exec --jdk temurin@21 ./gradlew build
      ```
    
 3. **Isolate Environment Modifications**: Do NOT modify the global `PATH`, global `JAVA_HOME`, system Java installation, or OS-equivalent configurations when `javm` can solve the issue in isolation.

@@ -62,10 +62,11 @@ type application struct {
 
 func newRootCommand(app application) *cobra.Command {
 	root := &cobra.Command{
-		Use:          "javm",
-		Long:         "Java Version Manager (https://javm.dev).",
-		SilenceUsage: true,
-		Args:         command.UsageArgs(cobra.NoArgs),
+		Use:              "javm",
+		TraverseChildren: true,
+		Long:             "Java Version Manager (https://javm.dev).",
+		SilenceUsage:     true,
+		Args:             command.UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if showVersion, _ := cmd.Flags().GetBool("version"); !showVersion {
 				return pflag.ErrHelp
