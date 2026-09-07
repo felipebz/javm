@@ -82,7 +82,7 @@ temurin@21.0.1       21.0.1          temurin 21.0.1
 		t.Errorf("--distribution= got:\n%q\nwant:\n%q", got, want)
 	}
 
-	// Test with semver range (e.g. >=20)
+	// Test with a version range (e.g. >=20)
 	out.Reset()
 	mock.Pkgs = []discoapi.Package{
 		{JavaVersion: "21.0.1", Distribution: "temurin", DistributionVersion: "21.0.1"},
@@ -156,6 +156,40 @@ temurin@21.0.1       21.0.1          temurin 21.0.1
 `
 	if got != want {
 		t.Errorf("range got:\n%q\nwant:\n%q", got, want)
+	}
+}
+
+func TestRunLsRemoteSelectsLatestCompleteJavaVersion(t *testing.T) {
+	mock := &mockPackagesClient{
+		Pkgs: []discoapi.Package{
+			{Id: "security", JavaVersion: "25.0.4.1+1", Distribution: "temurin", DistributionVersion: "25.0.4.1"},
+			{Id: "baseline", JavaVersion: "25.0.4+7", Distribution: "temurin", DistributionVersion: "25.0.4"},
+		},
+	}
+	var out bytes.Buffer
+	if err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "temurin", "major", ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `Identifier           Full Version    Distribution Version
+temurin@25           25.0.4.1+1      temurin 25.0.4.1
+`
+	if got := out.String(); got != want {
+		t.Fatalf("latest Java version output =\n%q\nwant:\n%q", got, want)
+	}
+
+	// DiscoAPI ordering must not affect which complete Java version is
+	// selected.
+	out.Reset()
+	mock.Pkgs = []discoapi.Package{
+		{Id: "baseline", JavaVersion: "25.0.4+7", Distribution: "temurin", DistributionVersion: "25.0.4"},
+		{Id: "security", JavaVersion: "25.0.4.1+1", Distribution: "temurin", DistributionVersion: "25.0.4.1"},
+	}
+	if err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "temurin", "major", ""); err != nil {
+		t.Fatalf("unexpected reverse-order error: %v", err)
+	}
+	if got := out.String(); got != want {
+		t.Fatalf("reverse-order latest Java version output =\n%q\nwant:\n%q", got, want)
 	}
 }
 

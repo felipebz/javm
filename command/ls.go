@@ -10,7 +10,7 @@ import (
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
-	"github.com/felipebz/javm/semver"
+	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
 )
 
@@ -21,10 +21,10 @@ func NewLsCommand() *cobra.Command {
 		Short: "List installed versions",
 		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var rng *semver.Range
+			var rng *javaversion.Range
 			if len(args) > 0 {
 				var err error
-				rng, err = semver.ParseRange(args[0])
+				rng, err = javaversion.ParseRange(args[0])
 				if err != nil {
 					return UsageError(err)
 				}
@@ -84,28 +84,28 @@ func LsBestMatchContext(ctx context.Context, selector string, managedOnly bool) 
 }
 
 func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, error) {
-	rng, err := semver.ParseRange(selector)
+	rng, err := javaversion.ParseRange(selector)
 	if err != nil {
 		return discovery.JDK{}, UsageError(err)
 	}
 
 	sort.Slice(jdks, func(i, j int) bool {
-		v1, err1 := semver.ParseVersion(jdks[i].Version)
-		v2, err2 := semver.ParseVersion(jdks[j].Version)
+		v1, err1 := javaversion.ParseVersion(jdks[i].Version)
+		v2, err2 := javaversion.ParseVersion(jdks[j].Version)
 		if err1 == nil && err2 == nil {
 			return v2.LessThan(v1)
 		}
-		return jdks[i].Version > jdks[j].Version
+		if jdks[i].Version != jdks[j].Version {
+			return jdks[i].Version > jdks[j].Version
+		}
+		return jdks[i].Identifier < jdks[j].Identifier
 	})
 
 	var fallback discovery.JDK
 	hasFallback := false
 
 	for _, jdk := range jdks {
-		v, err := semver.ParseVersion(jdk.Identifier)
-		if err != nil {
-			v, err = semver.ParseVersion(jdk.Version)
-		}
+		v, err := parseJDKVersionForRange(jdk, rng)
 
 		if err == nil && rng.Contains(v) {
 			if jdk.Source == "javm" {
@@ -123,15 +123,15 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 		return fallback, nil
 	}
 
-	return discovery.JDK{}, NotFoundError(fmt.Errorf("%s isn't installed", rng))
+	return discovery.JDK{}, NotFoundError(fmt.Errorf("%s isn't installed", rng.String()))
 }
 
-func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range, showDetails bool) error {
+func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *javaversion.Range, showDetails bool) error {
 	// Filter by range
 	var filtered []discovery.JDK
 	for _, jdk := range jdks {
 		if rng != nil {
-			v, err := semver.ParseVersion(jdk.Identifier)
+			v, err := parseJDKVersionForRange(jdk, rng)
 			if err != nil || !rng.Contains(v) {
 				continue
 			}
@@ -144,12 +144,15 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range
 		if filtered[i].Source != filtered[j].Source {
 			return filtered[i].Source < filtered[j].Source
 		}
-		v1, err1 := semver.ParseVersion(filtered[i].Version)
-		v2, err2 := semver.ParseVersion(filtered[j].Version)
+		v1, err1 := javaversion.ParseVersion(filtered[i].Version)
+		v2, err2 := javaversion.ParseVersion(filtered[j].Version)
 		if err1 == nil && err2 == nil {
 			return v2.LessThan(v1)
 		}
-		return filtered[i].Version > filtered[j].Version
+		if filtered[i].Version != filtered[j].Version {
+			return filtered[i].Version > filtered[j].Version
+		}
+		return filtered[i].Identifier < filtered[j].Identifier
 	})
 
 	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
@@ -182,4 +185,23 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *semver.Range
 		return fmt.Errorf("flush installed JDK output: %w", err)
 	}
 	return nil
+}
+
+func parseJDKVersionForRange(jdk discovery.JDK, rng *javaversion.Range) (*javaversion.Version, error) {
+	version, versionErr := javaversion.ParseVersion(jdk.Version)
+	identifier, identifierErr := javaversion.ParseVersion(jdk.Identifier)
+
+	if rng.Qualifier != "" && rng.Qualifier != "*" {
+		if identifierErr != nil || identifier.Qualifier() != rng.Qualifier {
+			return nil, fmt.Errorf("JDK qualifier does not match selector")
+		}
+		if versionErr == nil {
+			return javaversion.ParseVersion(rng.Qualifier + "@" + version.String())
+		}
+		return identifier, nil
+	}
+	if versionErr == nil {
+		return version, nil
+	}
+	return identifier, identifierErr
 }

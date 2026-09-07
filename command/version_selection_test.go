@@ -1,0 +1,136 @@
+package command
+
+import (
+	"context"
+	"path/filepath"
+	"testing"
+
+	"github.com/felipebz/javm/discoapi"
+	"github.com/felipebz/javm/discovery"
+)
+
+type versionSelectionClient struct {
+	packages []discoapi.Package
+	archive  string
+	infoID   string
+}
+
+func (c *versionSelectionClient) GetPackagesContext(context.Context, string, string, string, string) ([]discoapi.Package, error) {
+	return c.packages, nil
+}
+
+func (c *versionSelectionClient) GetPackageInfoContext(_ context.Context, id string) (*discoapi.PackageInfo, error) {
+	c.infoID = id
+	return &discoapi.PackageInfo{DirectDownloadUri: "file://" + filepath.ToSlash(c.archive)}, nil
+}
+
+func TestRunInstallSelectsLatestCompleteJavaVersion(t *testing.T) {
+	archive := makeZipArchive(t, []zipTestEntry{{name: javaArchivePath(), body: "java", mode: 0755}})
+	client := &versionSelectionClient{
+		packages: []discoapi.Package{
+			{Id: "baseline", JavaVersion: "25.0.4+7", Distribution: "temurin", DistributionVersion: "25.0.4"},
+			{Id: "security", JavaVersion: "25.0.4.1+1", Distribution: "temurin", DistributionVersion: "25.0.4.1"},
+		},
+		archive: archive,
+	}
+
+	destination := filepath.Join(t.TempDir(), "jdk")
+	version, err := runInstall(context.Background(), client, "temurin@25", destination)
+	if err != nil {
+		t.Fatalf("runInstall() error = %v", err)
+	}
+	if version != "temurin@25.0.4.1+1" {
+		t.Fatalf("installed version = %q, want %q", version, "temurin@25.0.4.1+1")
+	}
+	if client.infoID != "security" {
+		t.Fatalf("package info requested for %q, want security", client.infoID)
+	}
+}
+
+func TestRunInstallSelectsHighestBuildForSameJavaVersion(t *testing.T) {
+	archive := makeZipArchive(t, []zipTestEntry{{name: javaArchivePath(), body: "java", mode: 0755}})
+	client := &versionSelectionClient{
+		packages: []discoapi.Package{
+			{Id: "build-6", JavaVersion: "25.0.4+6", Distribution: "temurin", DistributionVersion: "25.0.4"},
+			{Id: "build-7", JavaVersion: "25.0.4+7", Distribution: "temurin", DistributionVersion: "25.0.4"},
+		},
+		archive: archive,
+	}
+
+	destination := filepath.Join(t.TempDir(), "jdk")
+	version, err := runInstall(context.Background(), client, "temurin@25.0.4", destination)
+	if err != nil {
+		t.Fatalf("runInstall() error = %v", err)
+	}
+	if version != "temurin@25.0.4+7" {
+		t.Fatalf("installed version = %q, want %q", version, "temurin@25.0.4+7")
+	}
+	if client.infoID != "build-7" {
+		t.Fatalf("package info requested for %q, want build-7", client.infoID)
+	}
+
+	client.packages = []discoapi.Package{
+		{Id: "build-7", JavaVersion: "25.0.4+7", Distribution: "temurin", DistributionVersion: "25.0.4"},
+		{Id: "build-6", JavaVersion: "25.0.4+6", Distribution: "temurin", DistributionVersion: "25.0.4"},
+	}
+	client.infoID = ""
+	reverseDestination := filepath.Join(t.TempDir(), "jdk")
+	version, err = runInstall(context.Background(), client, "temurin@25.0.4", reverseDestination)
+	if err != nil {
+		t.Fatalf("reverse-order runInstall() error = %v", err)
+	}
+	if version != "temurin@25.0.4+7" || client.infoID != "build-7" {
+		t.Fatalf("reverse-order selection chose version %q and package %q", version, client.infoID)
+	}
+}
+
+func TestRunInstallResolvesExplicitJavaPatchSelector(t *testing.T) {
+	archive := makeZipArchive(t, []zipTestEntry{{name: javaArchivePath(), body: "java", mode: 0755}})
+	client := &versionSelectionClient{
+		packages: []discoapi.Package{
+			{Id: "baseline", JavaVersion: "25.0.4+7", Distribution: "temurin", DistributionVersion: "25.0.4"},
+			{Id: "security", JavaVersion: "25.0.4.1+1", Distribution: "temurin", DistributionVersion: "25.0.4.1"},
+		},
+		archive: archive,
+	}
+
+	destination := filepath.Join(t.TempDir(), "jdk")
+	version, err := runInstall(context.Background(), client, "temurin@25.0.4.1", destination)
+	if err != nil {
+		t.Fatalf("runInstall() error = %v", err)
+	}
+	if version != "temurin@25.0.4.1+1" || client.infoID != "security" {
+		t.Fatalf("explicit selector chose version %q and package %q", version, client.infoID)
+	}
+}
+
+func TestFindBestMatchJDKUsesCompleteJavaVersionOrdering(t *testing.T) {
+	jdks := []discovery.JDK{
+		{Identifier: "temurin@25.0.4+7", Version: "25.0.4+7", Source: "javm"},
+		{Identifier: "temurin@25.0.4.1+1", Version: "25.0.4.1+1", Source: "javm"},
+	}
+
+	got, err := FindBestMatchJDK(jdks, "temurin@25")
+	if err != nil {
+		t.Fatalf("FindBestMatchJDK() error = %v", err)
+	}
+	if got.Identifier != "temurin@25.0.4.1+1" {
+		t.Fatalf("resolved JDK = %q, want security release", got.Identifier)
+	}
+}
+
+func TestFindBestMatchJDKUsesFullDiscoveredVersionWithQualifiedIdentifier(t *testing.T) {
+	jdks := []discovery.JDK{{
+		Identifier: "temurin@25",
+		Version:    "25.0.4.1+1",
+		Source:     "javm",
+	}}
+
+	got, err := FindBestMatchJDK(jdks, "temurin@25.0.4.1")
+	if err != nil {
+		t.Fatalf("FindBestMatchJDK() error = %v", err)
+	}
+	if got.Identifier != "temurin@25" {
+		t.Fatalf("resolved JDK = %q, want temurin@25", got.Identifier)
+	}
+}

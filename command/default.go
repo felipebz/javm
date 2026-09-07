@@ -8,7 +8,7 @@ import (
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/internal/state"
-	"github.com/felipebz/javm/semver"
+	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
 )
 
@@ -69,7 +69,7 @@ func validateDefaultSelector(selector string) error {
 	if selector == "" {
 		return UsageError(fmt.Errorf("default version selector cannot be empty"))
 	}
-	if _, err := semver.ParseRange(selector); err != nil {
+	if _, err := javaversion.ParseRange(selector); err != nil {
 		return UsageError(fmt.Errorf("invalid default version selector %q: %w", selector, err))
 	}
 	return nil

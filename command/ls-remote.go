@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/felipebz/javm/cfg"
-	"github.com/felipebz/javm/semver"
+	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
 )
 
@@ -57,10 +57,10 @@ func runLsRemote(
 	client PackagesClient,
 	osFlag, archFlag, distributionFlag, trimTo, rangeArg string,
 ) error {
-	var r *semver.Range
+	var r *javaversion.Range
 	var err error
 	if rangeArg != "" {
-		r, err = semver.ParseRange(rangeArg)
+		r, err = javaversion.ParseRange(rangeArg)
 		if err != nil {
 			return UsageError(err)
 		}
@@ -80,13 +80,13 @@ func runLsRemote(
 	}
 	vs := packageIndex.Sorted
 	if trimTo != "" {
-		vs = semver.VersionSlice(vs).TrimTo(trimToValue)
+		vs = javaversion.VersionSlice(vs).TrimTo(trimToValue)
 	}
 
 	return printVersions(out, vs, packageIndex, r, trimToValue)
 }
 
-func printVersions(out io.Writer, versions []*semver.Version, packageIndex *packageIndex, r *semver.Range, value semver.VersionPart) error {
+func printVersions(out io.Writer, versions []*javaversion.Version, packageIndex *packageIndex, r *javaversion.Range, value javaversion.VersionPart) error {
 	headerPrinted := false
 	for _, v := range versions {
 		if r != nil && !r.Contains(v) {

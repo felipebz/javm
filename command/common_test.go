@@ -1,12 +1,14 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"strings"
 	"testing"
 
 	"github.com/felipebz/javm/discoapi"
+	log "github.com/sirupsen/logrus"
 )
 
 type failingShellWriter struct{}
@@ -78,6 +80,28 @@ func TestMakePackageIndex(t *testing.T) {
 
 	if len(idx.Sorted) != 2 {
 		t.Errorf("expected 2 versions in Sorted")
+	}
+}
+
+func TestMakePackageIndexDiagnosesInvalidJavaVersionAtDebugLevel(t *testing.T) {
+	mock := &mockPackagesClient{Pkgs: []discoapi.Package{
+		{Id: "valid", JavaVersion: "25.0.4.1+1", Distribution: "temurin"},
+		{Id: "invalid", JavaVersion: "25.0.4.1.invalid", Distribution: "temurin"},
+	}}
+	var diagnostics bytes.Buffer
+	logger := log.New()
+	logger.SetOutput(&diagnostics)
+	logger.SetLevel(log.DebugLevel)
+
+	index, err := makePackageIndex(WithRuntime(context.Background(), Runtime{Logger: logger, Err: &diagnostics}), mock, "linux", "amd64", "temurin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(index.Sorted) != 1 {
+		t.Fatalf("valid package count = %d, want 1", len(index.Sorted))
+	}
+	if !strings.Contains(diagnostics.String(), "invalid Java version") || !strings.Contains(diagnostics.String(), "25.0.4.1.invalid") {
+		t.Fatalf("invalid package was not diagnosed: %q", diagnostics.String())
 	}
 }
 

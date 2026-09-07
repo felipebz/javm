@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/felipebz/javm/discoapi"
-	"github.com/felipebz/javm/semver"
+	"github.com/felipebz/javm/javaversion"
 )
 
 type PackagesClient interface {
@@ -22,8 +22,14 @@ type PackagesWithInfoClient interface {
 }
 
 type packageIndex struct {
-	ByVersion map[*semver.Version]discoapi.Package
-	Sorted    []*semver.Version
+	ByVersion map[*javaversion.Version]discoapi.Package
+	Sorted    []*javaversion.Version
+	invalid   []invalidPackageVersion
+}
+
+type invalidPackageVersion struct {
+	packageValue discoapi.Package
+	err          error
 }
 
 func makePackageIndex(ctx context.Context, client PackagesClient, osFlag, archFlag, distributionFlag string) (*packageIndex, error) {
@@ -31,39 +37,60 @@ func makePackageIndex(ctx context.Context, client PackagesClient, osFlag, archFl
 	if err != nil {
 		return nil, NetworkError(err)
 	}
-	return packageIndexFromPackages(pkgs), nil
+	index := packageIndexFromPackages(pkgs)
+	for _, invalid := range index.invalid {
+		loggerFromContext(ctx).Debugf("ignoring package %q with invalid Java version %q: %v", invalid.packageValue.Id, invalid.packageValue.JavaVersion, invalid.err)
+	}
+	return index, nil
 }
 
 func packageIndexFromPackages(pkgs []discoapi.Package) *packageIndex {
-	byVersion := make(map[*semver.Version]discoapi.Package)
-	var sorted []*semver.Version
+	byVersion := make(map[*javaversion.Version]discoapi.Package)
+	var sorted []*javaversion.Version
+	seen := make(map[string]*javaversion.Version)
+	sortedIndex := make(map[string]int)
+	var invalid []invalidPackageVersion
 
 	for _, pkg := range pkgs {
-		v, err := semver.ParseVersion(fmt.Sprintf("%s@%s", pkg.Distribution, stripBuildSuffix(pkg.JavaVersion)))
-		if err == nil {
-			byVersion[v] = pkg
-			sorted = append(sorted, v)
+		v, err := javaversion.ParseVersion(fmt.Sprintf("%s@%s", pkg.Distribution, pkg.JavaVersion))
+		if err != nil {
+			invalid = append(invalid, invalidPackageVersion{packageValue: pkg, err: err})
+			continue
 		}
+		key := v.Canonical()
+		if previous, ok := seen[key]; ok {
+			if packageSortKey(pkg) < packageSortKey(byVersion[previous]) {
+				delete(byVersion, previous)
+				seen[key] = v
+				byVersion[v] = pkg
+				sorted[sortedIndex[key]] = v
+			}
+			continue
+		}
+		seen[key] = v
+		byVersion[v] = pkg
+		sortedIndex[key] = len(sorted)
+		sorted = append(sorted, v)
 	}
-	sort.Sort(semver.VersionSlice(sorted))
-	return &packageIndex{ByVersion: byVersion, Sorted: sorted}
+	sort.Sort(javaversion.VersionSlice(sorted))
+	return &packageIndex{ByVersion: byVersion, Sorted: sorted, invalid: invalid}
 }
 
-func stripBuildSuffix(javaVersion string) string {
-	if before, _, ok := strings.Cut(javaVersion, "+"); ok {
-		return before
-	}
-	return javaVersion
+func packageSortKey(pkg discoapi.Package) string {
+	return strings.Join([]string{pkg.Id, pkg.DistributionVersion, pkg.JavaVersion}, "\x00")
 }
 
-func parseTrimTo(value string) semver.VersionPart {
+func parseTrimTo(value string) javaversion.VersionPart {
 	switch strings.ToLower(value) {
 	case "major":
-		return semver.VPMajor
+		return javaversion.VPFeature
 	case "minor":
-		return semver.VPMinor
+		return javaversion.VPInterim
 	case "patch":
-		return semver.VPPatch
+		// Keep the existing three-component CLI grouping. In Java terms
+		// this is the UPDATE component; VPJavaPatch is available to callers
+		// that need the fourth component explicitly.
+		return javaversion.VPUpdate
 	default:
 		return -1
 	}

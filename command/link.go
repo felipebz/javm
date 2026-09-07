@@ -12,7 +12,7 @@ import (
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
-	"github.com/felipebz/javm/semver"
+	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
 )
 
@@ -79,8 +79,7 @@ func link(ctx context.Context, selector string, dir string) error {
 	if !strings.HasPrefix(selector, "system@") {
 		return UsageError(errors.New("Name must begin with 'system@' (e.g. 'system@1.8.73')"))
 	}
-	// <version> has to be valid per semver
-	if _, err := semver.ParseVersion(selector); err != nil {
+	if _, err := javaversion.ParseVersion(selector); err != nil {
 		return UsageError(err)
 	}
 	if dir == "" {
@@ -149,19 +148,19 @@ func linkLatest(ctx context.Context) (resultErr error) {
 		}
 	}
 
-	// Convert discovery.JDK to semver.Version for sorting/trimming
-	var versions []*semver.Version
+	// Convert discovered JDKs to Java versions for sorting/trimming.
+	var versions []*javaversion.Version
 	for _, jdk := range jdks {
-		if v, err := semver.ParseVersion(jdk.Identifier); err == nil {
+		if v, err := javaversion.ParseVersion(jdk.Identifier); err == nil {
 			versions = append(versions, v)
-		} else if v, err := semver.ParseVersion(jdk.Version); err == nil {
+		} else if v, err := javaversion.ParseVersion(jdk.Version); err == nil {
 			// fallback check
 			versions = append(versions, v)
 		}
 	}
 
-	for _, v := range semver.VersionSlice(versions).TrimTo(semver.VPMinor) {
-		sourceVersion := v.TrimTo(semver.VPMinor)
+	for _, v := range javaversion.VersionSlice(versions).TrimTo(javaversion.VPInterim) {
+		sourceVersion := v.TrimTo(javaversion.VPInterim)
 		target := filepath.Join(cfg.Dir(), "jdk", v.String())
 		if v.Prerelease() == "" && cache[sourceVersion] != target && !strings.HasPrefix(sourceVersion, "system@") {
 			source := filepath.Join(cfg.Dir(), "jdk", sourceVersion)

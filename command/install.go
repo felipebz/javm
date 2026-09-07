@@ -13,7 +13,7 @@ import (
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
-	"github.com/felipebz/javm/semver"
+	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -62,13 +62,13 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 }
 
 func runInstall(ctx context.Context, client PackagesWithInfoClient, selector string, dst string) (string, error) {
-	var ver *semver.Version
+	var ver *javaversion.Version
 	var url string
 	var err error
 	var expectedChecksum string
 	var checksumType string
 
-	rng, err := semver.ParseRange(selector)
+	rng, err := javaversion.ParseRange(selector)
 	if err != nil {
 		return "", UsageError(err)
 	}
@@ -84,7 +84,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 	if err != nil {
 		return "", err
 	}
-	sort.Sort(sort.Reverse(semver.VersionSlice(packageIndex.Sorted)))
+	sort.Sort(sort.Reverse(javaversion.VersionSlice(packageIndex.Sorted)))
 	for _, v := range packageIndex.Sorted {
 		if rng.Contains(v) {
 			ver = v
@@ -115,8 +115,8 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			return "", err
 		}
 		if slices.ContainsFunc(local, func(jdk discovery.JDK) bool {
-			v, _ := semver.ParseVersion(jdk.Version)
-			vID, _ := semver.ParseVersion(jdk.Identifier)
+			v, _ := javaversion.ParseVersion(jdk.Version)
+			vID, _ := javaversion.ParseVersion(jdk.Identifier)
 			return (v != nil && v.Equals(ver)) || (vID != nil && vID.Equals(ver))
 		}) {
 			return ver.String(), nil
