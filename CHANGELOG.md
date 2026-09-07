@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.2](https://github.com/felipebz/javm/compare/v0.15.1...v0.15.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* **version:** support complete Java version ordering and selection ([65bccdf](https://github.com/felipebz/javm/commit/65bccdf1d9c32d0de74d97af8a50c2c8f7ebf1bc))
+
 ## [0.15.1](https://github.com/felipebz/javm/compare/v0.15.0...v0.15.1) (2026-08-27)
 
 
