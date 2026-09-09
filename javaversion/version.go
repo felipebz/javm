@@ -75,6 +75,16 @@ func (v *Version) Raw() string { return v.raw }
 // String returns the original representation supplied to ParseVersion.
 func (v *Version) String() string { return v.raw }
 
+// WithoutBuild returns the qualified version without its +build suffix. javm
+// uses this stable form for managed JDK directory names while retaining the
+// complete version in metadata for ordering and matching.
+func (v *Version) WithoutBuild() string {
+	if plus := strings.IndexByte(v.raw, '+'); plus >= 0 {
+		return v.raw[:plus]
+	}
+	return v.raw
+}
+
 // Canonical returns a stable representation with trailing numeric zeroes
 // removed. It is useful for de-duplicating equivalent versions while keeping
 // build, pre-release, optional, and distribution information intact.

@@ -2,9 +2,12 @@ package command
 
 import (
 	"context"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discoapi"
 	"github.com/felipebz/javm/discovery"
 )
@@ -104,6 +107,37 @@ func TestRunInstallResolvesExplicitJavaPatchSelector(t *testing.T) {
 	}
 }
 
+func TestRunInstallUsesBuildFreeManagedDirectory(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("JAVM_HOME", home)
+	archive := makeZipArchive(t, []zipTestEntry{{name: javaArchivePath(), body: "java", mode: 0755}})
+	client := &versionSelectionClient{
+		packages: []discoapi.Package{{
+			Id:                  "security",
+			JavaVersion:         "25.0.4.1+1",
+			Distribution:        "temurin",
+			DistributionVersion: "25.0.4.1",
+		}},
+		archive: archive,
+	}
+
+	version, err := runInstall(context.Background(), client, "temurin@25", "")
+	if err != nil {
+		t.Fatalf("runInstall() error = %v", err)
+	}
+	if version != "temurin@25.0.4.1+1" {
+		t.Fatalf("installed version = %q", version)
+	}
+	buildFreePath := filepath.Join(cfg.Dir(), "jdk", "temurin@25.0.4.1")
+	if _, err := os.Stat(buildFreePath); err != nil {
+		t.Fatalf("build-free managed directory is missing: %v", err)
+	}
+	fullVersionPath := filepath.Join(cfg.Dir(), "jdk", "temurin@25.0.4.1+1")
+	if _, err := os.Stat(fullVersionPath); !os.IsNotExist(err) {
+		t.Fatalf("full build version path unexpectedly exists: %v", err)
+	}
+}
+
 func TestFindBestMatchJDKUsesCompleteJavaVersionOrdering(t *testing.T) {
 	jdks := []discovery.JDK{
 		{Identifier: "temurin@25.0.4+7", Version: "25.0.4+7", Source: "javm"},
@@ -132,5 +166,29 @@ func TestFindBestMatchJDKUsesFullDiscoveredVersionWithQualifiedIdentifier(t *tes
 	}
 	if got.Identifier != "temurin@25" {
 		t.Fatalf("resolved JDK = %q, want temurin@25", got.Identifier)
+	}
+}
+
+func TestUseResolvesBuildFreeManagedDirectoryByCompleteVersion(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("JAVM_HOME", home)
+	t.Setenv("PATH", "/usr/bin")
+	cleanup := setupMockLs()
+	defer cleanup()
+
+	path := filepath.Join(home, "jdk", "temurin@25.0.4.1")
+	mockLsResult = []discovery.JDK{{
+		Identifier: "temurin@25.0.4.1",
+		Version:    "25.0.4.1+1",
+		Source:     "javm",
+		Path:       path,
+	}}
+
+	env, err := UseContext(context.Background(), "temurin@25.0.4.1+1")
+	if err != nil {
+		t.Fatalf("UseContext() error = %v", err)
+	}
+	if !strings.Contains(strings.Join(env, "\n"), "SET\tJAVA_HOME\t"+path) {
+		t.Fatalf("use environment does not select build-free managed directory: %v", env)
 	}
 }

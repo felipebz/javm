@@ -66,6 +66,16 @@ func TestJavaVersionTrimToJavaPatch(t *testing.T) {
 	}
 }
 
+func TestJavaVersionWithoutBuild(t *testing.T) {
+	version, err := ParseVersion("temurin@25.0.4.1+1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := version.WithoutBuild(); got != "temurin@25.0.4.1" {
+		t.Fatalf("WithoutBuild() = %q", got)
+	}
+}
+
 func TestJavaVersionPreservesCompleteRepresentation(t *testing.T) {
 	version, err := ParseVersion("temurin@25.0.4.1.2-ea+7-linux")
 	if err != nil {

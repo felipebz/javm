@@ -115,15 +115,21 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			return "", err
 		}
 		if slices.ContainsFunc(local, func(jdk discovery.JDK) bool {
-			v, _ := javaversion.ParseVersion(jdk.Version)
-			vID, _ := javaversion.ParseVersion(jdk.Identifier)
-			return (v != nil && v.Equals(ver)) || (vID != nil && vID.Equals(ver))
+			identifier, identifierErr := javaversion.ParseVersion(jdk.Identifier)
+			if identifierErr != nil || identifier.Qualifier() != ver.Qualifier() {
+				return false
+			}
+			if version, versionErr := javaversion.ParseVersion(jdk.Version); versionErr == nil {
+				qualified, qualifiedErr := javaversion.ParseVersion(ver.Qualifier() + "@" + version.String())
+				return qualifiedErr == nil && qualified.Equals(ver)
+			}
+			return identifier.Equals(ver)
 		}) {
 			return ver.String(), nil
 		}
 	}
 	if dst == "" {
-		dst = filepath.Join(cfg.Dir(), "jdk", ver.String())
+		dst = filepath.Join(cfg.Dir(), "jdk", ver.WithoutBuild())
 	}
 	var file string
 	var removeDownload bool
