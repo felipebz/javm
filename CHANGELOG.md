@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.3](https://github.com/felipebz/javm/compare/v0.15.2...v0.15.3) (2026-09-09)
+
+
+### Bug Fixes
+
+* **deps:** update module golang.org/x/sys to v0.48.0 ([ab52d32](https://github.com/felipebz/javm/commit/ab52d32b92154ee785f9ebe3c5d8849212644750))
+* **deps:** update module golang.org/x/sys to v0.48.0 ([071b136](https://github.com/felipebz/javm/commit/071b136f383aa765294d9c87dd0c9ff3739d6cfb))
+* **deps:** update module golang.org/x/term to v0.46.0 ([ce94a34](https://github.com/felipebz/javm/commit/ce94a34a76f750481817063ce7b96fdb32ba9213))
+* **deps:** update module golang.org/x/term to v0.46.0 ([9802413](https://github.com/felipebz/javm/commit/9802413cbaeff0c0fb621927c0f3cb8ae612a695))
+* **install:** use build-free directories for managed JDKs (25.0.4.1+1 -&gt; 25.0.4.1) ([a142656](https://github.com/felipebz/javm/commit/a1426563f23ceee24a2d439e4f24071183195543))
+* **version:** ensure complete Java version preservation and build-independent comparison ([aefdf61](https://github.com/felipebz/javm/commit/aefdf61f9bbfa2d5a0ba5405016f8d1fb2697277))
+
 ## [0.15.2](https://github.com/felipebz/javm/compare/v0.15.1...v0.15.2) (2026-09-07)
 
 
