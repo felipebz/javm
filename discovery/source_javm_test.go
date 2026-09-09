@@ -40,6 +40,30 @@ func TestJavmSource_Discover(t *testing.T) {
 	}
 }
 
+func TestJavmSource_DiscoverPreservesCompleteReleaseVersion(t *testing.T) {
+	vfs := fstest.MapFS{}
+	createFakeJDK(t, vfs, "jdk", "temurin@25.0.4.1")
+	vfs["jdk/temurin@25.0.4.1/release"] = &fstest.MapFile{
+		Data: []byte("JAVA_VERSION=\"25.0.4.1\"\nSEMANTIC_VERSION=\"25.0.4.1+1\"\nJAVA_VENDOR=\"Eclipse Adoptium\"\nOS_ARCH=\"x86_64\""),
+		Mode: 0o644,
+	}
+
+	src := &JavmSource{vfs: vfs}
+	jdks, err := src.DiscoverManaged(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(jdks) != 1 {
+		t.Fatalf("expected 1 JDK found, got %d", len(jdks))
+	}
+	if jdks[0].Identifier != "temurin@25.0.4.1" {
+		t.Fatalf("identifier = %q", jdks[0].Identifier)
+	}
+	if jdks[0].Version != "25.0.4.1+1" {
+		t.Fatalf("version = %q, want complete release version", jdks[0].Version)
+	}
+}
+
 func TestJavmSource_Discover_NoJDKs(t *testing.T) {
 	vfs := fstest.MapFS{
 		"jdk/": &fstest.MapFile{},

@@ -110,7 +110,10 @@ func TestRunInstallResolvesExplicitJavaPatchSelector(t *testing.T) {
 func TestRunInstallUsesBuildFreeManagedDirectory(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("JAVM_HOME", home)
-	archive := makeZipArchive(t, []zipTestEntry{{name: javaArchivePath(), body: "java", mode: 0755}})
+	archive := makeZipArchive(t, []zipTestEntry{
+		{name: javaArchivePath(), body: "java", mode: 0755},
+		{name: "jdk/release", body: "JAVA_VERSION=\"25.0.4.1\"\nJAVA_VENDOR=\"Eclipse Adoptium\"\nOS_ARCH=\"x86_64\"", mode: 0644},
+	})
 	client := &versionSelectionClient{
 		packages: []discoapi.Package{{
 			Id:                  "security",
@@ -135,6 +138,13 @@ func TestRunInstallUsesBuildFreeManagedDirectory(t *testing.T) {
 	fullVersionPath := filepath.Join(cfg.Dir(), "jdk", "temurin@25.0.4.1+1")
 	if _, err := os.Stat(fullVersionPath); !os.IsNotExist(err) {
 		t.Fatalf("full build version path unexpectedly exists: %v", err)
+	}
+	version, err = runInstall(context.Background(), client, "temurin@25", "")
+	if err != nil {
+		t.Fatalf("idempotent runInstall() error = %v", err)
+	}
+	if version != "temurin@25.0.4.1+1" {
+		t.Fatalf("idempotent installed version = %q", version)
 	}
 }
 

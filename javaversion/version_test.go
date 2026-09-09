@@ -19,6 +19,7 @@ func TestJavaVersionOrdering(t *testing.T) {
 		{name: "numeric sequence before build", left: "25.0.4+7", right: "25.0.4.1+1", want: -1},
 		{name: "patch build numbers", left: "25.0.4.1+1", right: "25.0.4.1+2", want: -1},
 		{name: "additional numeric element", left: "25.0.4.1", right: "25.0.4.1.2", want: -1},
+		{name: "build before optional information", left: "25+1", right: "25+2-linux", want: -1},
 	}
 
 	for _, tt := range tests {
@@ -73,6 +74,23 @@ func TestJavaVersionWithoutBuild(t *testing.T) {
 	}
 	if got := version.WithoutBuild(); got != "temurin@25.0.4.1" {
 		t.Fatalf("WithoutBuild() = %q", got)
+	}
+}
+
+func TestJavaVersionSameReleaseIgnoresBuild(t *testing.T) {
+	withoutBuild, err := ParseVersion("temurin@25.0.4.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	withBuild, err := ParseVersion("temurin@25.0.4.1+1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !withoutBuild.SameRelease(withBuild) {
+		t.Fatalf("versions should identify the same release: %q and %q", withoutBuild, withBuild)
+	}
+	if withoutBuild.Equals(withBuild) {
+		t.Fatal("versions with different build information must not be fully equal")
 	}
 }
 

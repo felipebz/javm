@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/felipebz/javm/javaversion"
 )
 
 var identifierRegexp = regexp.MustCompile("[^a-z0-9]+")
@@ -133,7 +135,7 @@ func ValidateJDKContext(ctx context.Context, vfs fs.FS, runner Runner, root, p, 
 
 	result := JDK{
 		Path:         fullPath,
-		Version:      md["JAVA_VERSION"],
+		Version:      completeJDKVersion(md),
 		Vendor:       md["JAVA_VENDOR"],
 		Architecture: normalizeArchitecture(md["OS_ARCH"]),
 		Source:       source,
@@ -164,6 +166,17 @@ func ValidateJDKContext(ctx context.Context, vfs fs.FS, runner Runner, root, p, 
 	}
 
 	return result, true, nil
+}
+
+func completeJDKVersion(metadata map[string]string) string {
+	for _, key := range []string{"SEMANTIC_VERSION", "FULL_VERSION", "JAVA_RUNTIME_VERSION"} {
+		if candidate := metadata[key]; candidate != "" {
+			if _, err := javaversion.ParseVersion(candidate); err == nil {
+				return candidate
+			}
+		}
+	}
+	return metadata["JAVA_VERSION"]
 }
 
 func ExtractMetadataFromReleaseFile(vfs fs.FS, jdkDir string) (map[string]string, error) {

@@ -127,6 +127,31 @@ func (v *Version) Compare(other *Version) int {
 }
 
 func compareUnqualified(left, right *Version) int {
+	if result := compareNumericAndPrerelease(left, right); result != 0 {
+		return result
+	}
+
+	// A missing build is treated as build zero. This keeps a plain release
+	// below a positive build while making +0 equivalent to an omitted build.
+	if left.build < right.build {
+		return -1
+	}
+	if left.build > right.build {
+		return 1
+	}
+
+	return compareIdentifiers(left.optional, right.optional, false)
+}
+
+func compareRelease(left, right *Version) int {
+	if result := compareNumericAndPrerelease(left, right); result != 0 {
+		return result
+	}
+
+	return compareIdentifiers(left.optional, right.optional, false)
+}
+
+func compareNumericAndPrerelease(left, right *Version) int {
 	max := max(len(left.numeric), len(right.numeric))
 	for i := range max {
 		lv := left.numericValue(i)
@@ -143,16 +168,7 @@ func compareUnqualified(left, right *Version) int {
 		return result
 	}
 
-	// A missing build is treated as build zero. This keeps a plain release
-	// below a positive build while making +0 equivalent to an omitted build.
-	if left.build < right.build {
-		return -1
-	}
-	if left.build > right.build {
-		return 1
-	}
-
-	return compareIdentifiers(left.optional, right.optional, false)
+	return 0
 }
 
 func compareIdentifiers(left, right []identifier, numericRules bool) int {
@@ -208,6 +224,16 @@ func (v *Version) GreaterThan(other *Version) bool { return v.Compare(other) > 0
 // Equals reports whether both versions have the same Java version semantics,
 // including qualifier, pre-release, build, and optional information.
 func (v *Version) Equals(other *Version) bool { return v.Compare(other) == 0 }
+
+// SameRelease reports whether both versions identify the same Java release
+// while ignoring the build number. It is intended for local JDK metadata
+// whose JAVA_VERSION field omits the build, not for ordering versions.
+func (v *Version) SameRelease(other *Version) bool {
+	if v.qualifier != other.qualifier {
+		return false
+	}
+	return compareRelease(v, other) == 0
+}
 
 func (v *Version) numericValue(index int) uint64 {
 	if index >= len(v.numeric) {

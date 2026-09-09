@@ -121,9 +121,20 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			}
 			if version, versionErr := javaversion.ParseVersion(jdk.Version); versionErr == nil {
 				qualified, qualifiedErr := javaversion.ParseVersion(ver.Qualifier() + "@" + version.String())
-				return qualifiedErr == nil && qualified.Equals(ver)
+				if qualifiedErr != nil {
+					return false
+				}
+				if qualified.Equals(ver) {
+					return true
+				}
+				_, hasBuild := version.BuildNumber()
+				return !hasBuild && qualified.SameRelease(ver)
 			}
-			return identifier.Equals(ver)
+			if identifier.Equals(ver) {
+				return true
+			}
+			_, hasBuild := identifier.BuildNumber()
+			return !hasBuild && identifier.SameRelease(ver)
 		}) {
 			return ver.String(), nil
 		}
