@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -42,8 +43,10 @@ func TestJavmSource_Discover(t *testing.T) {
 
 func TestJavmSource_DiscoverPreservesCompleteReleaseVersion(t *testing.T) {
 	vfs := fstest.MapFS{}
-	createFakeJDK(t, vfs, "jdk", "temurin@25.0.4.1")
-	vfs["jdk/temurin@25.0.4.1/release"] = &fstest.MapFile{
+	name := "temurin@25.0.4.1"
+	createFakeJDK(t, vfs, "jdk", name)
+	releasePath := path.Join(ExpectedJDKDir(path.Join("jdk", name), runtime.GOOS), "release")
+	vfs[releasePath] = &fstest.MapFile{
 		Data: []byte("JAVA_VERSION=\"25.0.4.1\"\nSEMANTIC_VERSION=\"25.0.4.1+1\"\nJAVA_VENDOR=\"Eclipse Adoptium\"\nOS_ARCH=\"x86_64\""),
 		Mode: 0o644,
 	}
