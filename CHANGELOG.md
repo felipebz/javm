@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/felipebz/javm/compare/v0.15.3...v0.16.0) (2026-09-10)
+
+
+### Features
+
+* **ls:** show selectors that resolve to each JDK ([6ed97f4](https://github.com/felipebz/javm/commit/6ed97f47d734f3669639a094cc28f3c4e01e868a))
+
 ## [0.15.3](https://github.com/felipebz/javm/compare/v0.15.2...v0.15.3) (2026-09-09)
 
 
