@@ -12,19 +12,24 @@ import (
 	"github.com/felipebz/javm/discovery"
 )
 
+// resolveJDKFromList resolves a selector against a preloaded slice of JDKs,
+// keeping alias resolution and discovery selector matching in one place.
+func resolveJDKFromList(jdks []discovery.JDK, selector string) (discovery.JDK, error) {
+	if aliasValue := getAlias(selector); aliasValue != "" {
+		selector = aliasValue
+	}
+	return FindBestMatchJDK(jdks, selector)
+}
+
 // resolveJDKContext is the common local-resolution path used by commands
 // that operate on a selected JDK. It deliberately keeps aliases and the
 // discovery selector matching in one place.
 func resolveJDKContext(ctx context.Context, selector string) (discovery.JDK, error) {
-	if aliasValue := getAlias(selector); aliasValue != "" {
-		selector = aliasValue
-	}
-
 	jdks, err := LsContext(ctx, false)
 	if err != nil {
 		return discovery.JDK{}, err
 	}
-	return FindBestMatchJDK(jdks, selector)
+	return resolveJDKFromList(jdks, selector)
 }
 
 type jdkEnvironment struct {

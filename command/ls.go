@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/felipebz/javm/cfg"
@@ -89,22 +91,23 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 		return discovery.JDK{}, UsageError(err)
 	}
 
-	sort.Slice(jdks, func(i, j int) bool {
-		v1, err1 := javaversion.ParseVersion(jdks[i].Version)
-		v2, err2 := javaversion.ParseVersion(jdks[j].Version)
+	candidates := slices.Clone(jdks)
+	sort.Slice(candidates, func(i, j int) bool {
+		v1, err1 := javaversion.ParseVersion(candidates[i].Version)
+		v2, err2 := javaversion.ParseVersion(candidates[j].Version)
 		if err1 == nil && err2 == nil {
 			return v2.LessThan(v1)
 		}
-		if jdks[i].Version != jdks[j].Version {
-			return jdks[i].Version > jdks[j].Version
+		if candidates[i].Version != candidates[j].Version {
+			return candidates[i].Version > candidates[j].Version
 		}
-		return jdks[i].Identifier < jdks[j].Identifier
+		return candidates[i].Identifier < candidates[j].Identifier
 	})
 
 	var fallback discovery.JDK
 	hasFallback := false
 
-	for _, jdk := range jdks {
+	for _, jdk := range candidates {
 		v, err := parseJDKVersionForRange(jdk, rng)
 
 		if err == nil && rng.Contains(v) {
@@ -155,15 +158,18 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *javaversion.
 		return filtered[i].Identifier < filtered[j].Identifier
 	})
 
+	selectedByMap := computeSelectedBy(jdks, filtered)
+
 	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 	if showDetails {
-		if _, err := fmt.Fprintln(tw, "SOURCE\tNAME\tVENDOR\tARCHITECTURE\tPATH"); err != nil {
+		if _, err := fmt.Fprintln(tw, "SOURCE\tNAME\tSELECTED BY\tVENDOR\tARCHITECTURE\tPATH"); err != nil {
 			return fmt.Errorf("write installed JDK header: %w", err)
 		}
 		for _, jdk := range filtered {
-			if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+			if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 				jdk.Source,
 				jdk.Identifier,
+				selectedByMap[jdkKey(jdk)],
 				jdk.Vendor,
 				jdk.Architecture,
 				jdk.Path,
@@ -172,11 +178,18 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *javaversion.
 			}
 		}
 	} else {
-		if _, err := fmt.Fprintln(tw, "NAME\tSOURCE"); err != nil {
+		if _, err := fmt.Fprintln(tw, "NAME\tSOURCE\tSELECTED BY"); err != nil {
 			return fmt.Errorf("write installed JDK header: %w", err)
 		}
 		for _, jdk := range filtered {
-			if _, err := fmt.Fprintf(tw, "%s\t%s\n", jdk.Identifier, jdk.Source); err != nil {
+			sel := selectedByMap[jdkKey(jdk)]
+			var err error
+			if sel != "" {
+				_, err = fmt.Fprintf(tw, "%s\t%s\t%s\n", jdk.Identifier, jdk.Source, sel)
+			} else {
+				_, err = fmt.Fprintf(tw, "%s\t%s\n", jdk.Identifier, jdk.Source)
+			}
+			if err != nil {
 				return fmt.Errorf("write installed JDK: %w", err)
 			}
 		}
@@ -185,6 +198,118 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *javaversion.
 		return fmt.Errorf("flush installed JDK output: %w", err)
 	}
 	return nil
+}
+
+func computeSelectedBy(allJDKs, displayedJDKs []discovery.JDK) map[string]string {
+	selectedBy := make(map[string]string, len(displayedJDKs))
+	if len(allJDKs) == 0 || len(displayedJDKs) == 0 {
+		return selectedBy
+	}
+
+	uniqueMajors := make(map[string]struct{})
+	uniqueDistMajors := make(map[string]struct{})
+
+	for _, jdk := range displayedJDKs {
+		dist, major := extractJDKDistributionAndMajor(jdk)
+		if major != "" {
+			uniqueMajors[major] = struct{}{}
+			if dist != "" {
+				uniqueDistMajors[dist+"@"+major] = struct{}{}
+			}
+		}
+	}
+
+	majorWinners := make(map[string]string)
+	distMajorWinners := make(map[string][]string)
+
+	for major := range uniqueMajors {
+		winner, err := resolveJDKFromList(allJDKs, major)
+		if err == nil {
+			majorWinners[jdkKey(winner)] = major
+		}
+	}
+
+	for distMajor := range uniqueDistMajors {
+		winner, err := resolveJDKFromList(allJDKs, distMajor)
+		if err == nil {
+			winnerKey := jdkKey(winner)
+			distMajorWinners[winnerKey] = append(distMajorWinners[winnerKey], distMajor)
+		}
+	}
+
+	for _, jdk := range displayedJDKs {
+		key := jdkKey(jdk)
+		var selectors []string
+		if major, ok := majorWinners[key]; ok {
+			selectors = append(selectors, major)
+		}
+		if dms, ok := distMajorWinners[key]; ok {
+			slices.Sort(dms)
+			selectors = append(selectors, dms...)
+		}
+		if len(selectors) > 0 {
+			selectedBy[key] = strings.Join(selectors, ", ")
+		}
+	}
+
+	return selectedBy
+}
+
+func jdkKey(jdk discovery.JDK) string {
+	return jdk.Source + "|" + jdk.Identifier + "|" + jdk.Version + "|" + jdk.Path
+}
+
+func extractJDKDistributionAndMajor(jdk discovery.JDK) (distribution, major string) {
+	id := jdk.Identifier
+	var verPart string
+	if dist, ver, ok := strings.Cut(id, "@"); ok {
+		distribution = dist
+		verPart = ver
+	} else {
+		verPart = id
+	}
+
+	major = extractMajor(verPart)
+	if major == "" && jdk.Version != "" {
+		major = extractMajor(jdk.Version)
+	}
+	return distribution, major
+}
+
+func extractMajor(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return ""
+	}
+	if strings.HasPrefix(v, "1.") {
+		parts := strings.Split(v, ".")
+		if len(parts) > 1 {
+			prefix := extractNumericPrefix(parts[1])
+			if prefix != "" && prefix != "0" {
+				return prefix
+			}
+		}
+	}
+	parts := strings.Split(v, ".")
+	if len(parts) > 0 {
+		prefix := extractNumericPrefix(parts[0])
+		if prefix != "" && prefix != "0" {
+			return prefix
+		}
+	}
+	return ""
+}
+
+func extractNumericPrefix(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		} else {
+			break
+		}
+	}
+	return b.String()
 }
 
 func parseJDKVersionForRange(jdk discovery.JDK, rng *javaversion.Range) (*javaversion.Version, error) {
