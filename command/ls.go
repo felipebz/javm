@@ -8,7 +8,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
@@ -37,7 +36,10 @@ func NewLsCommand() *cobra.Command {
 				return err
 			}
 
-			return printInstalledVersions(cmd.OutOrStdout(), jdks, rng, showDetails)
+			out := cmd.OutOrStdout()
+			restoreConsole := enableANSIConsole(out)
+			defer restoreConsole()
+			return printInstalledVersions(out, newStyles(out), jdks, rng, showDetails)
 		},
 	}
 	cmd.Flags().BoolVarP(&showDetails, "details", "d", false, "Show detailed information about discovered JDKs")
@@ -129,7 +131,7 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 	return discovery.JDK{}, NotFoundError(fmt.Errorf("%s isn't installed", rng.String()))
 }
 
-func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *javaversion.Range, showDetails bool) error {
+func printInstalledVersions(w io.Writer, styles styles, jdks []discovery.JDK, rng *javaversion.Range, showDetails bool) error {
 	// Filter by range
 	var filtered []discovery.JDK
 	for _, jdk := range jdks {
@@ -160,44 +162,57 @@ func printInstalledVersions(w io.Writer, jdks []discovery.JDK, rng *javaversion.
 
 	selectedByMap := computeSelectedBy(jdks, filtered)
 
-	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 	if showDetails {
-		if _, err := fmt.Fprintln(tw, "SOURCE\tNAME\tSELECTED BY\tVENDOR\tARCHITECTURE\tPATH"); err != nil {
-			return fmt.Errorf("write installed JDK header: %w", err)
-		}
+		rows := make([][]tableCell, 0, len(filtered)+1)
+		rows = append(rows, []tableCell{
+			{"SOURCE", roleHeader},
+			{"NAME", roleHeader},
+			{"SELECTED BY", roleHeader},
+			{"VENDOR", roleHeader},
+			{"ARCHITECTURE", roleHeader},
+			{"PATH", roleHeader},
+		})
 		for _, jdk := range filtered {
-			if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
-				jdk.Source,
-				jdk.Identifier,
-				selectedByMap[jdkKey(jdk)],
-				jdk.Vendor,
-				jdk.Architecture,
-				jdk.Path,
-			); err != nil {
-				return fmt.Errorf("write installed JDK: %w", err)
-			}
+			selectedBy := selectedByMap[jdkKey(jdk)]
+			rows = append(rows, []tableCell{
+				{jdk.Source, roleDim},
+				{jdk.Identifier, nameRole(selectedBy)},
+				{selectedBy, roleAccent},
+				{jdk.Vendor, roleDefault},
+				{jdk.Architecture, roleDefault},
+				{jdk.Path, roleDefault},
+			})
 		}
-	} else {
-		if _, err := fmt.Fprintln(tw, "NAME\tSOURCE\tSELECTED BY"); err != nil {
-			return fmt.Errorf("write installed JDK header: %w", err)
-		}
-		for _, jdk := range filtered {
-			sel := selectedByMap[jdkKey(jdk)]
-			var err error
-			if sel != "" {
-				_, err = fmt.Fprintf(tw, "%s\t%s\t%s\n", jdk.Identifier, jdk.Source, sel)
-			} else {
-				_, err = fmt.Fprintf(tw, "%s\t%s\n", jdk.Identifier, jdk.Source)
-			}
-			if err != nil {
-				return fmt.Errorf("write installed JDK: %w", err)
-			}
-		}
+		return writeTable(w, styles, rows)
 	}
-	if err := tw.Flush(); err != nil {
-		return fmt.Errorf("flush installed JDK output: %w", err)
+
+	rows := make([][]tableCell, 0, len(filtered)+1)
+	rows = append(rows, []tableCell{
+		{"NAME", roleHeader},
+		{"SOURCE", roleHeader},
+		{"SELECTED BY", roleHeader},
+	})
+	for _, jdk := range filtered {
+		selectedBy := selectedByMap[jdkKey(jdk)]
+		row := []tableCell{
+			{jdk.Identifier, nameRole(selectedBy)},
+			{jdk.Source, roleDim},
+		}
+		if selectedBy != "" {
+			row = append(row, tableCell{selectedBy, roleAccent})
+		}
+		rows = append(rows, row)
 	}
-	return nil
+	return writeTable(w, styles, rows)
+}
+
+// nameRole keeps the JDKs that win one of the selectors shown in SELECTED BY at
+// normal intensity and dims the others, which stay readable but less prominent.
+func nameRole(selectedBy string) styleRole {
+	if selectedBy == "" {
+		return roleDim
+	}
+	return roleDefault
 }
 
 func computeSelectedBy(allJDKs, displayedJDKs []discovery.JDK) map[string]string {

@@ -14,6 +14,7 @@ import (
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/javaversion"
+	"github.com/muesli/termenv"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -657,5 +658,145 @@ func TestLsSelectedBy_DetailsOutput(t *testing.T) {
 	// liberica@25.0.2 has no selected by, but contains BellSoft and path
 	if !strings.Contains(lines[2], "BellSoft") || !strings.Contains(lines[2], "/jdks/liberica@25.0.2") {
 		t.Errorf("expected line 2 details, got: %s", lines[2])
+	}
+}
+
+func lsStyledSample() []discovery.JDK {
+	return []discovery.JDK{
+		{Identifier: "temurin@25.0.4.1", Version: "25.0.4.1", Source: "javm", Vendor: "Eclipse Adoptium", Architecture: "x64", Path: "/jdks/temurin@25.0.4.1"},
+		{Identifier: "liberica@25.0.4.1", Version: "25.0.4.1", Source: "javm", Vendor: "BellSoft", Architecture: "x64", Path: "/jdks/liberica@25.0.4.1"},
+		{Identifier: "graalvm@25.0.2", Version: "25.0.2", Source: "javm", Vendor: "Oracle Corporation", Architecture: "x64", Path: "/jdks/graalvm@25.0.2"},
+		{Identifier: "liberica@25.0.2", Version: "25.0.2", Source: "javm", Vendor: "BellSoft", Architecture: "x64", Path: "/jdks/liberica@25.0.2"},
+		{Identifier: "temurin@21.0.12.1", Version: "21.0.12.1", Source: "javm", Vendor: "Eclipse Adoptium", Architecture: "arm64", Path: "/jdks/temurin@21.0.12.1"},
+		{Identifier: "oracle-corporation-system@8", Version: "1.8.0_442", Source: "system"},
+	}
+}
+
+func TestNewLsCommand_PlainOutputHasNoEscapes(t *testing.T) {
+	cleanup := setupMockLs()
+	defer cleanup()
+	clearColorEnv(t)
+
+	mockLsResult = lsStyledSample()
+
+	tests := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{name: "ls", want: wantLsPlain},
+		{name: "ls --details", args: []string{"--details"}, want: wantLsDetailsPlain},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := NewLsCommand()
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetArgs(tt.args)
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			got := out.String()
+			if strings.Contains(got, "\x1b") {
+				t.Errorf("non-interactive output contains escape sequences:\n%q", got)
+			}
+			assertPlainLines(t, got, tt.want)
+		})
+	}
+}
+
+// wantLsPlain and wantLsDetailsPlain are the layouts produced before the
+// styling was added: plain output must keep them unchanged. Trailing spaces are
+// ignored because they are not visible.
+var (
+	wantLsPlain = []string{
+		"NAME                          SOURCE   SELECTED BY",
+		"temurin@25.0.4.1              javm     25, temurin@25",
+		"liberica@25.0.4.1             javm     liberica@25",
+		"graalvm@25.0.2                javm     graalvm@25",
+		"liberica@25.0.2               javm",
+		"temurin@21.0.12.1             javm     21, temurin@21",
+		"oracle-corporation-system@8   system   8, oracle-corporation-system@8",
+	}
+	wantLsDetailsPlain = []string{
+		"SOURCE   NAME                          SELECTED BY                      VENDOR               ARCHITECTURE   PATH",
+		"javm     temurin@25.0.4.1              25, temurin@25                   Eclipse Adoptium     x64            /jdks/temurin@25.0.4.1",
+		"javm     liberica@25.0.4.1             liberica@25                      BellSoft             x64            /jdks/liberica@25.0.4.1",
+		"javm     graalvm@25.0.2                graalvm@25                       Oracle Corporation   x64            /jdks/graalvm@25.0.2",
+		"javm     liberica@25.0.2                                                BellSoft             x64            /jdks/liberica@25.0.2",
+		"javm     temurin@21.0.12.1             21, temurin@21                   Eclipse Adoptium     arm64          /jdks/temurin@21.0.12.1",
+		"system   oracle-corporation-system@8   8, oracle-corporation-system@8",
+	}
+)
+
+func assertPlainLines(t *testing.T, got string, want []string) {
+	t.Helper()
+	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+	if len(lines) != len(want) {
+		t.Fatalf("got %d lines, want %d:\n%s", len(lines), len(want), got)
+	}
+	for i, line := range lines {
+		if trimmed := strings.TrimRight(line, " "); trimmed != want[i] {
+			t.Errorf("line %d = %q, want %q", i, trimmed, want[i])
+		}
+	}
+}
+
+func TestPrintInstalledVersionsStylesSelectedBy(t *testing.T) {
+	clearColorEnv(t)
+
+	for _, details := range []bool{false, true} {
+		name := "ls"
+		if details {
+			name = "ls --details"
+		}
+		t.Run(name, func(t *testing.T) {
+			var plain bytes.Buffer
+			if err := printInstalledVersions(&plain, newStyles(&plain), lsStyledSample(), nil, details); err != nil {
+				t.Fatalf("plain output: %v", err)
+			}
+
+			var styled bytes.Buffer
+			styles := newStyles(&styled, termenv.WithProfile(termenv.TrueColor))
+			if err := printInstalledVersions(&styled, styles, lsStyledSample(), nil, details); err != nil {
+				t.Fatalf("styled output: %v", err)
+			}
+			got := styled.String()
+
+			wantStyled := []string{
+				styles.Header("NAME"),
+				styles.Header("SELECTED BY"),
+				styles.Accent("25, temurin@25"),
+				styles.Accent("liberica@25"),
+				styles.Accent("8, oracle-corporation-system@8"),
+				styles.Dim("liberica@25.0.2"),
+				styles.Dim("javm"),
+				styles.Dim("system"),
+			}
+			for _, want := range wantStyled {
+				if !strings.Contains(got, want) {
+					t.Errorf("styled output is missing %q:\n%q", want, got)
+				}
+			}
+			for _, notStyled := range []string{
+				styles.Dim("temurin@25.0.4.1"),
+				styles.Dim("liberica@25.0.4.1"),
+				styles.Dim("oracle-corporation-system@8"),
+				styles.Accent("javm"),
+			} {
+				if strings.Contains(got, notStyled) {
+					t.Errorf("styled output should not contain %q:\n%q", notStyled, got)
+				}
+			}
+
+			want := wantLsPlain
+			if details {
+				want = wantLsDetailsPlain
+			}
+			assertPlainLines(t, plain.String(), want)
+			assertPlainLines(t, stripANSI(got), want)
+		})
 	}
 }
