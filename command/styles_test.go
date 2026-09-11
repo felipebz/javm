@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -91,10 +92,18 @@ func TestStylesFollowColorOverrides(t *testing.T) {
 			want:  false,
 		},
 		{
-			name:  "terminal without color support",
-			setup: func(t *testing.T) { clearColorEnv(t); t.Setenv("TERM", "dumb") },
-			opts:  []termenv.OutputOption{termenv.WithTTY(true)},
-			want:  false,
+			name: "terminal without color support",
+			setup: func(t *testing.T) {
+				clearColorEnv(t)
+				if runtime.GOOS == "windows" {
+					// termenv derives the color support from the console itself
+					// on Windows, where TERM does not describe it.
+					t.Skip("TERM does not describe the console color support on Windows")
+				}
+				t.Setenv("TERM", "dumb")
+			},
+			opts: []termenv.OutputOption{termenv.WithTTY(true)},
+			want: false,
 		},
 	}
 
