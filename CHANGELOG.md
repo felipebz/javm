@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/felipebz/javm/compare/v0.16.0...v0.17.0) (2026-09-11)
+
+
+### Features
+
+* **ls:** introduce colorized output and enhanced styling ([88aa49f](https://github.com/felipebz/javm/commit/88aa49fb3cf96902198e5d34c8f377ea4f973b46))
+
 ## [0.16.0](https://github.com/felipebz/javm/compare/v0.15.3...v0.16.0) (2026-09-10)
 
 
