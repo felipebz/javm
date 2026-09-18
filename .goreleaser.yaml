@@ -54,6 +54,9 @@ checksum:
     - glob: install.ps1
 
 release:
+  use_existing_draft: true
+  preflight:
+    fail_on_error: true
   extra_files:
     - glob: install.sh
     - glob: install.ps1
