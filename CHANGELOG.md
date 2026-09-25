@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.0](https://github.com/felipebz/javm/compare/v0.16.0...v0.17.0) (2026-09-25)
+
+
+### Features
+
+* **ls:** introduce colorized output and enhanced styling ([88aa49f](https://github.com/felipebz/javm/commit/88aa49fb3cf96902198e5d34c8f377ea4f973b46))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/ulikunitz/xz to v0.5.17 ([#102](https://github.com/felipebz/javm/issues/102)) ([d38d7ea](https://github.com/felipebz/javm/commit/d38d7ea981ec62f341c0ae593886b020728b358f))
+
 ## [0.16.0](https://github.com/felipebz/javm/compare/v0.15.3...v0.16.0) (2026-09-10)
 
 
