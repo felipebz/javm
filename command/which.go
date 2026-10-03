@@ -32,7 +32,7 @@ func NewWhichCommand() *cobra.Command {
 				return err
 			}
 			if dir != "" {
-				if _, err := fmt.Fprintln(cmd.OutOrStdout(), dir); err != nil {
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), sanitizeTerminalText(dir)); err != nil {
 					return fmt.Errorf("write JDK path: %w", err)
 				}
 			}

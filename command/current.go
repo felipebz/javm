@@ -21,7 +21,7 @@ func NewCurrentCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ver := current()
 			if ver != "" {
-				if _, err := fmt.Fprintln(cmd.OutOrStdout(), ver); err != nil {
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), sanitizeTerminalText(ver)); err != nil {
 					return fmt.Errorf("write current version: %w", err)
 				}
 			}

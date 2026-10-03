@@ -85,22 +85,42 @@ type tableCell struct {
 }
 
 func (s styles) cell(c tableCell) string {
+	value := sanitizeTerminalText(c.value)
 	switch c.role {
 	case roleHeader:
-		return s.Header(c.value)
+		return s.Header(value)
 	case roleAccent:
-		return s.Accent(c.value)
+		return s.Accent(value)
 	case roleDim:
-		return s.Dim(c.value)
+		return s.Dim(value)
 	default:
-		return c.value
+		return value
 	}
 }
 
+// sanitizeTerminalText removes the control characters a terminal emulator would
+// interpret as escape sequences. Managed JDK names, installation paths, vendor
+// metadata read from an archive release file, and remote package fields are not
+// authored by javm, so they must not reach the terminal verbatim.
+func sanitizeTerminalText(v string) string {
+	return strings.Map(func(r rune) rune {
+		if isTerminalControl(r) {
+			return -1
+		}
+		return r
+	}, v)
+}
+
+// isTerminalControl reports whether r is a C0, DEL, or C1 control character.
+func isTerminalControl(r rune) bool {
+	return r < 0x20 || r == 0x7f || r >= 0x80 && r <= 0x9f
+}
+
 // writeTable writes rows as a space aligned table. The layout is computed by
-// text/tabwriter over the plain values, so ANSI escapes never take part in the
-// column width calculation; the styles are applied to the finished cells
-// afterwards, preserving the spacing of the unstyled table.
+// text/tabwriter over the plain sanitized values, so neither ANSI escapes nor
+// control characters take part in the column width calculation; the styles are
+// applied to the finished cells afterwards, preserving the spacing of the
+// unstyled table.
 func writeTable(w io.Writer, styles styles, rows [][]tableCell) error {
 	if len(rows) == 0 {
 		return nil
@@ -122,7 +142,7 @@ func layoutTable(rows [][]tableCell) (string, error) {
 	for _, row := range rows {
 		values := make([]string, len(row))
 		for i, cell := range row {
-			values[i] = cell.value
+			values[i] = sanitizeTerminalText(cell.value)
 		}
 		if _, err := fmt.Fprintln(tw, strings.Join(values, "\t")); err != nil {
 			return "", fmt.Errorf("write table row: %w", err)
@@ -154,14 +174,15 @@ func (s styles) styleLine(line string, row []tableCell) string {
 	b.Grow(len(line))
 	offset := 0
 	for _, cell := range row {
-		i := strings.Index(line[offset:], cell.value)
+		value := sanitizeTerminalText(cell.value)
+		i := strings.Index(line[offset:], value)
 		if i < 0 {
 			continue
 		}
 		start := offset + i
 		b.WriteString(line[offset:start])
 		b.WriteString(s.cell(cell))
-		offset = start + len(cell.value)
+		offset = start + len(value)
 	}
 	b.WriteString(line[offset:])
 	return b.String()

@@ -101,7 +101,11 @@ func printVersions(out io.Writer, versions []*javaversion.Version, packageIndex 
 			headerPrinted = true
 		}
 
-		if _, err := fmt.Fprintf(out, "%-20s %-15s %s %s\n", v.TrimTo(value), pkg.JavaVersion, pkg.Distribution, pkg.DistributionVersion); err != nil {
+		identifier := sanitizeTerminalText(v.TrimTo(value))
+		javaVersion := sanitizeTerminalText(pkg.JavaVersion)
+		distribution := sanitizeTerminalText(pkg.Distribution)
+		distributionVersion := sanitizeTerminalText(pkg.DistributionVersion)
+		if _, err := fmt.Fprintf(out, "%-20s %-15s %s %s\n", identifier, javaVersion, distribution, distributionVersion); err != nil {
 			return fmt.Errorf("write remote JDK: %w", err)
 		}
 	}

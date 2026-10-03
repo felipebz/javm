@@ -33,7 +33,7 @@ func printDistributions(w io.Writer, distributions []discoapi.Distribution) erro
 		return fmt.Errorf("write distribution header: %w", err)
 	}
 	for _, dist := range distributions {
-		if _, err := fmt.Fprintf(w, "%-20s %s\n", dist.APIParameter, dist.Name); err != nil {
+		if _, err := fmt.Fprintf(w, "%-20s %s\n", sanitizeTerminalText(dist.APIParameter), sanitizeTerminalText(dist.Name)); err != nil {
 			return fmt.Errorf("write distribution: %w", err)
 		}
 	}
