@@ -162,6 +162,7 @@ func prepareStagedJDK(ctx context.Context, extractRoot, transactionDir, goos str
 
 func assertJavaDistribution(dir string, goos string) error {
 	javaPath := filepath.FromSlash(discovery.ExpectedJavaPath(dir, goos))
+	physicalRoot := physicalPath(dir)
 	if err := assertNoEscapingComponents(dir, javaPath); err != nil {
 		return err
 	}
@@ -177,7 +178,7 @@ func assertJavaDistribution(dir string, goos string) error {
 		if err != nil {
 			return fmt.Errorf("resolve Java executable symlink: %w", err)
 		}
-		if !pathWithinRoot(dir, resolved) {
+		if !pathWithinRoot(physicalRoot, resolved) {
 			return fmt.Errorf("Java executable symlink escapes installation root: %s", javaPath)
 		}
 		info, err = os.Stat(resolved)
@@ -205,10 +206,7 @@ func assertNoEscapingComponents(root, target string) error {
 	if len(components) < 2 {
 		return nil
 	}
-	physicalRoot := root
-	if evaluated, evalErr := filepath.EvalSymlinks(root); evalErr == nil {
-		physicalRoot = evaluated
-	}
+	physicalRoot := physicalPath(root)
 	current := root
 	for _, component := range components[:len(components)-1] {
 		current = filepath.Join(current, component)
@@ -633,10 +631,7 @@ func (s *extractionState) makeHardlink(target, linkTarget string) error {
 // extraction root. The result is rejected whenever it leaves the root, and the
 // number of followed links is bounded so a link cycle cannot stall extraction.
 func (s *extractionState) resolveLinkTarget(startDir, target string) (string, error) {
-	root := s.root
-	if evaluated, err := filepath.EvalSymlinks(root); err == nil {
-		root = evaluated
-	}
+	root := physicalPath(s.root)
 	current, err := filepath.EvalSymlinks(startDir)
 	if err != nil {
 		return "", fmt.Errorf("resolve link directory %q: %w", startDir, err)
@@ -713,6 +708,16 @@ func (s *extractionState) ensureParents(target string) error {
 		}
 	}
 	return nil
+}
+
+// physicalPath returns value with its existing components resolved to their real
+// locations. macOS reaches temporary directories through the /var ->
+// /private/var symlink, so containment checks compare physical paths.
+func physicalPath(value string) string {
+	if evaluated, err := filepath.EvalSymlinks(value); err == nil {
+		return evaluated
+	}
+	return value
 }
 
 func pathWithinRoot(root, candidate string) bool {

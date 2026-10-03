@@ -29,6 +29,7 @@ func symlinkChainEntries(hops int, tail ...tarTestEntry) []tarTestEntry {
 
 func assertNoEscapingSymlinks(t *testing.T, root string) {
 	t.Helper()
+	physicalRoot := physicalPath(root)
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -40,7 +41,7 @@ func assertNoEscapingSymlinks(t *testing.T, root string) {
 		if evalErr != nil {
 			return nil
 		}
-		if !pathWithinRoot(root, resolved) {
+		if !pathWithinRoot(physicalRoot, resolved) {
 			t.Errorf("symlink %s resolves outside the extraction root: %s", path, resolved)
 		}
 		return nil
@@ -48,6 +49,22 @@ func assertNoEscapingSymlinks(t *testing.T, root string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+// jdkHomeFor returns the directory that holds bin for goos, matching the
+// layouts discovery accepts.
+func jdkHomeFor(root, goos string) string {
+	if goos == "darwin" {
+		return filepath.Join(root, "Contents", "Home")
+	}
+	return root
+}
+
+func javaExecutableName(goos string) string {
+	if goos == "windows" {
+		return "java.exe"
+	}
+	return "java"
 }
 
 func TestArchiveRejectsSymlinkChainEscapingRoot(t *testing.T) {
@@ -181,29 +198,66 @@ func TestInstallPreservesInRootSymlinks(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("creating symlinks requires privileges on Windows")
 	}
+	prefix := "jdk/"
 	if runtime.GOOS == "darwin" {
-		t.Skip("the tar fixture is not a macOS bundle layout")
+		prefix = "jdk/Contents/Home/"
 	}
 	archive := makeTarGzArchive(t, []tarTestEntry{
-		{name: "jdk/lib/libfoo.so.1", body: "library", typeflag: tar.TypeReg},
-		{name: "jdk/lib/libfoo.so", linkname: "libfoo.so.1", typeflag: tar.TypeSymlink},
-		{name: "jdk/lib/libjava.so", linkname: "libfoo.so", typeflag: tar.TypeSymlink},
-		{name: "jdk/bin/java", body: "java", typeflag: tar.TypeReg},
+		{name: prefix + "lib/libfoo.so.1", body: "library", typeflag: tar.TypeReg},
+		{name: prefix + "lib/libfoo.so", linkname: "libfoo.so.1", typeflag: tar.TypeSymlink},
+		{name: prefix + "lib/libjava.so", linkname: "libfoo.so", typeflag: tar.TypeSymlink},
+		{name: prefix + "bin/java", body: "java", typeflag: tar.TypeReg},
 	})
 	dst := filepath.Join(t.TempDir(), "jdk")
 
 	if err := install(context.Background(), archive, dst); err != nil {
 		t.Fatalf("install failed: %v", err)
 	}
-	resolved, err := filepath.EvalSymlinks(filepath.Join(dst, "lib", "libjava.so"))
+	home := jdkHomeFor(dst, runtime.GOOS)
+	resolved, err := filepath.EvalSymlinks(filepath.Join(home, "lib", "libjava.so"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !pathWithinRoot(dst, resolved) {
+	if !pathWithinRoot(physicalPath(dst), resolved) {
 		t.Fatalf("in-root symlink resolved outside the JDK: %s", resolved)
 	}
 	if err := assertJavaDistribution(dst, runtime.GOOS); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestPrepareStagedJDKAcceptsMacOSBundle checks the darwin branch on every
+// platform: a Contents/Home bundle with in-root symlinks is normalized and
+// accepted, so the containment checks do not reject real bundle layouts.
+func TestPrepareStagedJDKAcceptsMacOSBundle(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+	transactionDir := t.TempDir()
+	extractRoot := filepath.Join(transactionDir, "extract")
+	home := filepath.Join(extractRoot, "jdk-21.jdk", "Contents", "Home")
+	if err := os.MkdirAll(filepath.Join(home, "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(home, "lib"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "bin", "java"), []byte("java"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "lib", "libjli.dylib"), []byte("lib"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("libjli.dylib", filepath.Join(home, "lib", "libjli-current.dylib")); err != nil {
+		t.Fatal(err)
+	}
+
+	readyRoot, err := prepareStagedJDK(context.Background(), extractRoot, transactionDir, "darwin")
+	if err != nil {
+		t.Fatalf("prepareStagedJDK() error = %v, want the bundle to be accepted", err)
+	}
+	if err := assertJavaDistribution(readyRoot, "darwin"); err != nil {
+		t.Fatalf("assertJavaDistribution() error = %v, want the bundle to be accepted", err)
 	}
 }
 
@@ -212,19 +266,53 @@ func TestJavaDistributionRejectsSymlinkedBinResolvingOutside(t *testing.T) {
 		t.Skip("creating symlinks requires privileges on Windows")
 	}
 	outside := t.TempDir()
-	javaName := "java"
-	if runtime.GOOS == "windows" {
-		javaName = "java.exe"
-	}
-	if err := os.WriteFile(filepath.Join(outside, javaName), []byte("java"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	root := t.TempDir()
-	if err := os.Symlink(outside, filepath.Join(root, "bin")); err != nil {
-		t.Fatal(err)
-	}
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		t.Run(goos, func(t *testing.T) {
+			javaName := javaExecutableName(goos)
+			if err := os.WriteFile(filepath.Join(outside, javaName), []byte("java"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			root := t.TempDir()
+			home := jdkHomeFor(root, goos)
+			if err := os.MkdirAll(home, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(outside, filepath.Join(home, "bin")); err != nil {
+				t.Fatal(err)
+			}
 
-	if err := assertJavaDistribution(root, runtime.GOOS); err == nil || !strings.Contains(err.Error(), "outside the installation root") {
-		t.Fatalf("assertJavaDistribution() error = %v, want a containment error", err)
+			if err := assertJavaDistribution(root, goos); err == nil || !strings.Contains(err.Error(), "outside the installation root") {
+				t.Fatalf("assertJavaDistribution() error = %v, want a containment error", err)
+			}
+		})
+	}
+}
+
+// TestJavaDistributionAcceptsRootReachedThroughSymlink covers the macOS layout of
+// temporary directories, where /var is a symlink to /private/var, so the managed
+// root is reached through a symlinked component.
+func TestJavaDistributionAcceptsRootReachedThroughSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(t.TempDir(), link); err != nil {
+		t.Fatal(err)
+	}
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		t.Run(goos, func(t *testing.T) {
+			root := filepath.Join(link, goos)
+			bin := filepath.Join(jdkHomeFor(root, goos), "bin")
+			if err := os.MkdirAll(bin, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(bin, javaExecutableName(goos)), []byte("java"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := assertJavaDistribution(root, goos); err != nil {
+				t.Fatalf("assertJavaDistribution() error = %v, want the JDK to be accepted", err)
+			}
+		})
 	}
 }
