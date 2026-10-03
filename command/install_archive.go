@@ -23,6 +23,8 @@ const (
 	maxArchiveEntries = 100_000
 	maxExtractedSize  = int64(4 << 30) // 4 GiB uncompressed
 	maxSymlinkSize    = int64(4 << 10)
+	// maxSymlinkHops bounds a link target resolved against the extraction tree.
+	maxSymlinkHops = 64
 )
 
 type extractionLimits struct {
@@ -160,6 +162,9 @@ func prepareStagedJDK(ctx context.Context, extractRoot, transactionDir, goos str
 
 func assertJavaDistribution(dir string, goos string) error {
 	javaPath := filepath.FromSlash(discovery.ExpectedJavaPath(dir, goos))
+	if err := assertNoEscapingComponents(dir, javaPath); err != nil {
+		return err
+	}
 	info, err := os.Lstat(javaPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -182,6 +187,48 @@ func assertJavaDistribution(dir string, goos string) error {
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("Java executable is not a regular file: %s", javaPath)
+	}
+	return nil
+}
+
+// assertNoEscapingComponents rejects a Java executable path whose intermediate
+// directories are symlinks resolving outside root. The kernel follows those
+// components, so the JDK shape check would otherwise accept a tree whose bin
+// directory lives outside the managed JDK, and a missing component is left for
+// the caller to report.
+func assertNoEscapingComponents(root, target string) error {
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		return fmt.Errorf("%s is outside %s", target, root)
+	}
+	components := strings.Split(rel, string(os.PathSeparator))
+	if len(components) < 2 {
+		return nil
+	}
+	physicalRoot := root
+	if evaluated, evalErr := filepath.EvalSymlinks(root); evalErr == nil {
+		physicalRoot = evaluated
+	}
+	current := root
+	for _, component := range components[:len(components)-1] {
+		current = filepath.Join(current, component)
+		info, statErr := os.Lstat(current)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
+				return nil
+			}
+			return fmt.Errorf("inspect %s: %w", current, statErr)
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			continue
+		}
+		resolved, evalErr := filepath.EvalSymlinks(current)
+		if evalErr != nil {
+			return fmt.Errorf("resolve %s: %w", current, evalErr)
+		}
+		if !pathWithinRoot(physicalRoot, resolved) {
+			return fmt.Errorf("%s resolves outside the installation root: %s", current, resolved)
+		}
 	}
 	return nil
 }
@@ -542,6 +589,9 @@ func (s *extractionState) makeSymlink(rel, target, linkTarget string) error {
 	if err := s.ensureParents(target); err != nil {
 		return err
 	}
+	if _, err := s.resolveLinkTarget(filepath.Dir(target), linkTarget); err != nil {
+		return fmt.Errorf("archive contains unsafe symlink %q -> %q: %w", rel, linkTarget, err)
+	}
 	if _, err := os.Lstat(target); err == nil {
 		return fmt.Errorf("archive symlink collides with existing path %q", target)
 	} else if !os.IsNotExist(err) {
@@ -564,10 +614,76 @@ func (s *extractionState) makeHardlink(target, linkTarget string) error {
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("hardlink target is not a regular file: %q", linkTarget)
 	}
+	// Lstat and link(2) follow the intermediate components of the target, so a
+	// directory that is a symlink to outside the tree would leak an outside
+	// file into the extracted JDK.
+	if _, err := s.resolveLinkTarget(filepath.Dir(linkTarget), filepath.Base(linkTarget)); err != nil {
+		return fmt.Errorf("archive contains unsafe hardlink %q -> %q: %w", target, linkTarget, err)
+	}
 	if err := os.Link(linkTarget, target); err != nil {
 		return fmt.Errorf("create archive hardlink %q: %w", target, err)
 	}
 	return nil
+}
+
+// resolveLinkTarget resolves target the way the kernel resolves it when the
+// extracted entry is used: starting at startDir and following the symlinks the
+// extraction tree already contains. Lexical validation alone misses a relative
+// target such as "a1/.." whose link component is a symlink pointing at the
+// extraction root. The result is rejected whenever it leaves the root, and the
+// number of followed links is bounded so a link cycle cannot stall extraction.
+func (s *extractionState) resolveLinkTarget(startDir, target string) (string, error) {
+	root := s.root
+	if evaluated, err := filepath.EvalSymlinks(root); err == nil {
+		root = evaluated
+	}
+	current, err := filepath.EvalSymlinks(startDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve link directory %q: %w", startDir, err)
+	}
+	if !pathWithinRoot(root, current) {
+		return "", fmt.Errorf("link target escapes extraction root: %q", target)
+	}
+
+	components := strings.Split(filepath.ToSlash(target), "/")
+	hops := 0
+	for len(components) > 0 {
+		component := components[0]
+		components = components[1:]
+		switch component {
+		case "", ".":
+			continue
+		case "..":
+			current = filepath.Dir(current)
+		default:
+			next := filepath.Join(current, filepath.FromSlash(component))
+			info, statErr := os.Lstat(next)
+			if statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+				hops++
+				if hops > maxSymlinkHops {
+					return "", fmt.Errorf("link target follows more than %d symlinks: %q", maxSymlinkHops, target)
+				}
+				stored, readErr := os.Readlink(next)
+				if readErr != nil {
+					return "", fmt.Errorf("read existing symlink %q: %w", next, readErr)
+				}
+				stored = normalizeArchiveSeparators(stored)
+				if stored == "" || filepath.IsAbs(stored) || hasWindowsVolume(stored) {
+					return "", fmt.Errorf("link target escapes extraction root: %q", target)
+				}
+				components = append(strings.Split(filepath.ToSlash(stored), "/"), components...)
+				continue
+			}
+			if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) {
+				return "", fmt.Errorf("inspect link target %q: %w", next, statErr)
+			}
+			current = next
+		}
+		if !pathWithinRoot(root, current) {
+			return "", fmt.Errorf("link target escapes extraction root: %q", target)
+		}
+	}
+	return current, nil
 }
 
 func (s *extractionState) ensureParents(target string) error {
