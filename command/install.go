@@ -140,7 +140,10 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 		}
 	}
 	if dst == "" {
-		dst = filepath.Join(cfg.Dir(), "jdk", ver.WithoutBuild())
+		dst, err = managedInstallDestination(cfg.Dir(), ver.WithoutBuild())
+		if err != nil {
+			return "", err
+		}
 	}
 	var file string
 	var removeDownload bool
@@ -180,4 +183,26 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 		err = errors.New(runtime.GOOS + " OS is not supported")
 	}
 	return ver.String(), err
+}
+
+// Reject unsafe components before Join can normalize untrusted input.
+func managedInstallDestination(home, name string) (string, error) {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, "/\\:") {
+		return "", fmt.Errorf("invalid managed JDK name %q", name)
+	}
+	for _, c := range name {
+		if c < 0x20 || c == 0x7f {
+			return "", fmt.Errorf("invalid managed JDK name %q", name)
+		}
+	}
+	root, err := filepath.Abs(filepath.Join(home, "jdk"))
+	if err != nil {
+		return "", fmt.Errorf("resolve managed JDK root: %w", err)
+	}
+	dst := filepath.Join(root, name)
+	relative, err := filepath.Rel(root, dst)
+	if err != nil || relative != name || filepath.Dir(dst) != root {
+		return "", fmt.Errorf("managed JDK destination escapes root: %q", name)
+	}
+	return dst, nil
 }

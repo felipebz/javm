@@ -262,7 +262,7 @@ func TestStyleTableResolvesRepeatedValuesLeftToRight(t *testing.T) {
 	}
 
 	row := ""
-	for _, line := range strings.Split(styled.String(), "\n") {
+	for line := range strings.SplitSeq(styled.String(), "\n") {
 		if strings.Contains(line, styles.Accent("b-jdk@17")) {
 			row = line
 			break

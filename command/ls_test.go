@@ -513,8 +513,8 @@ func TestLsSelectedBy_InvarianceRule(t *testing.T) {
 		if row.selectedBy == "" {
 			continue
 		}
-		selectors := strings.Split(row.selectedBy, ", ")
-		for _, selector := range selectors {
+		selectors := strings.SplitSeq(row.selectedBy, ", ")
+		for selector := range selectors {
 			resolved, err := resolveJDKFromList(mockLsResult, selector)
 			if err != nil {
 				t.Errorf("selector %q on row %q failed to resolve: %v", selector, row.name, err)
@@ -595,8 +595,8 @@ func TestLsSelectedBy_FullPromptIllustration(t *testing.T) {
 		if row.selectedBy == "" {
 			continue
 		}
-		selectors := strings.Split(row.selectedBy, ", ")
-		for _, selector := range selectors {
+		selectors := strings.SplitSeq(row.selectedBy, ", ")
+		for selector := range selectors {
 			resolved, err := resolveJDKFromList(mockLsResult, selector)
 			if err != nil {
 				t.Fatalf("failed to resolve %q: %v", selector, err)

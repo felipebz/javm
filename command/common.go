@@ -98,6 +98,9 @@ func parseTrimTo(value string) javaversion.VersionPart {
 
 func printForShellToEval(out []string, fd3 string) error {
 	if fd3 != "" {
+		if err := validateShellEnvironmentRecords(out); err != nil {
+			return err
+		}
 		if err := os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0600); err != nil {
 			return fmt.Errorf("write fd3 %q: %w", fd3, err)
 		}
@@ -112,9 +115,44 @@ func printForShellToEval(out []string, fd3 string) error {
 }
 
 func writeShellEnvironment(w io.Writer, out []string) error {
+	if err := validateShellEnvironmentRecords(out); err != nil {
+		return err
+	}
 	for _, line := range out {
 		if _, err := fmt.Fprintln(w, line); err != nil {
 			return shellIntegrationUnavailable()
+		}
+	}
+	return nil
+}
+
+func validateShellEnvironmentRecords(out []string) error {
+	for i, line := range out {
+		if strings.ContainsAny(line, "\r\n\x00") {
+			return fmt.Errorf("invalid shell environment record %d: CR, LF and NUL are not allowed", i+1)
+		}
+		operation, fields, ok := strings.Cut(line, "\t")
+		if !ok {
+			return fmt.Errorf("invalid shell environment record %d: missing tab-separated fields", i+1)
+		}
+		var key string
+		switch operation {
+		case "SET":
+			var value string
+			key, value, ok = strings.Cut(fields, "\t")
+			if !ok || strings.Contains(value, "\t") {
+				return fmt.Errorf("invalid shell environment record %d: SET requires exactly 3 tab-separated fields", i+1)
+			}
+		case "UNSET":
+			key = fields
+			if strings.Contains(key, "\t") {
+				return fmt.Errorf("invalid shell environment record %d: UNSET requires exactly 2 tab-separated fields", i+1)
+			}
+		default:
+			return fmt.Errorf("invalid shell environment record %d: expected SET or UNSET", i+1)
+		}
+		if key == "" {
+			return fmt.Errorf("invalid shell environment record %d: empty key", i+1)
 		}
 	}
 	return nil

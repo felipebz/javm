@@ -79,8 +79,9 @@ func (v *Version) String() string { return v.raw }
 // uses this stable form for managed JDK directory names while retaining the
 // complete version in metadata for ordering and matching.
 func (v *Version) WithoutBuild() string {
-	if plus := strings.IndexByte(v.raw, '+'); plus >= 0 {
-		return v.raw[:plus]
+	start := strings.IndexByte(v.raw, '@') + 1
+	if plus := strings.IndexByte(v.raw[start:], '+'); plus >= 0 {
+		return v.raw[:start+plus]
 	}
 	return v.raw
 }
@@ -247,6 +248,9 @@ func ParseVersion(raw string) (*Version, error) {
 	versionText := raw
 	qualifier := ""
 	if before, after, ok := strings.Cut(raw, "@"); ok {
+		if !validQualifier(before) {
+			return nil, fmt.Errorf("%q is not a valid version", raw)
+		}
 		qualifier = before
 		versionText = after
 	}
@@ -258,6 +262,25 @@ func ParseVersion(raw string) (*Version, error) {
 	parsed.qualifier = qualifier
 	parsed.raw = raw
 	return parsed, nil
+}
+
+// Qualifiers are untrusted identifiers used in paths and shell records.
+func validQualifier(qualifier string) bool {
+	if qualifier == "." || qualifier == ".." {
+		return false
+	}
+	for i := range len(qualifier) {
+		c := qualifier[i]
+		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' {
+			continue
+		}
+		switch c {
+		case '.', '_', '-', '+', '*':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func parseUnqualified(raw string) (*Version, error) {

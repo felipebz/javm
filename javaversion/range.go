@@ -151,7 +151,7 @@ func ParseRange(raw string) (*Range, error) {
 	if at := strings.IndexByte(raw, '@'); at >= 0 {
 		rangeResult.Qualifier = raw[:at]
 		raw = raw[at+1:]
-		if rangeResult.Qualifier == "" || strings.Contains(rangeResult.Qualifier, "@") {
+		if rangeResult.Qualifier == "" || !validQualifier(rangeResult.Qualifier) {
 			return nil, invalidRange(original)
 		}
 		if raw == "" {
