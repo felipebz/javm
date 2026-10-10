@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.17.0](https://github.com/felipebz/javm/compare/v0.16.0...v0.17.0) (2026-10-10)
+
+
+### Features
+
+* **ls:** introduce colorized output and enhanced styling ([88aa49f](https://github.com/felipebz/javm/commit/88aa49fb3cf96902198e5d34c8f377ea4f973b46))
+
+
+### Bug Fixes
+
+* **archive:** reject unsafe symlinks and hardlinks during extraction ([fa4b2bb](https://github.com/felipebz/javm/commit/fa4b2bb4517c8e8f20358a3e0436a2c635e2b019))
+* **deps:** update module github.com/ulikunitz/xz to v0.5.17 ([#102](https://github.com/felipebz/javm/issues/102)) ([d38d7ea](https://github.com/felipebz/javm/commit/d38d7ea981ec62f341c0ae593886b020728b358f))
+* **deps:** update module golang.org/x/sys to v0.49.0 ([80cfc31](https://github.com/felipebz/javm/commit/80cfc3166834d2fc8861348667e41204baf4fa3c))
+* **deps:** update module golang.org/x/sys to v0.49.0 ([8ee3908](https://github.com/felipebz/javm/commit/8ee39087b5a8727531275ee8665e02ff62c25136))
+* **deps:** update module golang.org/x/term to v0.47.0 ([26dca5b](https://github.com/felipebz/javm/commit/26dca5b32c63c70f25d47d7efe735185fe26f6cf))
+* **deps:** update module golang.org/x/term to v0.47.0 ([92520b4](https://github.com/felipebz/javm/commit/92520b4a09b6dc1f8b944703b2d53c5a3f55df9f))
+* **install:** ensure symlink containment checks use physical paths ([f5b54c2](https://github.com/felipebz/javm/commit/f5b54c28027ad11540f5fe31e70c741414d2d788))
+* **output:** sanitize terminal text to prevent unsafe escape sequences ([c8f9bd0](https://github.com/felipebz/javm/commit/c8f9bd03d9725adf00e853a9abff2da0436f9c21))
+* **shell:** validate environment records and managed JDK paths ([c0c20c4](https://github.com/felipebz/javm/commit/c0c20c46a31d7a3bcdb668c1a4a3f4b6cb508517))
+
 ## [0.16.0](https://github.com/felipebz/javm/compare/v0.15.3...v0.16.0) (2026-09-10)
 
 
