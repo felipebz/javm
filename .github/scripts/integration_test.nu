@@ -17,7 +17,7 @@ def main [java_version: string = "25"] {
     javm use $java_version
 
     echo ">>> Validations"
-    let java_home = ($env | get -i JAVA_HOME | default "<unset>")
+    let java_home = ($env.JAVA_HOME? | default "<unset>")
     echo (">>> JAVA_HOME=" + $java_home)
 
     if ($java_home == "<unset>") {
