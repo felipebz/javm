@@ -106,7 +106,7 @@ func TestRunLsRemote_EmptyResult(t *testing.T) {
 		Pkgs: []discoapi.Package{},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "", "major", "")
+	err := runLsRemote(context.Background(), &out, mock, "", lsRemoteOptions{os: "linux", arch: "amd64", latest: "major"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestRunLsRemote_SpecificDistribution(t *testing.T) {
 		},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "zulu", "patch", "")
+	err := runLsRemote(context.Background(), &out, mock, "", lsRemoteOptions{os: "linux", arch: "amd64", distribution: "zulu", latest: "patch"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestRunLsRemote_WithRange(t *testing.T) {
 		},
 	}
 	var out bytes.Buffer
-	err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "", "patch", ">=20")
+	err := runLsRemote(context.Background(), &out, mock, ">=20", lsRemoteOptions{os: "linux", arch: "amd64", latest: "patch"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestRunLsRemoteSelectsLatestCompleteJavaVersion(t *testing.T) {
 		},
 	}
 	var out bytes.Buffer
-	if err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "temurin", "major", ""); err != nil {
+	if err := runLsRemote(context.Background(), &out, mock, "", lsRemoteOptions{os: "linux", arch: "amd64", distribution: "temurin", latest: "major"}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -185,7 +185,7 @@ temurin@25           25.0.4.1+1      temurin 25.0.4.1
 		{Id: "baseline", JavaVersion: "25.0.4+7", Distribution: "temurin", DistributionVersion: "25.0.4"},
 		{Id: "security", JavaVersion: "25.0.4.1+1", Distribution: "temurin", DistributionVersion: "25.0.4.1"},
 	}
-	if err := runLsRemote(context.Background(), &out, mock, "linux", "amd64", "temurin", "major", ""); err != nil {
+	if err := runLsRemote(context.Background(), &out, mock, "", lsRemoteOptions{os: "linux", arch: "amd64", distribution: "temurin", latest: "major"}); err != nil {
 		t.Fatalf("unexpected reverse-order error: %v", err)
 	}
 	if got := out.String(); got != want {

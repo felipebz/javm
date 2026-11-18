@@ -12,11 +12,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type lsRemoteOptions struct {
+	os           string
+	arch         string
+	distribution string
+	latest       string
+}
+
 func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
-	var trimTo string
-	var osFlag string
-	var archFlag string
-	var distributionFlag string
+	var opts lsRemoteOptions
 
 	defaultDistribution, _ := cfg.EffectiveValue("java.default_distribution")
 
@@ -29,34 +33,20 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 			if len(args) > 0 {
 				rangeArg = args[0]
 			}
-
-			normalizedOS := normalizeOS(osFlag)
-			return runLsRemote(
-				cmd.Context(),
-				cmd.OutOrStdout(),
-				client,
-				normalizedOS,
-				archFlag,
-				distributionFlag,
-				trimTo,
-				rangeArg,
-			)
+			normalized := opts
+			normalized.os = normalizeOS(opts.os)
+			return runLsRemote(cmd.Context(), cmd.OutOrStdout(), client, rangeArg, normalized)
 		},
 	}
-	cmd.Flags().StringVar(&osFlag, "os", runtime.GOOS, "Operating System (macos, linux, windows)")
-	cmd.Flags().StringVar(&archFlag, "arch", runtime.GOARCH, "Architecture (amd64, arm64)")
-	cmd.Flags().StringVar(&distributionFlag, "distribution", defaultDistribution, "Java distribution (e.g. temurin, zulu, corretto). Use \"all\" to list all distributions")
-	cmd.Flags().StringVar(&trimTo, "latest", "major",
+	cmd.Flags().StringVar(&opts.os, "os", runtime.GOOS, "Operating System (macos, linux, windows)")
+	cmd.Flags().StringVar(&opts.arch, "arch", runtime.GOARCH, "Architecture (amd64, arm64)")
+	cmd.Flags().StringVar(&opts.distribution, "distribution", defaultDistribution, "Java distribution (e.g. temurin, zulu, corretto). Use \"all\" to list all distributions")
+	cmd.Flags().StringVar(&opts.latest, "latest", "major",
 		"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
 	return cmd
 }
 
-func runLsRemote(
-	ctx context.Context,
-	out io.Writer,
-	client PackagesClient,
-	osFlag, archFlag, distributionFlag, trimTo, rangeArg string,
-) error {
+func runLsRemote(ctx context.Context, out io.Writer, client PackagesClient, rangeArg string, opts lsRemoteOptions) error {
 	var r *javaversion.Range
 	var err error
 	if rangeArg != "" {
@@ -66,20 +56,21 @@ func runLsRemote(
 		}
 	}
 
-	if distributionFlag == "all" {
-		distributionFlag = ""
+	distribution := opts.distribution
+	if distribution == "all" {
+		distribution = ""
 	}
-	packageIndex, err := makePackageIndex(ctx, client, osFlag, archFlag, distributionFlag)
+	packageIndex, err := makePackageIndex(ctx, client, opts.os, opts.arch, distribution)
 	if err != nil {
 		return err
 	}
 
-	trimToValue := parseTrimTo(trimTo)
-	if trimTo != "" && trimToValue < 0 {
-		return UsageError(fmt.Errorf("invalid value for --latest %q: want major, minor or patch", trimTo))
+	trimToValue := parseTrimTo(opts.latest)
+	if opts.latest != "" && trimToValue < 0 {
+		return UsageError(fmt.Errorf("invalid value for --latest %q: want major, minor or patch", opts.latest))
 	}
 	vs := packageIndex.Sorted
-	if trimTo != "" {
+	if opts.latest != "" {
 		vs = packageIndex.trimTo(vs, trimToValue)
 	}
 
