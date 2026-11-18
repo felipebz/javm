@@ -62,10 +62,6 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 }
 
 func runInstall(ctx context.Context, client PackagesWithInfoClient, selector string, dst string) (string, error) {
-	var ver *javaversion.Version
-	var packageInfo *discoapi.PackageInfo
-	var err error
-
 	rng, err := javaversion.ParseRange(selector)
 	if err != nil {
 		return "", UsageError(err)
@@ -82,59 +78,55 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 	if err != nil {
 		return "", err
 	}
-	if ver = packageIndex.latestMatching(rng); ver != nil {
-		packageInfo, err = client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)
-		if err != nil {
-			return "", NetworkError(err)
-		}
-	}
+	ver := packageIndex.latestMatching(rng)
 	if ver == nil {
-		tt := make([]string, 0, len(packageIndex.Sorted))
+		targets := make([]string, 0, len(packageIndex.Sorted))
 		for _, v := range slices.Backward(packageIndex.Sorted) {
-			tt = append(tt, v.String())
+			targets = append(targets, v.String())
 		}
 		return "", NotFoundError(errors.New("No compatible version found for " + selector +
-			"\nValid install targets: " + strings.Join(tt, ", ")))
+			"\nValid install targets: " + strings.Join(targets, ", ")))
+	}
+	packageInfo, err := client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)
+	if err != nil {
+		return "", NetworkError(err)
 	}
 
-	// check whether requested version is already installed
 	if dst == "" {
 		local, err := LsContext(ctx, true)
 		if err != nil {
 			return "", err
 		}
-		if slices.ContainsFunc(local, func(jdk discovery.JDK) bool {
-			identifier, identifierErr := javaversion.ParseVersion(jdk.Identifier)
-			if identifierErr != nil || identifier.Qualifier() != ver.Qualifier() {
-				return false
-			}
-			if version, versionErr := javaversion.ParseVersion(jdk.Version); versionErr == nil {
-				qualified, qualifiedErr := javaversion.ParseVersion(ver.Qualifier() + "@" + version.String())
-				if qualifiedErr != nil {
-					return false
-				}
-				if qualified.Equals(ver) {
-					return true
-				}
-				_, hasBuild := version.BuildNumber()
-				return !hasBuild && qualified.SameRelease(ver)
-			}
-			if identifier.Equals(ver) {
-				return true
-			}
-			_, hasBuild := identifier.BuildNumber()
-			return !hasBuild && identifier.SameRelease(ver)
-		}) {
+		if slices.ContainsFunc(local, func(jdk discovery.JDK) bool { return isInstalledPackage(jdk, ver) }) {
 			return ver.String(), nil
 		}
-	}
-	if dst == "" {
 		dst, err = managedInstallDestination(cfg.Dir(), ver.WithoutBuild())
 		if err != nil {
 			return "", err
 		}
 	}
 	return ver.String(), fetchAndInstall(ctx, ver, packageInfo, dst, false)
+}
+
+// isInstalledPackage reports whether jdk already provides ver. A JDK whose
+// metadata carries no build number counts as the same release.
+func isInstalledPackage(jdk discovery.JDK, ver *javaversion.Version) bool {
+	identifier, err := javaversion.ParseVersion(jdk.Identifier)
+	if err != nil || identifier.Qualifier() != ver.Qualifier() {
+		return false
+	}
+	installed := identifier
+	if version, err := javaversion.ParseVersion(jdk.Version); err == nil {
+		installed, err = javaversion.ParseVersion(ver.Qualifier() + "@" + version.String())
+		if err != nil {
+			return false
+		}
+	}
+	if installed.Equals(ver) {
+		return true
+	}
+	_, hasBuild := installed.BuildNumber()
+	return !hasBuild && installed.SameRelease(ver)
 }
 
 // fetchAndInstall downloads (or opens a file:// artifact), verifies the checksum
