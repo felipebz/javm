@@ -70,15 +70,9 @@ func (d *Manager) DiscoverAll(ctx context.Context) ([]JDK, error) {
 		return []JDK{}, nil
 	}
 
-	cache, err := LoadCache(d.CacheFile)
+	cache, err := d.loadCache()
 	if err != nil {
-		if !errors.Is(err, ErrInvalidCache) {
-			return nil, fmt.Errorf("failed to load cache: %w", err)
-		}
-		if d.Warn != nil {
-			d.Warn(fmt.Errorf("ignoring corrupt discovery cache %q: %w", d.CacheFile, err))
-		}
-		cache = &Cache{JDKs: []JDK{}}
+		return nil, err
 	}
 
 	configFingerprint, err := d.Config.fingerprint()
@@ -92,26 +86,10 @@ func (d *Manager) DiscoverAll(ctx context.Context) ([]JDK, error) {
 		return cache.JDKs, nil
 	}
 
-	var allJDKs []JDK
-
-	for _, source := range d.sources {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		if d.Config.IsSourceEnabled(source.Name()) {
-			jdks, err := source.Discover(ctx)
-			allJDKs = append(allJDKs, jdks...)
-			if err != nil {
-				if ctxErr := ctx.Err(); ctxErr != nil {
-					return nil, ctxErr
-				}
-				if d.Warn != nil {
-					d.Warn(discoveryWarningForSource(source.Name(), err))
-				}
-			}
-		}
+	allJDKs, err := d.discoverSources(ctx)
+	if err != nil {
+		return nil, err
 	}
-
 	uniqueJDKs := DeduplicateJDKs(allJDKs)
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -125,6 +103,48 @@ func (d *Manager) DiscoverAll(ctx context.Context) ([]JDK, error) {
 	}
 
 	return uniqueJDKs, nil
+}
+
+// loadCache reads the discovery cache, replacing a corrupt one with an empty
+// cache after a warning.
+func (d *Manager) loadCache() (*Cache, error) {
+	cache, err := LoadCache(d.CacheFile)
+	if err == nil {
+		return cache, nil
+	}
+	if !errors.Is(err, ErrInvalidCache) {
+		return nil, fmt.Errorf("failed to load cache: %w", err)
+	}
+	if d.Warn != nil {
+		d.Warn(fmt.Errorf("ignoring corrupt discovery cache %q: %w", d.CacheFile, err))
+	}
+	return &Cache{JDKs: []JDK{}}, nil
+}
+
+// discoverSources runs every enabled source. A failing source only warns and
+// still contributes what it found; cancellation aborts the whole discovery.
+func (d *Manager) discoverSources(ctx context.Context) ([]JDK, error) {
+	var allJDKs []JDK
+	for _, source := range d.sources {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if !d.Config.IsSourceEnabled(source.Name()) {
+			continue
+		}
+		jdks, err := source.Discover(ctx)
+		allJDKs = append(allJDKs, jdks...)
+		if err == nil {
+			continue
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		if d.Warn != nil {
+			d.Warn(discoveryWarningForSource(source.Name(), err))
+		}
+	}
+	return allJDKs, nil
 }
 
 func discoveryWarningForSource(source string, err error) error {
