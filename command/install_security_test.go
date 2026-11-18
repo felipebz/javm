@@ -101,6 +101,33 @@ func TestInstallReplacingRestoresOnFailure(t *testing.T) {
 	}
 }
 
+func TestInstallReplacingRefusesSymlinkTarget(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+	parent := t.TempDir()
+	external := t.TempDir()
+	dst := filepath.Join(parent, "jdk")
+	if err := os.Symlink(external, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	extracted := false
+	err := installWithExtractor(context.Background(), "jdk.zip", dst, func(context.Context, string, string) error {
+		extracted = true
+		return nil
+	}, true)
+	if err == nil || !strings.Contains(err.Error(), "not an existing JDK directory") {
+		t.Fatalf("expected symlink target to be refused, got %v", err)
+	}
+	if extracted {
+		t.Fatal("archive was extracted for a refused target")
+	}
+	if target, err := os.Readlink(dst); err != nil || target != external {
+		t.Fatalf("symlink target changed: %q, %v", target, err)
+	}
+}
+
 func TestInstallCommandDoesNotPrintUsageWhenCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

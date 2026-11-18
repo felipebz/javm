@@ -15,6 +15,7 @@ import (
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discoapi"
 	"github.com/felipebz/javm/discovery"
+	"github.com/spf13/cobra"
 )
 
 type updateClient struct {
@@ -215,5 +216,156 @@ func TestUpdateRequiresInstalledJDK(t *testing.T) {
 	err := runUpdate(context.Background(), &updateClient{}, &bytes.Buffer{}, "zulu@21", updateOptions{})
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("runUpdate() error = %v, want ErrNotFound", err)
+	}
+}
+
+func runUpdateCommand(t *testing.T, client *updateClient, args ...string) string {
+	t.Helper()
+	root := &cobra.Command{Use: "javm"}
+	root.AddCommand(NewUpdateCommand(client))
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs(append([]string{"update"}, args...))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("update %v: %v\n%s", args, err, out.String())
+	}
+	return out.String()
+}
+
+func TestUpdateCommandAppliesFlags(t *testing.T) {
+	t.Run("dry-run", func(t *testing.T) {
+		client := temurinUpdateFixture(t)
+		out := runUpdateCommand(t, client, "--dry-run", "temurin@25")
+		if !strings.Contains(out, "temurin@25: temurin@25.0.4+7 -> temurin@25.0.5+8") || len(client.infoIDs) != 0 {
+			t.Fatalf("--dry-run installed or printed wrong status: infoIDs=%v output=%q", client.infoIDs, out)
+		}
+		assertExists(t, "temurin@25.0.5", false)
+	})
+	t.Run("keep", func(t *testing.T) {
+		client := temurinUpdateFixture(t)
+		runUpdateCommand(t, client, "--keep", "temurin@25")
+		assertExists(t, "temurin@25.0.5", true)
+		assertExists(t, "temurin@25.0.4", true)
+	})
+}
+
+func TestUpdateResolvesSelectorsAgainstInstalledJDKs(t *testing.T) {
+	tests := []struct {
+		name     string
+		selector string
+		alias    string
+		want     string
+	}{
+		// Without a distribution the installed one is updated, so the newer
+		// zulu@25 package must not be picked.
+		{name: "unqualified", selector: "25", want: "25: temurin@25.0.4+7 -> temurin@25.0.5+8"},
+		{name: "alias", selector: "work", alias: "temurin@25", want: "temurin@25: temurin@25.0.4+7 -> temurin@25.0.5+8"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := temurinUpdateFixture(t)
+			client.packages = append(client.packages, discoapi.Package{Id: "zulu", JavaVersion: "25.0.9+1", Distribution: "zulu", DistributionVersion: "25.40.1"})
+			if tt.alias != "" {
+				if err := setAlias(tt.selector, tt.alias); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var out bytes.Buffer
+			if err := runUpdate(context.Background(), client, &out, tt.selector, updateOptions{dryRun: true}); err != nil {
+				t.Fatalf("runUpdate() error = %v", err)
+			}
+			if !strings.Contains(out.String(), tt.want) {
+				t.Fatalf("output = %q, want %q", out.String(), tt.want)
+			}
+		})
+	}
+}
+
+// DiscoAPI drops old builds, so the installed package is usually missing from
+// the remote list and the release and build decide instead.
+func TestUpdateComparesBuildsMissingFromDiscoAPI(t *testing.T) {
+	tests := []struct {
+		name       string
+		identifier string
+		installed  string
+		want       string
+	}{
+		{name: "older release", identifier: "temurin@25.0.4", installed: "25.0.4+7", want: "temurin@25: temurin@25.0.4+7 -> temurin@25.0.5+8"},
+		{name: "older build", identifier: "temurin@25.0.5", installed: "25.0.5+7", want: "temurin@25: temurin@25.0.5+7 -> temurin@25.0.5+8"},
+		{name: "newer release", identifier: "temurin@25.0.6", installed: "25.0.6+2", want: "temurin@25: up to date (temurin@25.0.6+2)"},
+		{name: "release without build", identifier: "temurin@25.0.5", installed: "25.0.5", want: "temurin@25: up to date (temurin@25.0.5)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("JAVM_HOME", t.TempDir())
+			writeManagedJDK(t, tt.identifier, tt.installed, "old")
+			client := &updateClient{packages: []discoapi.Package{
+				{Id: "new", JavaVersion: "25.0.5+8", Distribution: "temurin", DistributionVersion: "25.0.5"},
+			}}
+			var out bytes.Buffer
+			if err := runUpdate(context.Background(), client, &out, "temurin@25", updateOptions{dryRun: true}); err != nil {
+				t.Fatalf("runUpdate() error = %v", err)
+			}
+			if !strings.Contains(out.String(), tt.want) {
+				t.Fatalf("output = %q, want %q", out.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestUpdateAllContinuesPastLineWithoutRemotePackages(t *testing.T) {
+	client := temurinUpdateFixture(t)
+	writeManagedJDK(t, "zulu@21.0.1", "21.0.1+12", "old")
+
+	var out bytes.Buffer
+	if err := runUpdate(context.Background(), client, &out, "", updateOptions{dryRun: true}); err != nil {
+		t.Fatalf("runUpdate() error = %v", err)
+	}
+	if !strings.Contains(out.String(), "temurin@25: temurin@25.0.4+7 -> temurin@25.0.5+8") {
+		t.Fatalf("output = %q, want the temurin@25 update after skipping zulu@21", out.String())
+	}
+}
+
+func TestUpdateKeepsBuildHeldByDefaultVersion(t *testing.T) {
+	client := temurinUpdateFixture(t)
+	if err := SetDefaultVersion("temurin@25.0.4"); err != nil {
+		t.Fatal(err)
+	}
+	if err := runUpdate(context.Background(), client, &bytes.Buffer{}, "temurin@25", updateOptions{}); err != nil {
+		t.Fatalf("runUpdate() error = %v", err)
+	}
+	assertExists(t, "temurin@25.0.5", true)
+	assertExists(t, "temurin@25.0.4", true)
+}
+
+func TestUpdateWithoutManagedJDKs(t *testing.T) {
+	t.Setenv("JAVM_HOME", t.TempDir())
+	var out bytes.Buffer
+	if err := runUpdate(context.Background(), &updateClient{}, &out, "", updateOptions{}); err != nil {
+		t.Fatalf("runUpdate() error = %v", err)
+	}
+	if out.String() != "no managed JDKs to update\n" {
+		t.Fatalf("output = %q", out.String())
+	}
+}
+
+func TestRemoveManagedJDKRefusesSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+	t.Setenv("JAVM_HOME", t.TempDir())
+	target := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cfg.Dir(), "jdk"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(cfg.Dir(), "jdk", "system@21")); err != nil {
+		t.Fatal(err)
+	}
+	if err := removeManagedJDK("system@21"); err == nil {
+		t.Fatal("removeManagedJDK removed a symlinked JDK")
+	}
+	if _, err := os.Stat(target); err != nil {
+		t.Fatalf("symlink target was touched: %v", err)
 	}
 }
