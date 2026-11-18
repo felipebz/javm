@@ -7,6 +7,7 @@
 package javaversion
 
 import (
+	"cmp"
 	"fmt"
 	"sort"
 	"strconv"
@@ -134,11 +135,8 @@ func compareUnqualified(left, right *Version) int {
 
 	// A missing build is treated as build zero. This keeps a plain release
 	// below a positive build while making +0 equivalent to an omitted build.
-	if left.build < right.build {
-		return -1
-	}
-	if left.build > right.build {
-		return 1
+	if result := cmp.Compare(left.build, right.build); result != 0 {
+		return result
 	}
 
 	return compareIdentifiers(left.optional, right.optional, false)
@@ -153,67 +151,40 @@ func compareRelease(left, right *Version) int {
 }
 
 func compareNumericAndPrerelease(left, right *Version) int {
-	max := max(len(left.numeric), len(right.numeric))
-	for i := range max {
-		lv := left.numericValue(i)
-		rv := right.numericValue(i)
-		if lv < rv {
-			return -1
-		}
-		if lv > rv {
-			return 1
+	for i := range max(len(left.numeric), len(right.numeric)) {
+		if result := cmp.Compare(left.numericValue(i), right.numericValue(i)); result != 0 {
+			return result
 		}
 	}
-
-	if result := compareIdentifiers(left.prerelease, right.prerelease, true); result != 0 {
-		return result
-	}
-
-	return 0
+	return compareIdentifiers(left.prerelease, right.prerelease, true)
 }
 
 func compareIdentifiers(left, right []identifier, numericRules bool) int {
-	if len(left) == 0 && len(right) == 0 {
-		return 0
+	// An absent list sorts after a present one, so 25 follows 25-ea.
+	if len(left) == 0 || len(right) == 0 {
+		return cmp.Compare(len(right), len(left))
 	}
-	if len(left) == 0 {
-		return 1
+	for i := range min(len(left), len(right)) {
+		if result := compareIdentifier(left[i], right[i], numericRules); result != 0 {
+			return result
+		}
 	}
-	if len(right) == 0 {
-		return -1
-	}
+	return cmp.Compare(len(left), len(right))
+}
 
-	for i := 0; i < min(len(left), len(right)); i++ {
-		l, r := left[i], right[i]
-		if numericRules && l.isNumeric != r.isNumeric {
-			if l.isNumeric {
-				return -1
-			}
-			return 1
-		}
-		if l.isNumeric && r.isNumeric {
-			if l.numeric < r.numeric {
-				return -1
-			}
-			if l.numeric > r.numeric {
-				return 1
-			}
-			continue
-		}
-		if l.raw < r.raw {
+func compareIdentifier(left, right identifier, numericRules bool) int {
+	switch {
+	case numericRules && left.isNumeric != right.isNumeric:
+		// Numeric identifiers sort before alphanumeric ones.
+		if left.isNumeric {
 			return -1
 		}
-		if l.raw > r.raw {
-			return 1
-		}
-	}
-	if len(left) < len(right) {
-		return -1
-	}
-	if len(left) > len(right) {
 		return 1
+	case left.isNumeric && right.isNumeric:
+		return cmp.Compare(left.numeric, right.numeric)
+	default:
+		return strings.Compare(left.raw, right.raw)
 	}
-	return 0
 }
 
 // LessThan reports whether v precedes other.
