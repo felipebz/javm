@@ -108,55 +108,14 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL string,
 		return "", fmt.Errorf("create temporary download: %w", err)
 	}
 	file = tmp.Name()
-	tempPath := file
 	keep := false
-	defer func() {
-		closeErr := tmp.Close()
-		if err == nil && closeErr != nil {
-			err = fmt.Errorf("close temporary download: %w", closeErr)
-		}
-		if !keep || err != nil {
-			if removeErr := os.Remove(tempPath); removeErr != nil && !os.IsNotExist(removeErr) {
-				err = errors.Join(err, fmt.Errorf("remove incomplete download: %w", removeErr))
-			}
-		}
-	}()
+	defer func() { err = finishTempDownload(tmp, keep, err) }()
 
 	runtime := RuntimeFromContext(ctx)
 	runtime.Logger.Debug("Saving ", rawURL, " to ", file)
-	limited := io.LimitReader(res.Body, maxBytes+1)
-	destination := io.Writer(tmp)
-	var bar *progressbar.ProgressBar
-	if runtime.ShowProgress {
-		bar = progressbar.NewOptions64(
-			res.ContentLength,
-			progressbar.OptionSetWriter(runtime.Err),
-			progressbar.OptionSetDescription("downloading"),
-			progressbar.OptionShowBytes(true),
-			progressbar.OptionSetRenderBlankState(true),
-			progressbar.OptionThrottle(0),
-		)
-		destination = io.MultiWriter(tmp, bar)
-	}
-	written, copyErr := io.Copy(destination, limited)
-	var progressErr error
-	if bar != nil {
-		if copyErr != nil {
-			if err := bar.Exit(); err != nil {
-				progressErr = errors.Join(progressErr, fmt.Errorf("stop download progress: %w", err))
-			}
-		} else if err := bar.Finish(); err != nil {
-			progressErr = errors.Join(progressErr, fmt.Errorf("finish download progress: %w", err))
-		}
-		if _, err := fmt.Fprintln(runtime.Err); err != nil {
-			progressErr = errors.Join(progressErr, fmt.Errorf("terminate download progress line: %w", err))
-		}
-	}
-	if copyErr != nil {
-		return "", errors.Join(fmt.Errorf("save downloaded artifact: %w", copyErr), progressErr)
-	}
-	if progressErr != nil {
-		return "", progressErr
+	written, err := copyWithProgress(runtime, tmp, io.LimitReader(res.Body, maxBytes+1), res.ContentLength)
+	if err != nil {
+		return "", err
 	}
 	if written > maxBytes {
 		return "", fmt.Errorf("download artifact exceeds %d bytes", maxBytes)
@@ -166,6 +125,62 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL string,
 	}
 	keep = true
 	return file, nil
+}
+
+// copyWithProgress copies src to dst, drawing a progress bar of size bytes on
+// the runtime diagnostic stream when progress is enabled.
+func copyWithProgress(runtime Runtime, dst io.Writer, src io.Reader, size int64) (int64, error) {
+	var bar *progressbar.ProgressBar
+	if runtime.ShowProgress {
+		bar = progressbar.NewOptions64(
+			size,
+			progressbar.OptionSetWriter(runtime.Err),
+			progressbar.OptionSetDescription("downloading"),
+			progressbar.OptionShowBytes(true),
+			progressbar.OptionSetRenderBlankState(true),
+			progressbar.OptionThrottle(0),
+		)
+		dst = io.MultiWriter(dst, bar)
+	}
+	written, err := io.Copy(dst, src)
+	if err != nil {
+		err = fmt.Errorf("save downloaded artifact: %w", err)
+	}
+	if bar != nil {
+		err = errors.Join(err, finishProgress(runtime.Err, bar, err == nil))
+	}
+	return written, err
+}
+
+// finishProgress completes or abandons bar and ends its terminal line.
+func finishProgress(w io.Writer, bar *progressbar.ProgressBar, completed bool) error {
+	var err error
+	if completed {
+		if finishErr := bar.Finish(); finishErr != nil {
+			err = fmt.Errorf("finish download progress: %w", finishErr)
+		}
+	} else if exitErr := bar.Exit(); exitErr != nil {
+		err = fmt.Errorf("stop download progress: %w", exitErr)
+	}
+	if _, lineErr := fmt.Fprintln(w); lineErr != nil {
+		err = errors.Join(err, fmt.Errorf("terminate download progress line: %w", lineErr))
+	}
+	return err
+}
+
+// finishTempDownload closes tmp and removes it unless the download succeeded
+// and should be kept, folding cleanup failures into err.
+func finishTempDownload(tmp *os.File, keep bool, err error) error {
+	if closeErr := tmp.Close(); err == nil && closeErr != nil {
+		err = fmt.Errorf("close temporary download: %w", closeErr)
+	}
+	if keep && err == nil {
+		return nil
+	}
+	if removeErr := os.Remove(tmp.Name()); removeErr != nil && !os.IsNotExist(removeErr) {
+		err = errors.Join(err, fmt.Errorf("remove incomplete download: %w", removeErr))
+	}
+	return err
 }
 
 func validateChecksum(path string, expected string, algorithm string) (err error) {
