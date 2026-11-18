@@ -194,20 +194,11 @@ func parseGroup(raw string) ([]constraint, error) {
 		}
 
 		if index+2 < len(tokens) && tokens[index+1] == "-" {
-			left, err := parsePattern(tokens[index])
+			constraints, err := parseHyphenRange(tokens[index], tokens[index+2])
 			if err != nil {
 				return nil, err
 			}
-			right, err := parsePattern(tokens[index+2])
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, constraint{op: opGreaterOrEqual, pattern: left})
-			if len(right.numeric) <= 2 && !right.hasPre && !right.hasBuild && !right.hasOptional {
-				result = append(result, constraint{op: opLess, pattern: boundary(right, len(right.numeric)-1)})
-			} else {
-				result = append(result, constraint{op: opLessOrEqual, pattern: right})
-			}
+			result = append(result, constraints...)
 			index += 2
 			continue
 		}
@@ -220,35 +211,60 @@ func parseGroup(raw string) ([]constraint, error) {
 			index++
 			value = tokens[index]
 		}
-
-		if value == "*" || strings.EqualFold(value, "x") {
-			if operatorValue != opExact {
-				return nil, fmt.Errorf("wildcard with comparison")
-			}
-			result = append(result, constraint{any: true})
-			continue
-		}
-
-		pattern, err := parsePattern(value)
+		constraints, err := parseComparison(operatorValue, value)
 		if err != nil {
 			return nil, err
 		}
-		switch operatorValue {
-		case opTildeConstraint:
-			result = append(result,
-				constraint{op: opGreaterOrEqual, pattern: pattern},
-				constraint{op: opLess, pattern: boundary(pattern, tildeBoundaryIndex(pattern))},
-			)
-		case opCaretConstraint:
-			result = append(result,
-				constraint{op: opGreaterOrEqual, pattern: pattern},
-				constraint{op: opLess, pattern: boundary(pattern, caretBoundaryIndex(pattern))},
-			)
-		default:
-			result = append(result, constraint{op: operatorValue, pattern: pattern})
-		}
+		result = append(result, constraints...)
 	}
 	return result, nil
+}
+
+// parseHyphenRange expands "left - right". A partial right side such as 21 or
+// 21.0 includes the whole prefix, so it becomes an exclusive upper boundary.
+func parseHyphenRange(leftRaw, rightRaw string) ([]constraint, error) {
+	left, err := parsePattern(leftRaw)
+	if err != nil {
+		return nil, err
+	}
+	right, err := parsePattern(rightRaw)
+	if err != nil {
+		return nil, err
+	}
+	lower := constraint{op: opGreaterOrEqual, pattern: left}
+	if len(right.numeric) <= 2 && !right.hasPre && !right.hasBuild && !right.hasOptional {
+		return []constraint{lower, {op: opLess, pattern: boundary(right, len(right.numeric)-1)}}, nil
+	}
+	return []constraint{lower, {op: opLessOrEqual, pattern: right}}, nil
+}
+
+// parseComparison expands one operator and version, including the ~ and ^
+// shorthands and the * / x wildcard.
+func parseComparison(operatorValue operator, value string) ([]constraint, error) {
+	if value == "*" || strings.EqualFold(value, "x") {
+		if operatorValue != opExact {
+			return nil, fmt.Errorf("wildcard with comparison")
+		}
+		return []constraint{{any: true}}, nil
+	}
+	pattern, err := parsePattern(value)
+	if err != nil {
+		return nil, err
+	}
+	switch operatorValue {
+	case opTildeConstraint:
+		return []constraint{
+			{op: opGreaterOrEqual, pattern: pattern},
+			{op: opLess, pattern: boundary(pattern, tildeBoundaryIndex(pattern))},
+		}, nil
+	case opCaretConstraint:
+		return []constraint{
+			{op: opGreaterOrEqual, pattern: pattern},
+			{op: opLess, pattern: boundary(pattern, caretBoundaryIndex(pattern))},
+		}, nil
+	default:
+		return []constraint{{op: operatorValue, pattern: pattern}}, nil
+	}
 }
 
 type selectorOperator uint8
