@@ -57,7 +57,7 @@ func newStyles(w io.Writer, opts ...termenv.OutputOption) styles {
 func enableANSIConsole(w io.Writer) func() {
 	restore, err := termenv.EnableVirtualTerminalProcessing(termenv.NewOutput(w))
 	if err != nil || restore == nil {
-		return func() {}
+		return func() { /* nothing to restore */ }
 	}
 	return func() { _ = restore() }
 }
