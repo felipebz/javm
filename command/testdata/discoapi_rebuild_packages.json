@@ -1,0 +1,123 @@
+{
+  "result": [
+    {
+      "id": "84e233e42051f0ba84f92c4a06ceac01",
+      "distribution": "zulu",
+      "java_version": "25.0.5+8",
+      "distribution_version": "25.38.107",
+      "javafx_bundled": false
+    },
+    {
+      "id": "2f0ce3bb817fe13c1147130ac8b93c27",
+      "distribution": "zulu",
+      "java_version": "25.0.5+1",
+      "distribution_version": "25.38.109",
+      "javafx_bundled": false
+    },
+    {
+      "id": "c2aaa5c1343be16342d13af8e15d8d29",
+      "distribution": "zulu",
+      "java_version": "25.0.5+1",
+      "distribution_version": "25.38.109",
+      "javafx_bundled": true
+    },
+    {
+      "id": "30ba3531c9872f641426d38e10b250f7",
+      "distribution": "zulu",
+      "java_version": "25.0.4+7",
+      "distribution_version": "25.36.15",
+      "javafx_bundled": false
+    },
+    {
+      "id": "4d74121ee7155117921961853dd8333d",
+      "distribution": "zulu",
+      "java_version": "25.0.4+7",
+      "distribution_version": "25.36.15",
+      "javafx_bundled": true
+    },
+    {
+      "id": "1d977d27b01ae9d05f72a66f7c07627f",
+      "distribution": "zulu",
+      "java_version": "21.0.13+9",
+      "distribution_version": "21.54.107",
+      "javafx_bundled": false
+    },
+    {
+      "id": "b7e165c2da16d93a21869a32e51c181f",
+      "distribution": "zulu",
+      "java_version": "21.0.13+1",
+      "distribution_version": "21.54.109",
+      "javafx_bundled": false
+    },
+    {
+      "id": "5216ca44503366fae77b81ad59a73e45",
+      "distribution": "zulu",
+      "java_version": "21.0.13+1",
+      "distribution_version": "21.54.109",
+      "javafx_bundled": true
+    },
+    {
+      "id": "3bc5432deda2d511d95d31bcc4dd6c73",
+      "distribution": "zulu",
+      "java_version": "17.0.21+9",
+      "distribution_version": "17.70.111",
+      "javafx_bundled": false
+    },
+    {
+      "id": "cf5b0c15bb958d03a87691474fe36456",
+      "distribution": "zulu",
+      "java_version": "17.0.21+1",
+      "distribution_version": "17.70.113",
+      "javafx_bundled": true
+    },
+    {
+      "id": "4140bf5b93b15bd3a0c4bd50f03d4999",
+      "distribution": "zulu",
+      "java_version": "17.0.21+1",
+      "distribution_version": "17.70.113",
+      "javafx_bundled": false
+    },
+    {
+      "id": "f85bcd5faa543be99acbeaf61709cda9",
+      "distribution": "liberica",
+      "java_version": "25.0.5+11",
+      "distribution_version": "25.0.5",
+      "javafx_bundled": false
+    },
+    {
+      "id": "99abf21cbae58db7313e6d71693ef445",
+      "distribution": "liberica",
+      "java_version": "25.0.5+11",
+      "distribution_version": "25.0.5",
+      "javafx_bundled": true
+    },
+    {
+      "id": "4722d7e1195d604734b5e7a6f410ba22",
+      "distribution": "liberica",
+      "java_version": "25.0.5+5",
+      "distribution_version": "25.0.5.0.3",
+      "javafx_bundled": true
+    },
+    {
+      "id": "05ba8394a1fe23afb872d5b3dd06249e",
+      "distribution": "liberica",
+      "java_version": "25.0.5+5",
+      "distribution_version": "25.0.5.0.3",
+      "javafx_bundled": false
+    },
+    {
+      "id": "72f95e3e55e2d698a7dd95b49501e491",
+      "distribution": "liberica",
+      "java_version": "25.0.5+5",
+      "distribution_version": "25.0.5.0.2",
+      "javafx_bundled": false
+    },
+    {
+      "id": "ebdb16bebd9c314ded17c16d21330975",
+      "distribution": "liberica",
+      "java_version": "25.0.5+5",
+      "distribution_version": "25.0.5.0.2",
+      "javafx_bundled": true
+    }
+  ]
+}

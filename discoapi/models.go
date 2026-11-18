@@ -14,6 +14,7 @@ type Package struct {
 	Distribution        string `json:"distribution"`
 	JavaVersion         string `json:"java_version"`
 	DistributionVersion string `json:"distribution_version"`
+	JavaFXBundled       bool   `json:"javafx_bundled"`
 }
 
 type PackagesResponse struct {

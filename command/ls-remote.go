@@ -80,7 +80,7 @@ func runLsRemote(
 	}
 	vs := packageIndex.Sorted
 	if trimTo != "" {
-		vs = javaversion.VersionSlice(vs).TrimTo(trimToValue)
+		vs = packageIndex.trimTo(vs, trimToValue)
 	}
 
 	return printVersions(out, vs, packageIndex, r, trimToValue)

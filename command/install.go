@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/felipebz/javm/cfg"
@@ -84,25 +83,20 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 	if err != nil {
 		return "", err
 	}
-	sort.Sort(sort.Reverse(javaversion.VersionSlice(packageIndex.Sorted)))
-	for _, v := range packageIndex.Sorted {
-		if rng.Contains(v) {
-			ver = v
-			packageInfo, err := client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)
-			if err != nil {
-				return "", NetworkError(err)
-			}
-
-			expectedChecksum = packageInfo.Checksum
-			checksumType = packageInfo.ChecksumType
-			url = packageInfo.DirectDownloadUri
-			break
+	if ver = packageIndex.latestMatching(rng); ver != nil {
+		packageInfo, err := client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)
+		if err != nil {
+			return "", NetworkError(err)
 		}
+
+		expectedChecksum = packageInfo.Checksum
+		checksumType = packageInfo.ChecksumType
+		url = packageInfo.DirectDownloadUri
 	}
 	if ver == nil {
-		tt := make([]string, len(packageIndex.Sorted))
-		for i, v := range packageIndex.Sorted {
-			tt[i] = v.String()
+		tt := make([]string, 0, len(packageIndex.Sorted))
+		for _, v := range slices.Backward(packageIndex.Sorted) {
+			tt = append(tt, v.String())
 		}
 		return "", NotFoundError(errors.New("No compatible version found for " + selector +
 			"\nValid install targets: " + strings.Join(tt, ", ")))
