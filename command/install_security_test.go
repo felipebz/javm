@@ -57,7 +57,7 @@ func TestInstallCancellationCleansOwnedStaging(t *testing.T) {
 		}
 		cancel()
 		return ctx.Err()
-	})
+	}, false)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected cancellation error, got %v", err)
 	}
@@ -70,6 +70,34 @@ func TestInstallCancellationCleansOwnedStaging(t *testing.T) {
 	}
 	if len(staging) != 0 {
 		t.Fatalf("staging directories remain after cancellation: %v", staging)
+	}
+}
+
+func TestInstallReplacingRestoresOnFailure(t *testing.T) {
+	parent := t.TempDir()
+	dst := filepath.Join(parent, "jdk")
+	if err := os.Mkdir(dst, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "keep"), []byte("old"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	err := installWithExtractor(context.Background(), "jdk.zip", dst, func(context.Context, string, string) error {
+		return errors.New("broken archive")
+	}, true)
+	if err == nil {
+		t.Fatal("expected installation error")
+	}
+	if got, err := os.ReadFile(filepath.Join(dst, "keep")); err != nil || string(got) != "old" {
+		t.Fatalf("previous JDK was not preserved: %q, %v", got, err)
+	}
+	staging, err := filepath.Glob(filepath.Join(parent, ".jdk.staging-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(staging) != 0 {
+		t.Fatalf("staging directories remain after failure: %v", staging)
 	}
 }
 

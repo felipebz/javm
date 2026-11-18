@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/felipebz/javm/cfg"
@@ -37,5 +36,19 @@ func uninstall(ctx context.Context, selector string) error {
 	if err != nil {
 		return err
 	}
-	return os.RemoveAll(filepath.Join(cfg.Dir(), "jdk", ver))
+	return removeManagedJDK(ver)
+}
+
+// removeManagedJDK deletes jdk/<identifier> only when it is a real directory,
+// never a symlink created by link or linkLatest.
+func removeManagedJDK(identifier string) error {
+	dst, err := managedInstallDestination(cfg.Dir(), identifier)
+	if err != nil {
+		return err
+	}
+	info, err := os.Lstat(dst)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%q is not a managed JDK directory", identifier)
+	}
+	return os.RemoveAll(dst)
 }

@@ -95,6 +95,7 @@ func newRootCommand(app application) *cobra.Command {
 	root.SetErr(app.err)
 	root.AddCommand(
 		command.NewInstallCommand(app.client),
+		command.NewUpdateCommand(app.client),
 		command.NewUninstallCommand(),
 		command.NewLinkCommand(),
 		command.NewUnlinkCommand(),

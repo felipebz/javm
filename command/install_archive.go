@@ -35,10 +35,16 @@ type extractionLimits struct {
 type archiveExtractor func(context.Context, string, string) error
 
 func install(ctx context.Context, file string, dst string) (err error) {
-	return installWithExtractor(ctx, file, dst, extractArchive)
+	return installWithExtractor(ctx, file, dst, extractArchive, false)
 }
 
-func installWithExtractor(ctx context.Context, file string, dst string, extract archiveExtractor) (err error) {
+// installReplacing installs file over the existing JDK directory dst, keeping
+// the previous tree until the new one is promoted so a failure restores it.
+func installReplacing(ctx context.Context, file string, dst string) error {
+	return installWithExtractor(ctx, file, dst, extractArchive, true)
+}
+
+func installWithExtractor(ctx context.Context, file string, dst string, extract archiveExtractor, replace bool) (err error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -51,7 +57,11 @@ func installWithExtractor(ctx context.Context, file string, dst string, extract 
 		return fmt.Errorf("create installation parent: %w", err)
 	}
 
-	if _, statErr := os.Lstat(dst); statErr == nil {
+	if info, statErr := os.Lstat(dst); replace {
+		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("replacement target %q is not an existing JDK directory", dst)
+		}
+	} else if statErr == nil {
 		return fmt.Errorf("installation destination %q already exists; refusing to replace it", dst)
 	} else if !os.IsNotExist(statErr) {
 		return fmt.Errorf("inspect installation destination: %w", statErr)
@@ -86,8 +96,25 @@ func installWithExtractor(ctx context.Context, file string, dst string, extract 
 		return fmt.Errorf("installation canceled before promotion: %w; installation rolled back", err)
 	}
 
+	if !replace {
+		if err := promoteNoReplace(readyRoot, dst); err != nil {
+			return fmt.Errorf("promote staged JDK to %q: %w; installation rolled back", dst, err)
+		}
+		return nil
+	}
+
+	// The previous JDK moves into the transaction directory, on the same
+	// filesystem as dst, and is deleted with it once the new tree is promoted.
+	previous := filepath.Join(transactionDir, "previous")
+	if err := os.Rename(dst, previous); err != nil {
+		return fmt.Errorf("move existing JDK %q aside: %w; installation rolled back", dst, err)
+	}
 	if err := promoteNoReplace(readyRoot, dst); err != nil {
-		return fmt.Errorf("promote staged JDK to %q: %w; installation rolled back", dst, err)
+		promoteErr := fmt.Errorf("promote staged JDK to %q: %w; installation rolled back", dst, err)
+		if restoreErr := os.Rename(previous, dst); restoreErr != nil {
+			return errors.Join(promoteErr, fmt.Errorf("restore previous JDK: %w", restoreErr))
+		}
+		return promoteErr
 	}
 	return nil
 }

@@ -272,6 +272,17 @@ javm default temurin@21           # set the default for newly initialized shells
 javm link system@1.8.72 /Library/Java/JavaVirtualMachines/jdk1.8.0_72.jdk
 ```
 
+### Update
+
+```sh
+javm update zulu@25               # install the newest zulu@25 build and drop the old one
+javm update                       # every installed distribution@feature line
+javm update --dry-run             # list available updates without installing
+javm update --keep temurin@21     # keep the previous build
+```
+
+A previous build stays installed while `default-version` or an alias still selects it.
+
 ### Uninstall
 
 ```sh

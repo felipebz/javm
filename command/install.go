@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/discoapi"
 	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
@@ -62,10 +63,8 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 
 func runInstall(ctx context.Context, client PackagesWithInfoClient, selector string, dst string) (string, error) {
 	var ver *javaversion.Version
-	var url string
+	var packageInfo *discoapi.PackageInfo
 	var err error
-	var expectedChecksum string
-	var checksumType string
 
 	rng, err := javaversion.ParseRange(selector)
 	if err != nil {
@@ -84,14 +83,10 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 		return "", err
 	}
 	if ver = packageIndex.latestMatching(rng); ver != nil {
-		packageInfo, err := client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)
+		packageInfo, err = client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)
 		if err != nil {
 			return "", NetworkError(err)
 		}
-
-		expectedChecksum = packageInfo.Checksum
-		checksumType = packageInfo.ChecksumType
-		url = packageInfo.DirectDownloadUri
 	}
 	if ver == nil {
 		tt := make([]string, 0, len(packageIndex.Sorted))
@@ -139,8 +134,15 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 			return "", err
 		}
 	}
+	return ver.String(), fetchAndInstall(ctx, ver, packageInfo, dst, false)
+}
+
+// fetchAndInstall downloads (or opens a file:// artifact), verifies the checksum
+// and installs the package at dst, replacing an existing JDK directory when
+// replace is set.
+func fetchAndInstall(ctx context.Context, ver *javaversion.Version, info *discoapi.PackageInfo, dst string, replace bool) error {
+	url := info.DirectDownloadUri
 	var file string
-	var removeDownload bool
 	if after, ok := strings.CutPrefix(url, "file://"); ok {
 		file = after
 		if runtime.GOOS == "windows" {
@@ -150,33 +152,33 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 	} else {
 		loggerFromContext(ctx).Info("Downloading ", ver)
 		loggerFromContext(ctx).Debug("URL: ", url)
+		var err error
 		file, err = download(ctx, url)
 		if err != nil {
-			return "", err
+			return err
 		}
-		removeDownload = true
 		defer func() {
-			if removeDownload {
-				if removeErr := os.Remove(file); removeErr != nil && !os.IsNotExist(removeErr) {
-					loggerFromContext(ctx).Warn("Failed to remove temporary download: ", removeErr)
-				}
+			if removeErr := os.Remove(file); removeErr != nil && !os.IsNotExist(removeErr) {
+				loggerFromContext(ctx).Warn("Failed to remove temporary download: ", removeErr)
 			}
 		}()
 	}
-	if expectedChecksum != "" && checksumType != "" {
-		if err := validateChecksum(file, expectedChecksum, checksumType); err != nil {
-			return "", fmt.Errorf("verify downloaded artifact: %w", err)
+	if info.Checksum != "" && info.ChecksumType != "" {
+		if err := validateChecksum(file, info.Checksum, info.ChecksumType); err != nil {
+			return fmt.Errorf("verify downloaded artifact: %w", err)
 		}
 	} else {
 		loggerFromContext(ctx).Warn("No checksum provided by DiscoAPI for this artifact; skipping integrity verification")
 	}
 	switch runtime.GOOS {
 	case "darwin", "linux", "windows":
-		err = install(ctx, file, dst)
+		if replace {
+			return installReplacing(ctx, file, dst)
+		}
+		return install(ctx, file, dst)
 	default:
-		err = errors.New(runtime.GOOS + " OS is not supported")
+		return errors.New(runtime.GOOS + " OS is not supported")
 	}
-	return ver.String(), err
 }
 
 // Reject unsafe components before Join can normalize untrusted input.
