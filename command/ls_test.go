@@ -240,6 +240,23 @@ func parseLsOutput(t *testing.T, output string) []lsRow {
 	return rows
 }
 
+// assertSelectorOwner checks that selector appears in SELECTED BY only on the
+// row of the JDK it resolves to, and returns that JDK's identifier.
+func assertSelectorOwner(t *testing.T, rows []lsRow, jdks []discovery.JDK, selector string) string {
+	t.Helper()
+	winner, err := resolveJDKFromList(jdks, selector)
+	if err != nil {
+		t.Fatalf("resolveJDKFromList(%q) error: %v", selector, err)
+	}
+	for _, row := range rows {
+		has := slices.Contains(strings.Split(row.selectedBy, ", "), selector)
+		if has != (row.name == winner.Identifier) {
+			t.Errorf("row %q has SELECTED BY %q; %q must appear only on %q", row.name, row.selectedBy, selector, winner.Identifier)
+		}
+	}
+	return winner.Identifier
+}
+
 func TestLsSelectedBy_SameMajorMultipleDistributions(t *testing.T) {
 	cleanup := setupMockLs()
 	defer cleanup()
@@ -263,83 +280,12 @@ func TestLsSelectedBy_SameMajorMultipleDistributions(t *testing.T) {
 		t.Fatalf("got %d rows, want 4:\n%s", len(rows), out.String())
 	}
 
-	// Determine who the real resolver picks for "25"
-	winner25, err := resolveJDKFromList(mockLsResult, "25")
-	if err != nil {
-		t.Fatalf("resolveJDKFromList(\"25\") error: %v", err)
+	for _, selector := range []string{"25", "temurin@25", "liberica@25", "graalvm@25"} {
+		assertSelectorOwner(t, rows, mockLsResult, selector)
 	}
-	winnerTemurin25, err := resolveJDKFromList(mockLsResult, "temurin@25")
-	if err != nil {
-		t.Fatalf("resolveJDKFromList(\"temurin@25\") error: %v", err)
-	}
-	winnerLiberica25, err := resolveJDKFromList(mockLsResult, "liberica@25")
-	if err != nil {
-		t.Fatalf("resolveJDKFromList(\"liberica@25\") error: %v", err)
-	}
-	winnerGraalvm25, err := resolveJDKFromList(mockLsResult, "graalvm@25")
-	if err != nil {
-		t.Fatalf("resolveJDKFromList(\"graalvm@25\") error: %v", err)
-	}
-
 	for _, row := range rows {
-		selectors := strings.Split(row.selectedBy, ", ")
-		if row.selectedBy == "" {
-			selectors = nil
-		}
-
-		// Check "25" appears only in the winner's row
-		has25 := slices.Contains(selectors, "25")
-		if row.name == winner25.Identifier {
-			if !has25 {
-				t.Errorf("expected %q to have selector \"25\", got: %q", row.name, row.selectedBy)
-			}
-		} else {
-			if has25 {
-				t.Errorf("expected %q NOT to have selector \"25\", got: %q", row.name, row.selectedBy)
-			}
-		}
-
-		// Check "temurin@25"
-		hasTemurin25 := slices.Contains(selectors, "temurin@25")
-		if row.name == winnerTemurin25.Identifier {
-			if !hasTemurin25 {
-				t.Errorf("expected %q to have selector \"temurin@25\", got: %q", row.name, row.selectedBy)
-			}
-		} else {
-			if hasTemurin25 {
-				t.Errorf("expected %q NOT to have selector \"temurin@25\", got: %q", row.name, row.selectedBy)
-			}
-		}
-
-		// Check "liberica@25"
-		hasLiberica25 := slices.Contains(selectors, "liberica@25")
-		if row.name == winnerLiberica25.Identifier {
-			if !hasLiberica25 {
-				t.Errorf("expected %q to have selector \"liberica@25\", got: %q", row.name, row.selectedBy)
-			}
-		} else {
-			if hasLiberica25 {
-				t.Errorf("expected %q NOT to have selector \"liberica@25\", got: %q", row.name, row.selectedBy)
-			}
-		}
-
-		// Check "graalvm@25"
-		hasGraalvm25 := slices.Contains(selectors, "graalvm@25")
-		if row.name == winnerGraalvm25.Identifier {
-			if !hasGraalvm25 {
-				t.Errorf("expected %q to have selector \"graalvm@25\", got: %q", row.name, row.selectedBy)
-			}
-		} else {
-			if hasGraalvm25 {
-				t.Errorf("expected %q NOT to have selector \"graalvm@25\", got: %q", row.name, row.selectedBy)
-			}
-		}
-
-		// Check liberica@25.0.2 wins nothing
-		if row.name == "liberica@25.0.2" {
-			if row.selectedBy != "" {
-				t.Errorf("expected liberica@25.0.2 to have empty selectedBy, got: %q", row.selectedBy)
-			}
+		if row.name == "liberica@25.0.2" && row.selectedBy != "" {
+			t.Errorf("expected liberica@25.0.2 to have empty selectedBy, got: %q", row.selectedBy)
 		}
 	}
 }
@@ -365,27 +311,10 @@ func TestLsSelectedBy_SameDistributionMultipleVersions(t *testing.T) {
 		t.Fatalf("got %d rows, want 2:\n%s", len(rows), out.String())
 	}
 
-	winner, err := resolveJDKFromList(mockLsResult, "liberica@25")
-	if err != nil {
-		t.Fatalf("resolve error: %v", err)
-	}
-
+	winner := assertSelectorOwner(t, rows, mockLsResult, "liberica@25")
 	for _, row := range rows {
-		selectors := strings.Split(row.selectedBy, ", ")
-		if row.selectedBy == "" {
-			selectors = nil
-		}
-		if row.name == winner.Identifier {
-			if !slices.Contains(selectors, "liberica@25") {
-				t.Errorf("expected winner %q to have liberica@25, got %q", row.name, row.selectedBy)
-			}
-		} else {
-			if slices.Contains(selectors, "liberica@25") {
-				t.Errorf("expected non-winner %q NOT to have liberica@25, got %q", row.name, row.selectedBy)
-			}
-			if row.selectedBy != "" {
-				t.Errorf("expected non-winner %q to have empty selectedBy, got %q", row.name, row.selectedBy)
-			}
+		if row.name != winner && row.selectedBy != "" {
+			t.Errorf("expected non-winner %q to have empty selectedBy, got %q", row.name, row.selectedBy)
 		}
 	}
 }

@@ -278,13 +278,7 @@ func TestManager_RegisterSource(t *testing.T) {
 }
 
 func TestManager_DiscoverAll(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "javm-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	cacheFile := filepath.Join(tempDir, "cache.json")
+	cacheFile := filepath.Join(t.TempDir(), "cache.json")
 
 	d := &Manager{
 		CacheFile: cacheFile,
@@ -346,44 +340,15 @@ func TestManager_DiscoverAll(t *testing.T) {
 		t.Error("Should find 2 unique JDKs")
 	}
 
-	jdk1Found := false
-	jdk2Found := false
+	byPath := make(map[string]JDK, len(jdks))
 	for _, jdk := range jdks {
-		if jdk.Path == "/path/to/jdk1" {
-			if jdk.Version != "17.0.2" {
-				t.Error("Version should match")
-			}
-			if jdk.Vendor != "Oracle" {
-				t.Error("Vendor should match")
-			}
-			if jdk.Architecture != "x64" {
-				t.Error("Architecture should match")
-			}
-			if jdk.Source != "Mock1" {
-				t.Error("Source should match")
-			}
-			jdk1Found = true
-		} else if jdk.Path == "/path/to/jdk2" {
-			if jdk.Version != "11.0.14" {
-				t.Error("Version should match")
-			}
-			if jdk.Vendor != "OpenJDK" {
-				t.Error("Vendor should match")
-			}
-			if jdk.Architecture != "x64" {
-				t.Error("Architecture should match")
-			}
-			if jdk.Source != "Mock2" {
-				t.Error("Source should match")
-			}
-			jdk2Found = true
+		byPath[jdk.Path] = jdk
+	}
+	// jdk3 shares jdk1's path; the first registered source wins.
+	for _, want := range []JDK{jdk1, jdk2} {
+		if got, ok := byPath[want.Path]; !ok || got != want {
+			t.Errorf("JDK at %s = %+v, want %+v", want.Path, got, want)
 		}
-	}
-	if !jdk1Found {
-		t.Error("Should find JDK 1")
-	}
-	if !jdk2Found {
-		t.Error("Should find JDK 2")
 	}
 
 	cache := &Cache{
