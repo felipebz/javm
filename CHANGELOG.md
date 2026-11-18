@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.17.0](https://github.com/felipebz/javm/compare/v0.16.0...v0.17.0) (2026-11-18)
+
+
+### Features
+
+* **ls:** introduce colorized output and enhanced styling ([88aa49f](https://github.com/felipebz/javm/commit/88aa49fb3cf96902198e5d34c8f377ea4f973b46))
+* **update:** add command to update installed JDKs ([018e92d](https://github.com/felipebz/javm/commit/018e92d5ab1620a4bdde799d0ca0e3f2fe13fea6))
+
+
+### Bug Fixes
+
+* **archive:** reject unsafe symlinks and hardlinks during extraction ([fa4b2bb](https://github.com/felipebz/javm/commit/fa4b2bb4517c8e8f20358a3e0436a2c635e2b019))
+* **ci:** read JAVA_HOME using optional env access in nushell ([35e7552](https://github.com/felipebz/javm/commit/35e7552acf365073598f6992c17ef67d7b4a0fcb))
+* **deps:** update module github.com/spf13/pflag to v1.1.0 ([b10cccc](https://github.com/felipebz/javm/commit/b10cccc161076a9d2389d3591c3c3bb308055839))
+* **deps:** update module github.com/spf13/pflag to v1.1.0 ([6d36d7a](https://github.com/felipebz/javm/commit/6d36d7a5a50f6aea537ea78b8860651fd9526e81))
+* **deps:** update module github.com/ulikunitz/xz to v0.5.17 ([#102](https://github.com/felipebz/javm/issues/102)) ([d38d7ea](https://github.com/felipebz/javm/commit/d38d7ea981ec62f341c0ae593886b020728b358f))
+* **deps:** update module golang.org/x/sys to v0.49.0 ([80cfc31](https://github.com/felipebz/javm/commit/80cfc3166834d2fc8861348667e41204baf4fa3c))
+* **deps:** update module golang.org/x/sys to v0.49.0 ([8ee3908](https://github.com/felipebz/javm/commit/8ee39087b5a8727531275ee8665e02ff62c25136))
+* **deps:** update module golang.org/x/sys to v0.50.0 ([3764bdc](https://github.com/felipebz/javm/commit/3764bdc7c4a6823915435f9a20ee9af48b2c8530))
+* **deps:** update module golang.org/x/sys to v0.50.0 ([15eeac9](https://github.com/felipebz/javm/commit/15eeac9734d5f820c665e23fcdbe0cef810a434e))
+* **deps:** update module golang.org/x/term to v0.47.0 ([26dca5b](https://github.com/felipebz/javm/commit/26dca5b32c63c70f25d47d7efe735185fe26f6cf))
+* **deps:** update module golang.org/x/term to v0.47.0 ([92520b4](https://github.com/felipebz/javm/commit/92520b4a09b6dc1f8b944703b2d53c5a3f55df9f))
+* **install:** ensure symlink containment checks use physical paths ([f5b54c2](https://github.com/felipebz/javm/commit/f5b54c28027ad11540f5fe31e70c741414d2d788))
+* **install:** prefer Zulu rebuilds and non-FX packages ([9d93877](https://github.com/felipebz/javm/commit/9d938773c60470dac7ad45311e2445013baab6fd))
+* **link:** keep relinking after pruning a stale interim link ([8eb55e9](https://github.com/felipebz/javm/commit/8eb55e96d412ac24c852b917921a3901a553b4a4))
+* **output:** sanitize terminal text to prevent unsafe escape sequences ([c8f9bd0](https://github.com/felipebz/javm/commit/c8f9bd03d9725adf00e853a9abff2da0436f9c21))
+* **shell:** validate environment records and managed JDK paths ([c0c20c4](https://github.com/felipebz/javm/commit/c0c20c46a31d7a3bcdb668c1a4a3f4b6cb508517))
+
 ## [0.16.0](https://github.com/felipebz/javm/compare/v0.15.3...v0.16.0) (2026-09-10)
 
 
