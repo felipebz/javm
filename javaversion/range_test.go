@@ -18,6 +18,16 @@ func TestRangePreservesCommonSelectors(t *testing.T) {
 		{selector: "temurin@1.8", version: "zulu@1.8.72", want: false},
 		{selector: "1.8", version: "temurin@1.8.72", want: true},
 		{selector: ">=1.7 <=1.8.75", version: "1.8.72", want: true},
+		{selector: "17 - 21", version: "21.0.3", want: true},
+		{selector: "17 - 21", version: "17", want: true},
+		{selector: "17 - 21", version: "16.0.9", want: false},
+		{selector: "17 - 21", version: "22", want: false},
+		{selector: "17 - 21.0.2", version: "21.0.2", want: true},
+		{selector: "17 - 21.0.2", version: "21.0.3", want: false},
+		{selector: "^17.0.2", version: "17.9", want: true},
+		{selector: "^17.0.2", version: "17.0.1", want: false},
+		{selector: "^17.0.2", version: "18", want: false},
+		{selector: "*", version: "8.0.502", want: true},
 		{selector: ">=1.7 <=1.8.75", version: "1.8.80", want: false},
 	}
 
@@ -35,6 +45,14 @@ func TestRangePreservesCommonSelectors(t *testing.T) {
 				t.Fatalf("Contains(%q) = %v, want %v", tt.version, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRangeRejectsInvalidSelectors(t *testing.T) {
+	for _, selector := range []string{">=*", ">=", "17 -", "- 17", "abc - 21", "17 - x.y", "17 || "} {
+		if _, err := ParseRange(selector); err == nil {
+			t.Errorf("ParseRange(%q) accepted an invalid selector", selector)
+		}
 	}
 }
 

@@ -20,6 +20,13 @@ func TestJavaVersionOrdering(t *testing.T) {
 		{name: "patch build numbers", left: "25.0.4.1+1", right: "25.0.4.1+2", want: -1},
 		{name: "additional numeric element", left: "25.0.4.1", right: "25.0.4.1.2", want: -1},
 		{name: "build before optional information", left: "25+1", right: "25+2-linux", want: -1},
+		{name: "pre-release before release", left: "25-ea", right: "25", want: -1},
+		{name: "numeric pre-release identifiers", left: "25-ea.1", right: "25-ea.2", want: -1},
+		{name: "numeric pre-release before alphanumeric", left: "25-1", right: "25-ea", want: -1},
+		{name: "alphanumeric pre-release identifiers", left: "25-beta", right: "25-ea", want: -1},
+		{name: "shorter pre-release first", left: "25-ea", right: "25-ea.1", want: -1},
+		{name: "optional information", left: "25+1-a", right: "25+1-b", want: -1},
+		{name: "same pre-release", left: "25-ea.1", right: "25-ea.1", want: 0},
 	}
 
 	for _, tt := range tests {
