@@ -3,6 +3,7 @@ package command
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -226,32 +227,40 @@ func writeShellEnvironment(w io.Writer, out []string) error {
 
 func validateShellEnvironmentRecords(out []string) error {
 	for i, line := range out {
-		if strings.ContainsAny(line, "\r\n\x00") {
-			return fmt.Errorf("invalid shell environment record %d: CR, LF and NUL are not allowed", i+1)
+		if err := validateShellEnvironmentRecord(line); err != nil {
+			return fmt.Errorf("invalid shell environment record %d: %w", i+1, err)
 		}
-		operation, fields, ok := strings.Cut(line, "\t")
-		if !ok {
-			return fmt.Errorf("invalid shell environment record %d: missing tab-separated fields", i+1)
+	}
+	return nil
+}
+
+// validateShellEnvironmentRecord accepts SET\t<key>\t<value> and UNSET\t<key>.
+func validateShellEnvironmentRecord(line string) error {
+	if strings.ContainsAny(line, "\r\n\x00") {
+		return errors.New("CR, LF and NUL are not allowed")
+	}
+	operation, fields, ok := strings.Cut(line, "\t")
+	if !ok {
+		return errors.New("missing tab-separated fields")
+	}
+	var key string
+	switch operation {
+	case "SET":
+		var value string
+		key, value, ok = strings.Cut(fields, "\t")
+		if !ok || strings.Contains(value, "\t") {
+			return errors.New("SET requires exactly 3 tab-separated fields")
 		}
-		var key string
-		switch operation {
-		case "SET":
-			var value string
-			key, value, ok = strings.Cut(fields, "\t")
-			if !ok || strings.Contains(value, "\t") {
-				return fmt.Errorf("invalid shell environment record %d: SET requires exactly 3 tab-separated fields", i+1)
-			}
-		case "UNSET":
-			key = fields
-			if strings.Contains(key, "\t") {
-				return fmt.Errorf("invalid shell environment record %d: UNSET requires exactly 2 tab-separated fields", i+1)
-			}
-		default:
-			return fmt.Errorf("invalid shell environment record %d: expected SET or UNSET", i+1)
+	case "UNSET":
+		key = fields
+		if strings.Contains(key, "\t") {
+			return errors.New("UNSET requires exactly 2 tab-separated fields")
 		}
-		if key == "" {
-			return fmt.Errorf("invalid shell environment record %d: empty key", i+1)
-		}
+	default:
+		return errors.New("expected SET or UNSET")
+	}
+	if key == "" {
+		return errors.New("empty key")
 	}
 	return nil
 }
