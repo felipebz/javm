@@ -35,23 +35,16 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 			} else {
 				ver = args[0]
 			}
-			ver, err := runInstall(cmd.Context(), client, ver, customInstallDestination)
-			if err != nil {
+			if _, err := runInstall(cmd.Context(), client, ver, customInstallDestination); err != nil {
 				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 					cmd.SilenceUsage = true
 				}
 				return err
 			}
-			if customInstallDestination == "" {
-				if err := linkLatest(cmd.Context()); err != nil {
-					return err
-				}
-				// TODO change to call the "use" command after it's refactored
-				//return use(ver)
-				return nil
-			} else {
+			if customInstallDestination != "" {
 				return nil
 			}
+			return linkLatest(cmd.Context())
 		},
 		Example: "  javm install 1.8\n" +
 			"  javm install ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
