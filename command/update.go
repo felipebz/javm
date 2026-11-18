@@ -54,23 +54,53 @@ func runUpdate(ctx context.Context, client PackagesWithInfoClient, out io.Writer
 		return err
 	}
 
-	explicit := selector != ""
-	var targets []string
-	if explicit {
-		if aliasValue := getAlias(selector); aliasValue != "" {
-			selector = aliasValue
+	targets := updateTargets(managed, selector)
+	if len(targets) == 0 {
+		if _, err := fmt.Fprintln(out, "no managed JDKs to update"); err != nil {
+			return fmt.Errorf("write update status: %w", err)
 		}
-		targets = []string{selector}
-	} else {
-		targets = updateLines(managed)
-		if len(targets) == 0 {
-			if _, err := fmt.Fprintln(out, "no managed JDKs to update"); err != nil {
-				return fmt.Errorf("write update status: %w", err)
-			}
-			return nil
-		}
+		return nil
 	}
 
+	u := updater{client: client, out: out, managed: managed, opts: opts}
+	changed, err := u.updateAll(ctx, targets, selector != "")
+	if changed && !opts.dryRun {
+		// Relink even after a failure, since an earlier target may be installed.
+		err = errors.Join(err, relinkAfterUpdate(ctx))
+	}
+	return err
+}
+
+// updateTargets resolves an explicit selector or alias, or lists every
+// installed line when selector is empty.
+func updateTargets(managed []discovery.JDK, selector string) []string {
+	if selector == "" {
+		return updateLines(managed)
+	}
+	if aliasValue := getAlias(selector); aliasValue != "" {
+		return []string{aliasValue}
+	}
+	return []string{selector}
+}
+
+func relinkAfterUpdate(ctx context.Context) error {
+	if err := linkLatest(ctx); err != nil {
+		return err
+	}
+	return refreshAliasLinks(ctx)
+}
+
+type updater struct {
+	client  PackagesWithInfoClient
+	out     io.Writer
+	managed []discovery.JDK
+	opts    updateOptions
+}
+
+// updateAll updates each target and reports whether any JDK was installed.
+// An explicit target stops at its error; when updating every line, a line
+// without remote packages only warns and other failures do not stop the rest.
+func (u updater) updateAll(ctx context.Context, targets []string, explicit bool) (bool, error) {
 	var errs []error
 	changedAny := false
 	for _, target := range targets {
@@ -78,32 +108,20 @@ func runUpdate(ctx context.Context, client PackagesWithInfoClient, out io.Writer
 			errs = append(errs, err)
 			break
 		}
-		changed, err := updateOne(ctx, client, out, target, managed, opts)
+		changed, err := u.updateOne(ctx, target)
 		changedAny = changedAny || changed
-		if err == nil {
-			continue
-		}
-		// Stop at the first explicit or context error, but still relink below
-		// when the failure came after a JDK was installed.
-		if explicit || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			errs = append(errs, err)
-			break
-		}
-		if errors.Is(err, ErrNotFound) {
+		if !explicit && errors.Is(err, ErrNotFound) {
 			loggerFromContext(ctx).Warn(err)
 			continue
 		}
-		errs = append(errs, err)
-	}
-
-	if changedAny && !opts.dryRun {
-		if err := linkLatest(ctx); err != nil {
+		if err != nil {
 			errs = append(errs, err)
-		} else if err := refreshAliasLinks(ctx); err != nil {
-			errs = append(errs, err)
+			if explicit || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				break
+			}
 		}
 	}
-	return errors.Join(errs...)
+	return changedAny, errors.Join(errs...)
 }
 
 // updateLines lists each installed managed distribution@feature line once.
@@ -123,8 +141,8 @@ func updateLines(managed []discovery.JDK) []string {
 	return lines
 }
 
-func updateOne(ctx context.Context, client PackagesWithInfoClient, out io.Writer, target string, managed []discovery.JDK, opts updateOptions) (bool, error) {
-	current, err := FindBestMatchJDK(managed, target)
+func (u updater) updateOne(ctx context.Context, target string) (bool, error) {
+	current, err := FindBestMatchJDK(u.managed, target)
 	if err != nil {
 		return false, err
 	}
@@ -142,7 +160,7 @@ func updateOne(ctx context.Context, client PackagesWithInfoClient, out io.Writer
 		rng.Qualifier = installed.Qualifier()
 	}
 
-	idx, err := makePackageIndex(ctx, client, runtime.GOOS, runtime.GOARCH, rng.Qualifier)
+	idx, err := makePackageIndex(ctx, u.client, runtime.GOOS, runtime.GOARCH, rng.Qualifier)
 	if err != nil {
 		return false, err
 	}
@@ -151,19 +169,19 @@ func updateOne(ctx context.Context, client PackagesWithInfoClient, out io.Writer
 		return false, NotFoundError(fmt.Errorf("no remote package matches %s", target))
 	}
 	if !isNewerPackage(idx, latest, installed) {
-		if _, err := fmt.Fprintf(out, "%s: up to date (%s)\n", sanitizeTerminalText(target), sanitizeTerminalText(installed.String())); err != nil {
+		if _, err := fmt.Fprintf(u.out, "%s: up to date (%s)\n", sanitizeTerminalText(target), sanitizeTerminalText(installed.String())); err != nil {
 			return false, fmt.Errorf("write update status: %w", err)
 		}
 		return false, nil
 	}
-	if _, err := fmt.Fprintf(out, "%s: %s -> %s\n", sanitizeTerminalText(target), sanitizeTerminalText(installed.String()), sanitizeTerminalText(latest.String())); err != nil {
+	if _, err := fmt.Fprintf(u.out, "%s: %s -> %s\n", sanitizeTerminalText(target), sanitizeTerminalText(installed.String()), sanitizeTerminalText(latest.String())); err != nil {
 		return false, fmt.Errorf("write update status: %w", err)
 	}
-	if opts.dryRun {
+	if u.opts.dryRun {
 		return false, nil
 	}
 
-	info, err := client.GetPackageInfoContext(ctx, idx.ByVersion[latest].Id)
+	info, err := u.client.GetPackageInfoContext(ctx, idx.ByVersion[latest].Id)
 	if err != nil {
 		return false, NetworkError(err)
 	}
@@ -181,7 +199,7 @@ func updateOne(ctx context.Context, client PackagesWithInfoClient, out io.Writer
 		return false, err
 	}
 
-	if filepath.Base(dst) == current.Identifier || opts.keep {
+	if filepath.Base(dst) == current.Identifier || u.opts.keep {
 		return true, nil
 	}
 	after, err := LsContext(ctx, true)
