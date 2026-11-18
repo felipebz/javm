@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/spf13/cobra"
@@ -16,7 +15,7 @@ func NewUninstallCommand() *cobra.Command {
 		Short: "Uninstall JDK",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if strings.HasPrefix(args[0], "system@") {
+			if isSystemSelector(args[0]) {
 				return UsageError(fmt.Errorf("Link to system JDK can only be removed with 'unlink' (e.g. 'javm unlink %s')", args[0]))
 			}
 			if err := uninstall(cmd.Context(), args[0]); err != nil {

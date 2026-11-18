@@ -76,7 +76,7 @@ func NewUnlinkCommand() *cobra.Command {
 }
 
 func link(ctx context.Context, selector string, dir string) error {
-	if !strings.HasPrefix(selector, "system@") {
+	if !isSystemSelector(selector) {
 		return UsageError(errors.New("Name must begin with 'system@' (e.g. 'system@1.8.73')"))
 	}
 	if _, err := javaversion.ParseVersion(selector); err != nil {
@@ -114,63 +114,74 @@ func linkLatest(ctx context.Context) (resultErr error) {
 			}
 		}
 	}()
+	jdks, err := LsContext(ctx, true)
+	if err != nil {
+		return err
+	}
+	links, err := pruneStaleInterimLinks(ctx, jdks)
+	if err != nil {
+		return err
+	}
+	for _, v := range javaversion.VersionSlice(managedVersions(jdks)).TrimTo(javaversion.VPInterim) {
+		name := v.TrimTo(javaversion.VPInterim)
+		target := filepath.Join(cfg.Dir(), "jdk", v.String())
+		if v.Prerelease() != "" || links[name] == target || isSystemSelector(name) {
+			continue
+		}
+		loggerFromContext(ctx).Info(v.String() + " -> " + target)
+		if err := replaceSymlink(target, filepath.Join(cfg.Dir(), "jdk", name)); err != nil {
+			return err
+		}
+	}
+	return linkAlias(ctx, "default", jdks)
+}
+
+// pruneStaleInterimLinks removes jdk/<dist@feature.interim> entries that no
+// installed JDK matches anymore and returns the current target of the others.
+func pruneStaleInterimLinks(ctx context.Context, jdks []discovery.JDK) (map[string]string, error) {
 	files, err := readDir(filepath.Join(cfg.Dir(), "jdk"))
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
-		files = nil
+		return map[string]string{}, nil
 	case err != nil:
-		return fmt.Errorf("read managed JDK directory: %w", err)
+		return nil, fmt.Errorf("read managed JDK directory: %w", err)
 	}
-	jdks, lsErr := Ls(true)
-	if lsErr != nil {
-		return lsErr
-	}
-	cache := make(map[string]string)
+	links := make(map[string]string)
 	for _, f := range files {
-		info, _ := f.Info()
-		if f.IsDir() || info.Mode()&os.ModeSymlink == os.ModeSymlink {
-			sourceVersion := f.Name()
-			if strings.Count(sourceVersion, ".") == 1 && !strings.HasPrefix(sourceVersion, "system@") {
-				target := getLink(sourceVersion)
-				_, err := FindBestMatchJDK(jdks, sourceVersion)
-				if err != nil {
-					err := os.Remove(filepath.Join(cfg.Dir(), "jdk", sourceVersion))
-					if err == nil {
-						loggerFromContext(ctx).Info(sourceVersion + " -/> " + target)
-					}
-					if !os.IsNotExist(err) {
-						return err
-					}
-				} else {
-					cache[sourceVersion] = target
-				}
-			}
+		name := f.Name()
+		if strings.Count(name, ".") != 1 || isSystemSelector(name) || (!f.IsDir() && f.Type()&os.ModeSymlink == 0) {
+			continue
+		}
+		target := getLink(name)
+		if _, err := FindBestMatchJDK(jdks, name); err == nil {
+			links[name] = target
+			continue
+		}
+		err := os.Remove(filepath.Join(cfg.Dir(), "jdk", name))
+		if err == nil {
+			loggerFromContext(ctx).Info(name + " -/> " + target)
+		} else if !os.IsNotExist(err) {
+			return nil, err
 		}
 	}
+	return links, nil
+}
 
-	// Convert discovered JDKs to Java versions for sorting/trimming.
+// managedVersions parses each JDK identifier, falling back to its version.
+func managedVersions(jdks []discovery.JDK) []*javaversion.Version {
 	var versions []*javaversion.Version
 	for _, jdk := range jdks {
 		if v, err := javaversion.ParseVersion(jdk.Identifier); err == nil {
 			versions = append(versions, v)
 		} else if v, err := javaversion.ParseVersion(jdk.Version); err == nil {
-			// fallback check
 			versions = append(versions, v)
 		}
 	}
+	return versions
+}
 
-	for _, v := range javaversion.VersionSlice(versions).TrimTo(javaversion.VPInterim) {
-		sourceVersion := v.TrimTo(javaversion.VPInterim)
-		target := filepath.Join(cfg.Dir(), "jdk", v.String())
-		if v.Prerelease() == "" && cache[sourceVersion] != target && !strings.HasPrefix(sourceVersion, "system@") {
-			source := filepath.Join(cfg.Dir(), "jdk", sourceVersion)
-			loggerFromContext(ctx).Info(v.String() + " -> " + target)
-			if err := replaceSymlink(target, source); err != nil {
-				return err
-			}
-		}
-	}
-	return linkAlias(ctx, "default", jdks)
+func isSystemSelector(name string) bool {
+	return strings.HasPrefix(name, "system@")
 }
 
 func linkAliasName(ctx context.Context, name string) error {

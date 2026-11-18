@@ -44,6 +44,32 @@ func TestLinkLatestPropagatesReadDirectoryError(t *testing.T) {
 	}
 }
 
+func TestLinkLatestContinuesAfterRemovingStaleLink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+	t.Setenv("JAVM_HOME", t.TempDir())
+	writeManagedJDK(t, "temurin@25.0.4", "25.0.4+7", "")
+	stale := filepath.Join(cfg.Dir(), "jdk", "liberica@17.0")
+	if err := os.Symlink(filepath.Join(cfg.Dir(), "jdk", "liberica@17.0.9"), stale); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := linkLatest(context.Background()); err != nil {
+		t.Fatalf("linkLatest() error = %v", err)
+	}
+	if _, err := os.Lstat(stale); !os.IsNotExist(err) {
+		t.Fatalf("stale link was not removed: %v", err)
+	}
+	target, err := os.Readlink(filepath.Join(cfg.Dir(), "jdk", "temurin@25.0"))
+	if err != nil {
+		t.Fatalf("link for installed JDK was not created after pruning: %v", err)
+	}
+	if filepath.Base(target) != "temurin@25.0.4" {
+		t.Fatalf("temurin@25.0 -> %q, want temurin@25.0.4", target)
+	}
+}
+
 func TestLinkLatestChecksRemoveBeforeCreatingSymlink(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("creating symlinks requires privileges on Windows")
