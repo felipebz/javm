@@ -94,17 +94,7 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 	}
 
 	candidates := slices.Clone(jdks)
-	sort.Slice(candidates, func(i, j int) bool {
-		v1, err1 := javaversion.ParseVersion(candidates[i].Version)
-		v2, err2 := javaversion.ParseVersion(candidates[j].Version)
-		if err1 == nil && err2 == nil {
-			return v2.LessThan(v1)
-		}
-		if candidates[i].Version != candidates[j].Version {
-			return candidates[i].Version > candidates[j].Version
-		}
-		return candidates[i].Identifier < candidates[j].Identifier
-	})
+	sort.Slice(candidates, func(i, j int) bool { return newerJDKFirst(candidates[i], candidates[j]) })
 
 	var fallback discovery.JDK
 	hasFallback := false
@@ -132,7 +122,37 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 }
 
 func printInstalledVersions(w io.Writer, styles styles, jdks []discovery.JDK, rng *javaversion.Range, showDetails bool) error {
-	// Filter by range
+	filtered := filterByRange(jdks, rng)
+	sort.Slice(filtered, func(i, j int) bool {
+		if filtered[i].Source != filtered[j].Source {
+			return filtered[i].Source < filtered[j].Source
+		}
+		return newerJDKFirst(filtered[i], filtered[j])
+	})
+
+	selectedBy := computeSelectedBy(jdks, filtered)
+	if showDetails {
+		return writeTable(w, styles, detailedRows(filtered, selectedBy))
+	}
+	return writeTable(w, styles, compactRows(filtered, selectedBy))
+}
+
+// newerJDKFirst orders JDKs by descending version, comparing unparsable
+// versions as text, and then by identifier.
+func newerJDKFirst(a, b discovery.JDK) bool {
+	v1, err1 := javaversion.ParseVersion(a.Version)
+	v2, err2 := javaversion.ParseVersion(b.Version)
+	if err1 == nil && err2 == nil {
+		return v2.LessThan(v1)
+	}
+	if a.Version != b.Version {
+		return a.Version > b.Version
+	}
+	return a.Identifier < b.Identifier
+}
+
+// filterByRange keeps the JDKs inside rng; a nil range keeps all of them.
+func filterByRange(jdks []discovery.JDK, rng *javaversion.Range) []discovery.JDK {
 	var filtered []discovery.JDK
 	for _, jdk := range jdks {
 		if rng != nil {
@@ -143,67 +163,52 @@ func printInstalledVersions(w io.Writer, styles styles, jdks []discovery.JDK, rn
 		}
 		filtered = append(filtered, jdk)
 	}
+	return filtered
+}
 
-	// Sort by Source (ASC) then Version (DESC)
-	sort.Slice(filtered, func(i, j int) bool {
-		if filtered[i].Source != filtered[j].Source {
-			return filtered[i].Source < filtered[j].Source
-		}
-		v1, err1 := javaversion.ParseVersion(filtered[i].Version)
-		v2, err2 := javaversion.ParseVersion(filtered[j].Version)
-		if err1 == nil && err2 == nil {
-			return v2.LessThan(v1)
-		}
-		if filtered[i].Version != filtered[j].Version {
-			return filtered[i].Version > filtered[j].Version
-		}
-		return filtered[i].Identifier < filtered[j].Identifier
+func detailedRows(jdks []discovery.JDK, selectedBy map[string]string) [][]tableCell {
+	rows := make([][]tableCell, 0, len(jdks)+1)
+	rows = append(rows, []tableCell{
+		{"SOURCE", roleHeader},
+		{"NAME", roleHeader},
+		{"SELECTED BY", roleHeader},
+		{"VENDOR", roleHeader},
+		{"ARCHITECTURE", roleHeader},
+		{"PATH", roleHeader},
 	})
-
-	selectedByMap := computeSelectedBy(jdks, filtered)
-
-	if showDetails {
-		rows := make([][]tableCell, 0, len(filtered)+1)
+	for _, jdk := range jdks {
+		selected := selectedBy[jdkKey(jdk)]
 		rows = append(rows, []tableCell{
-			{"SOURCE", roleHeader},
-			{"NAME", roleHeader},
-			{"SELECTED BY", roleHeader},
-			{"VENDOR", roleHeader},
-			{"ARCHITECTURE", roleHeader},
-			{"PATH", roleHeader},
+			{jdk.Source, roleDim},
+			{jdk.Identifier, nameRole(selected)},
+			{selected, roleAccent},
+			{jdk.Vendor, roleDefault},
+			{jdk.Architecture, roleDefault},
+			{jdk.Path, roleDefault},
 		})
-		for _, jdk := range filtered {
-			selectedBy := selectedByMap[jdkKey(jdk)]
-			rows = append(rows, []tableCell{
-				{jdk.Source, roleDim},
-				{jdk.Identifier, nameRole(selectedBy)},
-				{selectedBy, roleAccent},
-				{jdk.Vendor, roleDefault},
-				{jdk.Architecture, roleDefault},
-				{jdk.Path, roleDefault},
-			})
-		}
-		return writeTable(w, styles, rows)
 	}
+	return rows
+}
 
-	rows := make([][]tableCell, 0, len(filtered)+1)
+func compactRows(jdks []discovery.JDK, selectedBy map[string]string) [][]tableCell {
+	rows := make([][]tableCell, 0, len(jdks)+1)
 	rows = append(rows, []tableCell{
 		{"NAME", roleHeader},
 		{"SOURCE", roleHeader},
 		{"SELECTED BY", roleHeader},
 	})
-	for _, jdk := range filtered {
-		selectedBy := selectedByMap[jdkKey(jdk)]
+	for _, jdk := range jdks {
+		selected := selectedBy[jdkKey(jdk)]
 		row := []tableCell{
-			{jdk.Identifier, nameRole(selectedBy)},
+			{jdk.Identifier, nameRole(selected)},
 			{jdk.Source, roleDim},
 		}
-		if selectedBy != "" {
-			row = append(row, tableCell{selectedBy, roleAccent})
+		if selected != "" {
+			row = append(row, tableCell{selected, roleAccent})
 		}
 		rows = append(rows, row)
 	}
-	return writeTable(w, styles, rows)
+	return rows
 }
 
 // nameRole keeps the JDKs that win one of the selectors shown in SELECTED BY at
