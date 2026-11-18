@@ -120,13 +120,14 @@ func installWithExtractor(ctx context.Context, file string, dst string, extract 
 }
 
 func extractArchive(ctx context.Context, src, dst string) error {
+	loggerFromContext(ctx).Debug("Extracting " + src + " to " + dst)
 	switch getFileExtension(src) {
 	case ".zip":
-		return installFromZip(ctx, src, dst)
+		return unzip(ctx, src, dst, true)
 	case ".tar.gz":
-		return installFromTgz(ctx, src, dst)
+		return untgz(ctx, src, dst, true)
 	case ".tar.xz":
-		return installFromTgx(ctx, src, dst)
+		return untgx(ctx, src, dst, true)
 	default:
 		return fmt.Errorf("unsupported file type: %s", src)
 	}
@@ -258,11 +259,6 @@ func assertNoEscapingComponents(root, target string) error {
 	return nil
 }
 
-func installFromTgz(ctx context.Context, src string, dst string) error {
-	loggerFromContext(ctx).Debug("Extracting " + src + " to " + dst)
-	return untgz(ctx, src, dst, true)
-}
-
 func untgz(ctx context.Context, src string, dst string, strip bool) (err error) {
 	gzFile, err := os.Open(src)
 	if err != nil {
@@ -345,11 +341,6 @@ func extractTarWithLimits(ctx context.Context, r io.Reader, dst string, strip bo
 	}
 }
 
-func installFromTgx(ctx context.Context, src string, dst string) error {
-	loggerFromContext(ctx).Debug("Extracting " + src + " to " + dst)
-	return untgx(ctx, src, dst, true)
-}
-
 func untgx(ctx context.Context, src string, dst string, strip bool) (err error) {
 	xzFile, err := os.Open(src)
 	if err != nil {
@@ -365,11 +356,6 @@ func untgx(ctx context.Context, src string, dst string, strip bool) (err error) 
 		return err
 	}
 	return extractTar(ctx, xzr, dst, strip)
-}
-
-func installFromZip(ctx context.Context, src string, dst string) error {
-	loggerFromContext(ctx).Debug("Extracting " + src + " to " + dst)
-	return unzip(ctx, src, dst, true)
 }
 
 func unzip(ctx context.Context, src string, dst string, strip bool) error {
