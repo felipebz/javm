@@ -5,6 +5,7 @@
 <p align="center">
   <a href="https://github.com/felipebz/javm/releases"><img src="https://img.shields.io/github/v/release/felipebz/javm" alt="GitHub release"></a>
   <a href="https://github.com/felipebz/javm/actions/workflows/build.yml"><img src="https://github.com/felipebz/javm/actions/workflows/build.yml/badge.svg" alt="Build"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/felipebz/javm"><img src="https://api.scorecard.dev/projects/github.com/felipebz/javm/badge" alt="OpenSSF Scorecard"></a>
   <a href="https://javm.dev/docs/"><img src="https://img.shields.io/badge/docs-javm.dev-orange" alt="Documentation"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
 </p>
