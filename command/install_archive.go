@@ -477,6 +477,10 @@ func (s *extractionState) entryPath(name string) (string, bool, error) {
 			return "", true, nil
 		}
 		clean = strings.Join(parts[1:], "/")
+		// Stripping the root exposes a new first component, which must pass the same volume check.
+		if hasWindowsVolume(clean) {
+			return "", false, fmt.Errorf("unsafe archive path %q: absolute paths are not allowed", name)
+		}
 	}
 	if _, exists := s.seen[clean]; exists {
 		return "", false, fmt.Errorf("archive contains duplicate entry %q", clean)
@@ -497,7 +501,11 @@ func (s *extractionState) entryPathForLink(name string) (string, bool, error) {
 	if len(parts) < 2 || parts[0] != s.rootPrefix {
 		return "", false, fmt.Errorf("hardlink target is outside archive root")
 	}
-	return strings.Join(parts[1:], "/"), false, nil
+	stripped := strings.Join(parts[1:], "/")
+	if hasWindowsVolume(stripped) {
+		return "", false, fmt.Errorf("absolute paths are not allowed")
+	}
+	return stripped, false, nil
 }
 
 func safeArchiveName(name string) (string, error) {
@@ -511,6 +519,10 @@ func safeArchiveName(name string) (string, error) {
 	clean := path.Clean(name)
 	if clean == ".." || strings.HasPrefix(clean, "../") {
 		return "", fmt.Errorf("path traversal is not allowed")
+	}
+	// Cleaning can expose a volume name ("x/../C:"), so check the cleaned path too.
+	if hasWindowsVolume(clean) {
+		return "", fmt.Errorf("absolute paths are not allowed")
 	}
 	return clean, nil
 }

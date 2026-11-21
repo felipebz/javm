@@ -232,6 +232,10 @@ func parseHyphenRange(leftRaw, rightRaw string) ([]constraint, error) {
 		return nil, err
 	}
 	lower := constraint{op: opGreaterOrEqual, pattern: left}
+	if len(right.numeric) == 0 {
+		// A bare wildcard upper side ("17 - x") has no upper boundary.
+		return []constraint{lower}, nil
+	}
 	if len(right.numeric) <= 2 && !right.hasPre && !right.hasBuild && !right.hasOptional {
 		return []constraint{lower, {op: opLess, pattern: boundary(right, len(right.numeric)-1)}}, nil
 	}

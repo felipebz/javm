@@ -24,6 +24,8 @@ func TestRangePreservesCommonSelectors(t *testing.T) {
 		{selector: "17 - 21", version: "22", want: false},
 		{selector: "17 - 21.0.2", version: "21.0.2", want: true},
 		{selector: "17 - 21.0.2", version: "21.0.3", want: false},
+		{selector: "17 - x", version: "25.0.4", want: true},
+		{selector: "17 - *", version: "16.0.9", want: false},
 		{selector: "^17.0.2", version: "17.9", want: true},
 		{selector: "^17.0.2", version: "17.0.1", want: false},
 		{selector: "^17.0.2", version: "18", want: false},
