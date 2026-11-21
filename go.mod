@@ -10,7 +10,7 @@ require (
 	github.com/spf13/pflag v1.1.0
 	github.com/ulikunitz/xz v0.5.17
 	golang.org/x/sys v0.50.0
-	golang.org/x/term v0.47.0
+	golang.org/x/term v0.48.0
 )
 
 require (
