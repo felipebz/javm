@@ -222,7 +222,10 @@ go build -o javm .
 ./javm --help
 ```
 
-Release notes are in [CHANGELOG.md](CHANGELOG.md); report vulnerabilities as described in [SECURITY.md](SECURITY.md).
+Report bugs and request features in [GitHub Issues](https://github.com/felipebz/javm/issues). Pull requests are
+welcome; [CONTRIBUTING.md](CONTRIBUTING.md) describes the process and what a change needs (tests, `gofmt`,
+Conventional Commits). Release notes are in [CHANGELOG.md](CHANGELOG.md); report vulnerabilities privately as described
+in [SECURITY.md](SECURITY.md).
 
 ## License
 
