@@ -4,317 +4,203 @@
 
 <p align="center">
   <a href="https://github.com/felipebz/javm/releases"><img src="https://img.shields.io/github/v/release/felipebz/javm" alt="GitHub release"></a>
+  <a href="https://github.com/felipebz/javm/actions/workflows/build.yml"><img src="https://github.com/felipebz/javm/actions/workflows/build.yml/badge.svg" alt="Build"></a>
+  <a href="https://javm.dev/docs/"><img src="https://img.shields.io/badge/docs-javm.dev-orange" alt="Documentation"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
-  <a href="README.md"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue" alt="Platform"></a>
 </p>
 
-**javm** is a fast, cross‑platform Java version manager (fork of [jabba](https://github.com/shyiko/jabba)) focused on a frictionless install 
-and switch workflow for JDKs on Linux, macOS and Windows.
+**javm** is a Java version manager for Linux, macOS, and Windows. It installs JDKs from distributions such as Temurin,
+Zulu, Corretto, and GraalVM, finds the JDKs already on your machine, and selects the one a project asks for in
+`.java-version`, without changing your system Java. It is a single static binary with no JVM required, and a
+maintained fork of [jabba](https://github.com/shyiko/jabba).
+
+**Documentation: [javm.dev](https://javm.dev/docs/)**
 
 <p align="center">
-  <img src="assets/demo.gif" alt="javm demonstration" width="1200">
+  <img src="assets/demo.gif" alt="javm installing the JDK from .java-version and running java with it" width="1200">
 </p>
 
 ## Features
 
-- Install & switch between multiple JDK distributions (Zulu, OpenJDK, GraalVM, Temurin, etc.) using semver ranges
-- Per‑project JDK via `.java-version`
-- Remote discovery through the Foojay DiscoAPI
-- Supports semantic version ranges (`1.8.x`, `~17.0.2`, `>=21 <22`)
-- Clean removal (`uninstall`, `deactivate`) without touching system JDK
-- Static Go binary: fast cold start and no additional dependency
+- Install JDKs from any distribution listed by the Foojay Disco API, selected by version or range
+  (`21`, `~17.0.2`, `^17.0.1`, `>=21 <22`, `17 - 21`, `17 || 21`)
+- Per-project JDK via `.java-version`
+- Run a single command with a JDK (`javm exec`), or switch the current shell (`javm use`)
+- Native on Windows (PowerShell, Command Prompt), Linux, and macOS (Bash, Zsh, Fish, Nushell); no WSL or Git Bash
+- Reuse JDKs installed by the system, IntelliJ IDEA, Gradle, or jabba
+- Keep installed JDKs up to date with `javm update`
+- Stable exit codes for scripts and CI
+- Prebuilt binaries for Linux, macOS, and Windows on amd64 and arm64
+
+javm is before 1.0: commands and configuration may still change between minor versions. Pin a release tag when you
+need reproducible setups.
+
+## Quick start
+
+```bash
+curl -fsSL https://javm.dev/install.sh | bash    # Windows PowerShell: irm https://javm.dev/install.ps1 | iex
+javm install temurin@25
+javm exec --jdk temurin@25 java --version
+```
+
+`javm exec` works without any shell setup. Add the [shell integration](#shell-setup) when you also want
+`javm use` to switch `java` and `JAVA_HOME` in the current shell.
 
 ## Installation
 
-You can install `javm` using the provided install scripts. They automatically detect your platform and architecture, and support different release channels:
-
-- `latest`: install from the latest GitHub Release (default)
-- `nightly`: install the most recent development build
-- Specific version: e.g. `v0.1.0`
-
 ### Linux and macOS
-
-By default, installs the latest release to `$HOME/.local/bin/javm`.
-
-To install the latest release:
 
 ```bash
 curl -fsSL https://javm.dev/install.sh | bash
 ```
 
-To install a specific version or channel:
+The installer places the binary at `$HOME/.local/bin/javm` and does not edit shell profiles. If `javm --version`
+reports `command not found`, add that directory to `PATH`:
 
 ```bash
-curl -fsSL https://javm.dev/install.sh | bash -s nightly
-curl -fsSL https://javm.dev/install.sh | bash -s v0.1.0
-```
-
-To also verify build provenance with an authenticated [GitHub CLI](https://cli.github.com/):
-
-```bash
-curl -fsSL https://javm.dev/install.sh | JAVM_VERIFY_ATTESTATION=1 bash
+export PATH="$HOME/.local/bin:$PATH"   # add this line to your shell profile to make it permanent
 ```
 
 ### Windows
 
-By default, installs the latest release to `%LOCALAPPDATA%\Programs\javm`.
-
-To install the latest release:
-
 ```powershell
 irm https://javm.dev/install.ps1 | iex
 ```
 
-To install a specific version or channel:
+The installer places `javm.exe` in `%LOCALAPPDATA%\Programs\javm` and adds that directory to the user `PATH`.
 
-```powershell
-iex "& { $(irm https://javm.dev/install.ps1) } nightly"
-iex "& { $(irm https://javm.dev/install.ps1) } v0.1.0"
-```
+### Versions, verification, and removal
 
-To also verify build provenance with an authenticated [GitHub CLI](https://cli.github.com/):
+Both installers accept `nightly` or a release tag such as `v0.17.0`, always verify the SHA-256 checksum, and can
+optionally verify build provenance with `JAVM_VERIFY_ATTESTATION=1`. See the
+[installation guide](https://javm.dev/docs/install/) for these options, upgrades, and
+[uninstalling javm](https://javm.dev/docs/install/#uninstall-javm), and [ATTESTATION.md](ATTESTATION.md) for the
+trust model.
 
-```powershell
-$env:JAVM_VERIFY_ATTESTATION = "1"
-irm https://javm.dev/install.ps1 | iex
-```
+## Shell setup
 
-### Installation verification
+Shell integration is optional: only `javm use` and `javm deactivate` need it to change the current shell. Add the
+line for your shell to its profile and restart the shell:
 
-The installers always verify the SHA-256 checksum before extracting a release or nightly archive. Nightly installation
-requires an authenticated GitHub CLI because GitHub Actions artifacts are downloaded with `gh run download`.
+| Shell | Profile | Line |
+| --- | --- | --- |
+| Bash | `~/.bashrc` | `eval "$(javm init bash)"` |
+| Zsh | `~/.zshrc` | `eval "$(javm init zsh)"` |
+| Fish | `~/.config/fish/config.fish` | `javm init fish \| source` |
+| PowerShell | `$PROFILE` | `iex "$(javm init pwsh)"` |
 
-Provenance verification is opt-in because `gh attestation verify` uses the GitHub CLI authentication and network
-configuration. Merely having `gh` installed never causes the stable installer to execute it. Set
-`JAVM_VERIFY_ATTESTATION=1` to request verification; in that mode, a missing or unauthenticated `gh`, an unexpected
-repository identity, or an invalid attestation aborts installation. See [ATTESTATION.md](ATTESTATION.md) for the trust
-model and manual verification instructions.
-
-## Shell Setup
-
-To enable javm in your shell, initialize it with `javm init <shell>` as shown
-for your shell below.
-
-### Bash
-
-Add this to your `~/.bashrc` or ~/.zshrc:
-
-```bash
-eval "$(javm init bash)"
-```
-
-### Zsh
-
-Add this to your `~/.zshrc`:
-
-```zsh
-eval "$(javm init zsh)"
-```
-
-### Fish
-
-Add this to your `~/.config/fish/config.fish`:
-
-```fish
-javm init fish | source
-```
-
-### PowerShell
-
-Add this to your profile file:
-
-```powershell
-iex "$(javm init pwsh)" 
-```
-
-> [!TIP]
-> To check the path to your PowerShell profile file, run:
-> ```powershell
-> echo $PROFILE
-> ```
-
-### Command Prompt (CMD)
-
-Generate the CMD wrapper in a directory separate from `javm.exe`:
-
-```batch
-mkdir "%LOCALAPPDATA%\javm\cmd" 2>NUL
-javm init cmd > "%LOCALAPPDATA%\javm\cmd\javm.cmd"
-set "PATH=%LOCALAPPDATA%\javm\cmd;%PATH%"
-```
-
-Keep that wrapper directory before the directory containing `javm.exe` in your
-user `PATH`, then open a new Command Prompt. CMD checks `.exe` before `.cmd`
-inside the same directory, so placing both files together bypasses the wrapper
-and prevents `use` and `deactivate` from changing the current session.
-
-When invoking javm from another batch file, use `call javm ...` so control
-returns to the calling script:
-
-```batch
-call javm use 21
-call javm deactivate
-```
-
-### Nushell
-
-Generate the script file using `javm init nu`:
-
-```nushell
-mkdir ~/.local/share/javm
-javm init nu | save -f ~/.local/share/javm/javm.nu
-```
-
-Add this to your `config.nu` (you can find it by running `$nu.config-path`):
-
-```nushell
-source ~/.local/share/javm/javm.nu
-```
-
-## Post Setup
-
-After editing your profile or config, restart your shell or reload your profile to apply the changes.
+Nushell and Command Prompt use a generated script or wrapper; see
+[Shell setup](https://javm.dev/docs/install/#shell-setup).
 
 ## Usage
 
-### Listing / Searching
+### Pick a JDK per project
 
 ```sh
-javm ls-remote                      # list all available JDKs
-javm ls-remote zulu@~1.8.60         # narrow by distribution & semver range
-javm ls-remote "*@>=1.6.45 <1.9" --latest=minor  # show only latest minors
+echo 21 > .java-version
+javm install                 # installs the version from .java-version
+javm exec ./gradlew build    # runs the build with that JDK
+javm use                     # or switch the current shell to it
 ```
 
-### Installing
+javm does not switch automatically when you change directories.
+
+### Find and install JDKs
 
 ```sh
-javm install zulu@1.8               # Zulu OpenJDK 8 (latest matching)
-javm install zulu@~1.8.144          # same as zulu@>=1.8.144 <1.9.0
-javm install temurin@17             # Temurin 17 LTS
-javm install graalvm@21             # GraalVM
-javm install openjdk@21             # Upstream OpenJDK
+javm ls-remote                                 # latest Temurin build per major version (default distribution)
+javm ls-remote --distribution all              # every distribution
+javm ls-remote ">=8 <9" --distribution zulu    # filter by range and distribution
+javm install temurin@21
+javm install zulu@8
+javm install corretto@~21.0.2
 ```
 
-To install a JDK in a new directory outside the managed `JAVM_HOME`, use
-`--output`. The destination must not exist, and the resulting JDK is unmanaged
-until it is linked explicitly:
-
-```sh
-javm install temurin@21 --output /opt/jdks/temurin-21
-```
-
-### Using / Switching
-
-```sh
-javm ls                              # list installed
-javm ls --details                    # include vendor, architecture and path
-javm use zulu@1.8
-javm use temurin@17
-javm deactivate                      # restore previous JAVA_HOME / PATH
-```
-
-### Per‑Project Version (`.java-version`)
-
-Create a `.java-version` in your project root:
-
-```
-17
-```
-
-Then:
-
-```sh
-javm use   # picks version from .java-version
-```
+With `ls-remote`, choose the distribution with `--distribution`. Java 8 and older use modern version numbers:
+write `8` or `8.0.400`, not `1.8`.
 
 ### Run a command with a JDK
 
-Run a child process with `JAVA_HOME` and `PATH` configured for a selected JDK;
-the current shell is unchanged and shell integration is not required:
-
 ```sh
-javm exec java --version
-javm exec ./gradlew test
-javm exec mvn test
+javm exec mvn test                         # JDK from .java-version
 javm exec --jdk 21 java --version
 javm exec --jdk temurin@21 ./gradlew build
 ```
 
-Without `--jdk`, `javm exec` reads the selector from `.java-version` in the
-current directory. The child command and all of its arguments are passed
-through unchanged.
+Only the child process gets the selected `JAVA_HOME` and `PATH`; the current shell is unchanged.
 
-### Aliases
+### Switch the current shell
 
 ```sh
-javm alias default 17       # sets default JDK for new shells
-javm alias default          # shows the alias value
-javm unalias default
+javm use temurin@21
+javm current                 # show the JDK active in this shell
+javm deactivate              # restore the previous JAVA_HOME and PATH
+javm default temurin@21      # JDK for new shells
 ```
 
-### Inspecting and configuring
+### Manage installed JDKs
 
 ```sh
-javm current                      # show the JDK selected in the current shell
-javm which temurin@21             # show the selected JDK path
-javm which --home temurin@21      # use the platform-specific JAVA_HOME path
-javm config list                  # list effective configuration
-javm config get java.default_distribution
-javm config set java.default_distribution temurin
-javm config unset java.default_distribution
-javm discover refresh             # refresh the discovery cache
-javm default temurin@21           # set the default for newly initialized shells
+javm ls                      # JDKs on this machine, with the selectors that pick them
+javm ls --details            # include source, vendor, architecture, and path
+javm update                  # update every installed distribution@feature line
+javm update --dry-run        # list available updates without installing
+javm uninstall zulu@8
+javm link system@21.0.1 /path/to/jdk   # register a JDK installed outside javm
+javm alias project temurin@21          # name a selector; use it with javm use project
 ```
 
-### Linking Existing System JDK
+See the [CLI reference](https://javm.dev/docs/reference/) for every command, flag, selector, configuration key, and
+[exit code](https://javm.dev/docs/reference/#exit-codes), and the
+[troubleshooting guide](https://javm.dev/docs/how-to/#troubleshooting) when something does not work.
 
-```sh
-javm link system@1.8.72 /Library/Java/JavaVirtualMachines/jdk1.8.0_72.jdk
+### Use in CI
+
+On Linux and macOS runners, install a pinned javm release, install the JDK from `.java-version`, and run the build
+through `javm exec`:
+
+```yaml
+- run: |
+    curl -fsSL https://javm.dev/install.sh | bash -s v0.17.0
+    echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+- run: javm install
+- run: javm exec ./gradlew build
 ```
 
-### Update
+## Coming from jabba
 
-```sh
-javm update zulu@25               # install the newest zulu@25 build and drop the old one
-javm update                       # every installed distribution@feature line
-javm update --dry-run             # list available updates without installing
-javm update --keep temurin@21     # keep the previous build
-```
+javm started as a fork of jabba. It discovers JDKs installed by jabba, so `javm ls` and `javm use` can select them
+without reinstalling, and `javm use` leaves jabba's `PATH` entries untouched. javm keeps its own data in `JAVM_HOME`.
 
-A previous build stays installed while `default-version` or an alias still selects it.
+## Data location
 
-### Uninstall
-
-```sh
-javm uninstall zulu@1.8
-```
-
-### Exit codes
-
-`javm` uses stable exit codes so scripts can distinguish common failure
-classes:
-
-| Code | Meaning |
-| ---: | --- |
-| 0 | Success, including `--help` |
-| 1 | Unexpected or local operation failure |
-| 2 | Invalid command usage or arguments |
-| 3 | Requested JDK or other resource was not found |
-| 4 | Remote service or download failure |
-| 124 | Operation timed out |
-| 130 | Interrupted with Ctrl+C |
+javm stores managed JDKs, configuration, and caches in `JAVM_HOME`: `~/.local/share/javm` (or
+`$XDG_DATA_HOME/javm`) on Linux, `~/Library/Application Support/javm` on macOS, and `%LOCALAPPDATA%\javm` on Windows.
+Set the `JAVM_HOME` environment variable to use another directory.
 
 ## Coding agents
 
-`javm` includes an agent skill for coding agents that need to run Java tools with a predictable JDK.
-
-Install it with:
+javm includes an agent skill for coding agents that need to run Java tools with a predictable JDK:
 
 ```bash
 npx skills add felipebz/javm --skill javm -g
 ```
 
 The skill teaches agents to prefer `javm exec` for builds, tests and other non-interactive Java commands.
+
+## FAQ
+
+**Does javm change my system Java?**\
+No. `javm use` changes `PATH` and `JAVA_HOME` only in the current shell, and `javm exec` only for the command it runs.
+javm never edits system alternatives, the Windows registry, or shell profiles.
+
+**How do I go back to the system JDK?**\
+Run `javm deactivate`, or open a new shell if no default is set with `javm default`.
+
+**How is javm different from SDKMAN, jEnv, or mise?**\
+javm is a single native binary that runs in PowerShell and Command Prompt as well as Unix shells, without WSL or
+Git Bash. Unlike jEnv, it downloads JDKs itself; unlike general-purpose tool managers, it focuses on JDKs, with Java
+version ranges, discovery of existing JDKs, and `javm exec` for builds.
 
 ## Development
 
@@ -328,19 +214,7 @@ go build -o javm .
 ./javm --help
 ```
 
-## FAQ
-
-**Q: Does it override my system Java?**\
-No. `javm use` adjusts your shell `PATH` and `JAVA_HOME` *in that session*.
-
-**Q: How do I revert to the system JDK?**\
-Run `javm deactivate` or open a new shell (if no default alias points elsewhere).
-
-**Q: Can I pin a project JDK?**\
-Yes: Create a `.java-version` with the JDK version then `javm use` inside that directory.
-
-**Q: Why not install “globally”?**\
-Global changes (e.g. system alternatives, registry edits) vary by OS and often require sudo/admin; javm keeps things user‑scoped and portable.
+Release notes are in [CHANGELOG.md](CHANGELOG.md); report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

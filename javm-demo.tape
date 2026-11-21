@@ -2,35 +2,28 @@ Output assets/demo.gif
 
 Set FontSize 20
 Set Width 1200
-Set Height 450
+Set Height 400
 Set Padding 20
 Set FontFamily "JetBrainsMono Nerd Font"
 Set Theme "Catppuccin Mocha"
 Set CursorBlink false
 
-# Setup
+# Setup: empty javm data directory and a project that asks for Java 25
 Hide
-Type 'eval "$(javm init bash)"'
-Enter
-Hide
-Type 'javm use 8'
+Type 'rm -rf ~/.cache/javm-demo && export JAVM_HOME=~/.cache/javm-demo/home && mkdir -p ~/.cache/javm-demo/project && cd ~/.cache/javm-demo/project && echo 25 > .java-version'
 Enter
 Ctrl+L
 Show
 
 # Run
-Type "java -version"
+Type "cat .java-version"
 Enter
-Wait
+Sleep 1s
 
-Type "javm install 25"
+Type "javm install"
 Enter
-Wait
+Wait@5m
 
-Type "javm use 25"
+Type "javm exec java -version"
 Enter
-Wait
-
-Type "java -version"
-Enter
-Sleep 3s
+Sleep 4s
