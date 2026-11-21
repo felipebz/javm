@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.17.1](https://github.com/felipebz/javm/compare/v0.17.0...v0.17.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **deps:** update module golang.org/x/term to v0.48.0 ([bb1abe8](https://github.com/felipebz/javm/commit/bb1abe8d5c07bf77de57a565f768f7e4511f7d00))
+* **deps:** update module golang.org/x/term to v0.48.0 ([c99f918](https://github.com/felipebz/javm/commit/c99f91836036aeb07c475a56e719d3d94f39c277))
+* harden selector and archive path parsing found by fuzzing ([f69f655](https://github.com/felipebz/javm/commit/f69f655922777efc012fed4bc7343ed89d0e941e))
+
 ## [0.17.0](https://github.com/felipebz/javm/compare/v0.16.0...v0.17.0) (2026-11-18)
 
 
