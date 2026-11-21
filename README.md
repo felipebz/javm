@@ -71,11 +71,13 @@ The installer places `javm.exe` in `%LOCALAPPDATA%\Programs\javm` and adds that 
 
 ### Versions, verification, and removal
 
+<!-- x-release-please-start-version -->
 Both installers accept `nightly` or a release tag such as `v0.17.0`, always verify the SHA-256 checksum, and can
 optionally verify build provenance with `JAVM_VERIFY_ATTESTATION=1`. See the
 [installation guide](https://javm.dev/docs/install/) for these options, upgrades, and
 [uninstalling javm](https://javm.dev/docs/install/#uninstall-javm), and [ATTESTATION.md](ATTESTATION.md) for the
 trust model.
+<!-- x-release-please-end -->
 
 ## Shell setup
 
@@ -152,13 +154,14 @@ javm alias project temurin@21          # name a selector; use it with javm use p
 
 See the [CLI reference](https://javm.dev/docs/reference/) for every command, flag, selector, configuration key, and
 [exit code](https://javm.dev/docs/reference/#exit-codes), and the
-[troubleshooting guide](https://javm.dev/docs/how-to/#troubleshooting) when something does not work.
+[troubleshooting guide](https://javm.dev/docs/how-to/troubleshooting/) when something does not work.
 
 ### Use in CI
 
 On Linux and macOS runners, install a pinned javm release, install the JDK from `.java-version`, and run the build
 through `javm exec`:
 
+<!-- x-release-please-start-version -->
 ```yaml
 - run: |
     curl -fsSL https://javm.dev/install.sh | bash -s v0.17.0
@@ -166,11 +169,15 @@ through `javm exec`:
 - run: javm install
 - run: javm exec ./gradlew build
 ```
+<!-- x-release-please-end -->
+
+Windows runners and other CI systems: see [Use javm in CI](https://javm.dev/docs/how-to/use-javm-in-ci/).
 
 ## Coming from jabba
 
 javm started as a fork of jabba. It discovers JDKs installed by jabba, so `javm ls` and `javm use` can select them
-without reinstalling, and `javm use` leaves jabba's `PATH` entries untouched. javm keeps its own data in `JAVM_HOME`.
+without reinstalling, and `javm use` leaves jabba's `PATH` entries untouched. javm keeps its own data in `JAVM_HOME`
+and reads `.java-version` instead of `.jabbarc`. See [Migrate from jabba](https://javm.dev/docs/how-to/migrate-from-jabba/).
 
 ## Data location
 
