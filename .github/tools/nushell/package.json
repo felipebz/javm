@@ -1,0 +1,8 @@
+{
+  "name": "javm-ci-nushell",
+  "private": true,
+  "description": "Pins the Nushell used by the integration tests; installed with npm ci so the lockfile hashes apply.",
+  "dependencies": {
+    "nushell": "0.117.0"
+  }
+}
