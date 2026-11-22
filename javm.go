@@ -131,9 +131,7 @@ func newRootCommand(app application) *cobra.Command {
 			return nil
 		},
 	}
-	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
-		return command.UsageError(err)
-	})
+	root.SetFlagErrorFunc(command.CommandLineError)
 	root.SetOut(app.out)
 	root.SetErr(app.err)
 	root.AddCommand(

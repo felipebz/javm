@@ -57,10 +57,14 @@ func NetworkError(err error) error {
 func UsageArgs(validate cobra.PositionalArgs) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if err := validate(cmd, args); err != nil {
-			return UsageError(err)
+			return CommandLineError(cmd, err)
 		}
 		return nil
 	}
+}
+
+func CommandLineError(cmd *cobra.Command, err error) error {
+	return UsageError(fmt.Errorf("%w\nRun '%s --help' for usage.", err, cmd.CommandPath()))
 }
 
 // Without a RunE, Cobra shows the help before validating Args.
