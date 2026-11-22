@@ -148,7 +148,9 @@ func TestInitPowerShellUsesDefaultAsData(t *testing.T) {
 	}
 }
 
-func TestInitRejectsTamperedDefault(t *testing.T) {
+// An invalid default-version must not leave the shell without its wrapper:
+// init still emits `javm use --default`, which warns, and never the payload.
+func TestInitToleratesTamperedDefault(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("JAVM_HOME", home)
 	payload := "17\necho compromised"
@@ -160,10 +162,13 @@ func TestInitRejectsTamperedDefault(t *testing.T) {
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 	cmd.SetArgs([]string{"bash"})
-	if err := cmd.Execute(); err == nil {
-		t.Fatal("init accepted a tampered default-version file")
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init error = %v, want the wrapper despite the invalid default", err)
 	}
-	if strings.Contains(output.String(), payload) {
+	if !strings.Contains(output.String(), "javm use --default") {
+		t.Fatal("init did not run use --default, which reports the invalid file")
+	}
+	if strings.Contains(output.String(), payload) || strings.Contains(output.String(), "echo compromised") {
 		t.Fatal("init emitted the tampered selector")
 	}
 }

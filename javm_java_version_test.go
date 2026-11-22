@@ -30,10 +30,13 @@ func isolatedWorkspace(t *testing.T) (workspace, home string) {
 func executeRoot(t *testing.T, args ...string) (string, string, int) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
+	// The same formatter as main, so tests see the messages users see.
+	logger := log.New()
+	logger.SetFormatter(&simpleFormatter{})
 	root := newRootCommand(application{
 		out:    &stdout,
 		err:    &stderr,
-		logger: log.New(),
+		logger: logger,
 		client: discoapi.NewClient(),
 	})
 	root.SetArgs(args)

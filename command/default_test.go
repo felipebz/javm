@@ -1,12 +1,16 @@
 package command
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/felipebz/javm/discovery"
 )
 
 func TestSetDefaultVersionValidatesAndPersistsSelector(t *testing.T) {
@@ -87,5 +91,24 @@ func TestReadDefaultVersionRejectsTamperedFile(t *testing.T) {
 
 	if _, err := readDefaultVersion(); err == nil || errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected invalid persisted selector error, got %v", err)
+	}
+}
+
+func TestDefaultAcceptsDiscoveredJDK(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("JAVM_HOME", home)
+	cleanup := setupMockLs()
+	t.Cleanup(cleanup)
+	mockLsResult = []discovery.JDK{{Identifier: "ubuntu-system@21", Version: "21.0.4", Source: "system", Path: filepath.Join(t.TempDir(), "java-21-openjdk")}}
+
+	cmd := NewDefaultCommand()
+	cmd.SetArgs([]string{"ubuntu-system@21"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("default error = %v", err)
+	}
+	if selector, err := readDefaultVersion(); err != nil || selector != "ubuntu-system@21" {
+		t.Fatalf("readDefaultVersion() = %q, %v, want ubuntu-system@21", selector, err)
 	}
 }

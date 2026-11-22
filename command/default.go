@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,7 +20,19 @@ func NewDefaultCommand() *cobra.Command {
 		Short: "Set the default Java version to use in new shells",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ver := args[0]
+			ver := strings.TrimSpace(args[0])
+			if err := validateDefaultSelector(args[0]); err != nil {
+				return err
+			}
+			// Resolve as `javm use` would, so new shells do not start with an
+			// error. The selector is stored as typed, so 21 follows updates.
+			if _, err := resolveJDKContext(cmd.Context(), ver); err != nil {
+				if errors.Is(err, ErrNotFound) {
+					return NotFoundError(fmt.Errorf("no installed JDK matches %q; install it first with 'javm install %s'",
+						sanitizeTerminalText(ver), sanitizeTerminalText(ver)))
+				}
+				return err
+			}
 			if err := SetDefaultVersion(ver); err != nil {
 				return err
 			}
@@ -49,8 +62,12 @@ func SetDefaultVersion(selector string) error {
 	})
 }
 
+func defaultVersionPath() string {
+	return filepath.Join(cfg.Dir(), "default-version")
+}
+
 func readDefaultVersion() (string, error) {
-	data, err := os.ReadFile(filepath.Join(cfg.Dir(), "default-version"))
+	data, err := os.ReadFile(defaultVersionPath())
 	if err != nil {
 		return "", err
 	}

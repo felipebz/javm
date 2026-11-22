@@ -26,6 +26,13 @@ func NewUseCommand() *cobra.Command {
 				if errors.Is(err, os.ErrNotExist) {
 					return nil
 				}
+				// A broken default must not make every new shell fail; the
+				// shell wrappers apply nothing when no records are written.
+				if errors.Is(err, ErrUsage) {
+					loggerFromContext(cmd.Context()).Warnf("ignoring %s: %v; run 'javm default <version>' to replace it",
+						sanitizeTerminalText(defaultVersionPath()), err)
+					return nil
+				}
 				if err != nil {
 					return err
 				}
@@ -41,6 +48,11 @@ func NewUseCommand() *cobra.Command {
 			fd3, _ := cmd.Flags().GetString("fd3")
 
 			out, err := UseContext(cmd.Context(), ver)
+			if useDefault && errors.Is(err, ErrNotFound) {
+				loggerFromContext(cmd.Context()).Warnf("default JDK %q is not installed; run 'javm install %s' or 'javm default <version>'",
+					sanitizeTerminalText(ver), sanitizeTerminalText(ver))
+				return nil
+			}
 			if err != nil {
 				return err
 			}

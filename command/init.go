@@ -2,6 +2,7 @@ package command
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -65,9 +66,12 @@ func NewInitCommand() *cobra.Command {
 			}
 			script = strings.NewReplacer("::JAVM::", executable).Replace(script)
 
+			// An invalid default-version still counts as configured: the
+			// script runs `use --default`, which explains the problem instead
+			// of leaving the shell without its wrapper.
 			_, defaultErr := readDefaultVersion()
-			defaultConfigured := defaultErr == nil
-			if defaultErr != nil && !os.IsNotExist(defaultErr) {
+			defaultConfigured := defaultErr == nil || errors.Is(defaultErr, ErrUsage)
+			if defaultErr != nil && !defaultConfigured && !os.IsNotExist(defaultErr) {
 				return defaultErr
 			}
 			if shell == "cmd" {
