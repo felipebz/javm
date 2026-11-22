@@ -62,7 +62,7 @@ type resolvedPin struct {
 }
 
 func resolvePins(ctx context.Context) []resolvedPin {
-	pinned, err := pinnedSelectors()
+	pinned, err := pinnedSelectors(ctx)
 	var jdks []discovery.JDK
 	if err == nil {
 		jdks, err = LsContext(ctx, false)

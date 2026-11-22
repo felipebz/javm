@@ -231,11 +231,7 @@ func linkLatest(ctx context.Context) (resultErr error) {
 			return err
 		}
 	}
-	aliasJDKs, err := defaultAliasJDKs(ctx, jdks)
-	if err != nil {
-		return err
-	}
-	if err := linkAlias(ctx, "default", aliasJDKs); err != nil && !refresh.add(err) {
+	if err := linkDefault(ctx, jdks); err != nil && !refresh.add(err) {
 		return err
 	}
 	return refresh.result()
@@ -299,7 +295,11 @@ func linkAliasName(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	if err := linkAlias(ctx, name, jdks); err != nil {
+	link := linkAlias
+	if name == "default" {
+		link = func(ctx context.Context, _ string, jdks []discovery.JDK) error { return linkDefault(ctx, jdks) }
+	}
+	if err := link(ctx, name, jdks); err != nil {
 		return withSymlinkHint(err)
 	}
 	return invalidateDiscoveryCache()
@@ -312,19 +312,29 @@ func invalidateDiscoveryCache() error {
 	return nil
 }
 
-// defaultAliasJDKs returns the list to resolve the default alias against: the
-// managed JDKs when they match it, otherwise the full discovery, so a default
-// that selects a discovered JDK keeps its link. Managed JDKs are tried first
-// because the discovery cache may not list one that was just installed.
-func defaultAliasJDKs(ctx context.Context, managed []discovery.JDK) ([]discovery.JDK, error) {
-	value := getAlias("default")
-	if value == "" {
-		return managed, nil
+// linkDefault points jdk/default at the JDK the default resolves to, as
+// `use --default` resolves it. Managed JDKs are tried first because the
+// discovery cache may not list one that was just installed.
+func linkDefault(ctx context.Context, managed []discovery.JDK) error {
+	selector, err := effectiveDefaultVersion(func(err error) { warnOnce(ctx, err) })
+	if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, ErrUsage) {
+		warnOnce(ctx, err)
+		return nil
 	}
-	if _, err := FindBestMatchJDK(managed, value); err == nil {
-		return managed, nil
+	if err == nil {
+		jdk, findErr := FindBestMatchJDK(managed, selector)
+		if findErr != nil {
+			all, lsErr := LsContext(ctx, false)
+			if lsErr != nil {
+				return lsErr
+			}
+			jdk, findErr = FindBestMatchJDK(all, selector)
+		}
+		if findErr == nil {
+			return pointLink(ctx, "default", jdk.Path)
+		}
 	}
-	return LsContext(ctx, false)
+	return removeStaleAliasLink(ctx, "default", filepath.Join(cfg.Dir(), "jdk", "default"))
 }
 
 // linkAlias points jdk/<name> at the JDK the alias selects in jdks, using the
@@ -335,20 +345,24 @@ func linkAlias(ctx context.Context, name string, jdks []discovery.JDK) error {
 	if err := validateAliasName(name); err != nil {
 		return err
 	}
-	source := filepath.Join(cfg.Dir(), "jdk", name)
 	if value := getAlias(name); value != "" {
 		if jdk, err := FindBestMatchJDK(jdks, value); err == nil {
-			if getLink(name) == canonicalHome(jdk.Path) {
-				return nil
-			}
-			if err := os.MkdirAll(filepath.Dir(source), 0o755); err != nil {
-				return fmt.Errorf("create managed JDK directory: %w", err)
-			}
-			loggerFromContext(ctx).Info(name + " -> " + sanitizeTerminalText(jdk.Path))
-			return replaceSymlink(jdk.Path, source)
+			return pointLink(ctx, name, jdk.Path)
 		}
 	}
-	return removeStaleAliasLink(ctx, name, source)
+	return removeStaleAliasLink(ctx, name, filepath.Join(cfg.Dir(), "jdk", name))
+}
+
+func pointLink(ctx context.Context, name, target string) error {
+	if getLink(name) == canonicalHome(target) {
+		return nil
+	}
+	source := filepath.Join(cfg.Dir(), "jdk", name)
+	if err := os.MkdirAll(filepath.Dir(source), 0o755); err != nil {
+		return fmt.Errorf("create managed JDK directory: %w", err)
+	}
+	loggerFromContext(ctx).Info(name + " -> " + sanitizeTerminalText(target))
+	return replaceSymlink(target, source)
 }
 
 // removeStaleAliasLink removes jdk/<name> when it is a symlink; a real

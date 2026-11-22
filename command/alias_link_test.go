@@ -147,8 +147,8 @@ func TestLinkLatestKeepsDefaultLinkToDiscoveredJDK(t *testing.T) {
 	writeManagedJDK(t, "temurin@17.0.12", "17.0.12+7", "")
 	jdk := discoveredJDK(t)
 	stubDiscovery(t, jdk, discovery.JDK{Identifier: "temurin@17.0.12", Version: "17.0.12+7", Source: "javm", Path: filepath.Join(cfg.Dir(), "jdk", "temurin@17.0.12")})
-	if err := runAlias(t, "default", "21"); err != nil {
-		t.Fatalf("alias default 21 error = %v", err)
+	if err := SetDefaultVersion("21"); err != nil {
+		t.Fatal(err)
 	}
 
 	if err := linkLatest(context.Background()); err != nil {

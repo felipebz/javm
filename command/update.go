@@ -279,9 +279,9 @@ type aliasSelector struct {
 	err      error
 }
 
-func pinnedSelectors() ([]aliasSelector, error) {
+func pinnedSelectors(ctx context.Context) ([]aliasSelector, error) {
 	var pinned []aliasSelector
-	defaultVersion, err := readDefaultVersion()
+	defaultVersion, err := effectiveDefaultVersion(func(err error) { warnOnce(ctx, err) })
 	switch {
 	case err == nil, errors.Is(err, ErrUsage):
 		pinned = append(pinned, aliasSelector{label: "default-version", selector: defaultVersion, err: err})
@@ -292,7 +292,7 @@ func pinnedSelectors() ([]aliasSelector, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, name := range names {
+	for _, name := range slices.DeleteFunc(names, func(name string) bool { return name == "default" }) {
 		value, err := readAlias(name)
 		if err != nil && !errors.Is(err, ErrUsage) {
 			return nil, err
@@ -306,7 +306,7 @@ func pinnedSelectors() ([]aliasSelector, error) {
 // identifier, so update keeps a JDK the user pinned. A pin file that exists
 // but cannot be read may have meant any JDK, so it holds identifier too.
 func selectorsHolding(ctx context.Context, jdks []discovery.JDK, identifier string) ([]string, error) {
-	pinned, err := pinnedSelectors()
+	pinned, err := pinnedSelectors(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +315,7 @@ func selectorsHolding(ctx context.Context, jdks []discovery.JDK, identifier stri
 		switch {
 		case p.err != nil && p.name == "":
 			warnOnce(ctx, fmt.Errorf("ignoring %s: %w; old builds are kept until it is fixed",
-				sanitizeTerminalText(defaultVersionPath()), usageCause(p.err)))
+				sanitizeTerminalText(effectiveDefaultPath()), usageCause(p.err)))
 			holders = append(holders, "unreadable default-version")
 		case skipInvalidAlias(ctx, p.name, p.err):
 			holders = append(holders, "unreadable alias "+p.name)

@@ -39,6 +39,9 @@ func NewAliasCommand() *cobra.Command {
 			if err := validateAliasName(name); err != nil {
 				return err
 			}
+			if name == "default" {
+				return UsageError(errors.New("'default' is reserved; set the default with 'javm default <selector>'"))
+			}
 			// Resolve before writing anything, so a selector that matches no
 			// JDK leaves the alias and its link as they were.
 			jdks, err := LsContext(cmd.Context(), false)
