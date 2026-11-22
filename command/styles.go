@@ -135,12 +135,19 @@ func writeTable(w io.Writer, styles styles, rows [][]tableCell) error {
 	return nil
 }
 
-// layoutTable renders the plain values of rows.
+// layoutTable renders the plain values of rows. text/tabwriter aligns a column
+// only over consecutive lines that have a cell in it, so every row is padded
+// with empty cells to the widest row; the padding this leaves at the end of a
+// line is trimmed.
 func layoutTable(rows [][]tableCell) (string, error) {
+	width := 0
+	for _, row := range rows {
+		width = max(width, len(row))
+	}
 	var buf bytes.Buffer
 	tw := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', 0)
 	for _, row := range rows {
-		values := make([]string, len(row))
+		values := make([]string, width)
 		for i, cell := range row {
 			values[i] = sanitizeTerminalText(cell.value)
 		}
@@ -151,7 +158,11 @@ func layoutTable(rows [][]tableCell) (string, error) {
 	if err := tw.Flush(); err != nil {
 		return "", fmt.Errorf("flush table: %w", err)
 	}
-	return buf.String(), nil
+	lines := strings.Split(buf.String(), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " ")
+	}
+	return strings.Join(lines, "\n"), nil
 }
 
 // styleTable applies the cell styles to a table laid out by layoutTable.
@@ -167,14 +178,16 @@ func (s styles) styleTable(plain string, rows [][]tableCell) string {
 
 // styleLine replaces the values of a single laid out line with their styled
 // versions, leaving the padding between them untouched. The values are located
-// in order because text/tabwriter lays out each group of lines independently,
-// so the columns of a line are not necessarily at the offsets of the header.
+// in order; an empty value has nothing to style and would match anywhere.
 func (s styles) styleLine(line string, row []tableCell) string {
 	var b strings.Builder
 	b.Grow(len(line))
 	offset := 0
 	for _, cell := range row {
 		value := sanitizeTerminalText(cell.value)
+		if value == "" {
+			continue
+		}
 		i := strings.Index(line[offset:], value)
 		if i < 0 {
 			continue
