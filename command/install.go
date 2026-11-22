@@ -15,7 +15,6 @@ import (
 	"github.com/felipebz/javm/discovery"
 	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
@@ -28,10 +27,11 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
 			if len(args) == 0 {
-				ver = cfg.ReadJavaVersion()
-				if ver == "" {
-					return pflag.ErrHelp
+				selector, err := javaVersionSelector()
+				if err != nil {
+					return UsageError(err)
 				}
+				ver = selector
 			} else {
 				ver = args[0]
 			}

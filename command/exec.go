@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/felipebz/javm/cfg"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -61,9 +60,10 @@ func parseExecArgs(cmd *cobra.Command, args []string) (string, []string, error) 
 	}
 
 	if selector == "" {
-		selector = cfg.ReadJavaVersion()
-		if selector == "" {
-			return "", nil, UsageError(errors.New("no JDK selector specified; provide a selector or create .java-version"))
+		var err error
+		selector, err = javaVersionSelector()
+		if err != nil {
+			return "", nil, UsageError(err)
 		}
 	}
 	return selector, args[commandIndex:], nil

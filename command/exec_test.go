@@ -90,7 +90,7 @@ func TestParseExecArgsReportsMissingImplicitSelector(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWD) })
 
 	_, _, err = parseExecArgsForTest([]string{"mvn", "test"})
-	if !errors.Is(err, ErrUsage) || !strings.Contains(err.Error(), "no JDK selector specified") {
+	if !errors.Is(err, ErrUsage) || !strings.Contains(err.Error(), "no version given and no .java-version found in") {
 		t.Fatalf("parseExecArgs() = %v, want missing implicit selector error", err)
 	}
 }

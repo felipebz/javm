@@ -6,9 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/felipebz/javm/cfg"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func NewWhichCommand() *cobra.Command {
@@ -20,10 +18,11 @@ func NewWhichCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
 			if len(args) == 0 {
-				ver = cfg.ReadJavaVersion()
-				if ver == "" {
-					return pflag.ErrHelp
+				selector, err := javaVersionSelector()
+				if err != nil {
+					return UsageError(err)
 				}
+				ver = selector
 			} else {
 				ver = args[0]
 			}

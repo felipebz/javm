@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/felipebz/javm/cfg"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func NewUseCommand() *cobra.Command {
@@ -32,10 +30,11 @@ func NewUseCommand() *cobra.Command {
 					return err
 				}
 			} else if len(args) == 0 {
-				ver = cfg.ReadJavaVersion()
-				if ver == "" {
-					return pflag.ErrHelp
+				selector, err := javaVersionSelector()
+				if err != nil {
+					return UsageError(err)
 				}
+				ver = selector
 			} else {
 				ver = args[0]
 			}
