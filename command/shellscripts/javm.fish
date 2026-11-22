@@ -10,7 +10,7 @@ function javm
             set -l exit_code $status
 
             if test -s $fd3
-                while read -l line
+                while read -l line; or test -n "$line"
                     set -l parts (string split -m 2 \t -- $line)
                     set -l op $parts[1]
                     if test "$op" = SET

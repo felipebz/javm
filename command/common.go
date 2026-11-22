@@ -197,10 +197,11 @@ func parseTrimTo(value string) javaversion.VersionPart {
 
 func printForShellToEval(out []string, fd3 string) error {
 	if fd3 != "" {
-		if err := validateShellEnvironmentRecords(out); err != nil {
+		data, err := encodeShellEnvironment(out)
+		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(fd3, []byte(strings.Join(out, "\n")), 0600); err != nil {
+		if err := os.WriteFile(fd3, data, 0600); err != nil {
 			return fmt.Errorf("write fd3 %q: %w", fd3, err)
 		}
 		return nil
@@ -214,15 +215,31 @@ func printForShellToEval(out []string, fd3 string) error {
 }
 
 func writeShellEnvironment(w io.Writer, out []string) error {
-	if err := validateShellEnvironmentRecords(out); err != nil {
+	data, err := encodeShellEnvironment(out)
+	if err != nil {
 		return err
 	}
-	for _, line := range out {
-		if _, err := fmt.Fprintln(w, line); err != nil {
-			return shellIntegrationUnavailable()
-		}
+	if len(data) == 0 {
+		return nil
+	}
+	if _, err := w.Write(data); err != nil {
+		return shellIntegrationUnavailable()
 	}
 	return nil
+}
+
+// encodeShellEnvironment validates the records and terminates each one with a
+// newline: `read` in bash and zsh drops a final line without one.
+func encodeShellEnvironment(out []string) ([]byte, error) {
+	if err := validateShellEnvironmentRecords(out); err != nil {
+		return nil, err
+	}
+	var data []byte
+	for _, line := range out {
+		data = append(data, line...)
+		data = append(data, '\n')
+	}
+	return data, nil
 }
 
 func validateShellEnvironmentRecords(out []string) error {

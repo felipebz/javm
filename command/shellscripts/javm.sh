@@ -11,7 +11,7 @@ javm() {
         local rc=$?
 
         if [ -s "$fd3" ]; then
-            while IFS=$'\t' read -r op key val; do
+            while IFS=$'\t' read -r op key val || [ -n "$op" ]; do
                 [ "$op" = "SET" ] && export "$key=$val"
                 [ "$op" = "UNSET" ] && unset "$key"
             done < "$fd3"

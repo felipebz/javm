@@ -227,3 +227,92 @@ func createRootExecFixtureWithHome(t *testing.T) (string, string) {
 
 	return filepath.Join(bin, probe), home
 }
+
+// The bash/zsh and fish wrappers read the --fd3 records with `read`, which
+// skips a final line without a newline. That used to drop JAVA_HOME_BEFORE_JAVM,
+// so deactivate kept the selected JDK instead of restoring JAVA_HOME.
+func TestShellIntegrationDeactivateRestoresJavaHome(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell wrappers")
+	}
+	scripts := map[string]struct {
+		args   []string
+		script string
+	}{
+		"bash": {args: []string{"--noprofile", "--norc"}, script: posixDeactivateScript("bash")},
+		"zsh":  {args: []string{"-f"}, script: posixDeactivateScript("zsh")},
+		"fish": {args: []string{"--no-config"}, script: fishDeactivateScript},
+	}
+	shells := map[string]string{}
+	for name := range scripts {
+		if path, err := osExec.LookPath(name); err == nil {
+			shells[name] = path
+		}
+	}
+	if len(shells) == 0 {
+		t.Skip("bash, zsh and fish are not installed")
+	}
+	goBinary, err := osExec.LookPath("go")
+	if err != nil {
+		t.Skip("go is not installed")
+	}
+	shellPath := os.Getenv("PATH")
+	createRootExecFixture(t)
+
+	_, testFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	binary := filepath.Join(t.TempDir(), "javm")
+	build := osExec.Command(goBinary, "build", "-o", binary, ".")
+	build.Dir = filepath.Dir(testFile)
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build javm: %v\n%s", err, output)
+	}
+
+	for name, shell := range shells {
+		t.Run(name, func(t *testing.T) {
+			runner := filepath.Join(t.TempDir(), "deactivate-test")
+			if err := os.WriteFile(runner, []byte(scripts[name].script), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := osExec.Command(shell, append(scripts[name].args, runner)...)
+			cmd.Env = append(os.Environ(), "PATH="+shellPath, "JAVM_BINARY="+binary)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%s use/deactivate round trip failed: %v\n%s", name, err, output)
+			}
+		})
+	}
+}
+
+func posixDeactivateScript(shell string) string {
+	return `eval "$("$JAVM_BINARY" init ` + shell + `)"
+export JAVA_HOME=/orig
+unset JAVA_HOME_BEFORE_JAVM
+javm use 21 || exit 1
+[ "$JAVA_HOME" != /orig ] || { echo "use did not change JAVA_HOME"; exit 1; }
+[ "$JAVA_HOME_BEFORE_JAVM" = /orig ] || { echo "JAVA_HOME_BEFORE_JAVM=[$JAVA_HOME_BEFORE_JAVM], want [/orig]"; exit 1; }
+javm deactivate || exit 1
+[ "$JAVA_HOME" = /orig ] || { echo "JAVA_HOME=[$JAVA_HOME] after deactivate, want [/orig]"; exit 1; }
+[ -z "${JAVA_HOME_BEFORE_JAVM+set}" ] || { echo "JAVA_HOME_BEFORE_JAVM is still set"; exit 1; }
+`
+}
+
+const fishDeactivateScript = `$JAVM_BINARY init fish | source
+set -gx JAVA_HOME /orig
+set -e JAVA_HOME_BEFORE_JAVM
+javm use 21; or exit 1
+if test "$JAVA_HOME" = /orig
+    echo "use did not change JAVA_HOME"; exit 1
+end
+if test "$JAVA_HOME_BEFORE_JAVM" != /orig
+    echo "JAVA_HOME_BEFORE_JAVM=[$JAVA_HOME_BEFORE_JAVM], want [/orig]"; exit 1
+end
+javm deactivate; or exit 1
+if test "$JAVA_HOME" != /orig
+    echo "JAVA_HOME=[$JAVA_HOME] after deactivate, want [/orig]"; exit 1
+end
+if set -q JAVA_HOME_BEFORE_JAVM
+    echo "JAVA_HOME_BEFORE_JAVM is still set"; exit 1
+end
+`

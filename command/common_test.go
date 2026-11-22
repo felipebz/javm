@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -125,32 +126,30 @@ func TestShellEnvironmentRejectsInvalidRecordsBeforeWriting(t *testing.T) {
 	}
 }
 
+// Both transports must produce the same bytes, with every record terminated by
+// a newline: `read` in bash, zsh and fish drops a final line without one.
 func TestShellEnvironmentPreservesValidRecordFormat(t *testing.T) {
 	tests := []struct {
-		name       string
-		records    []string
-		wantWriter string
-		wantFile   string
+		name    string
+		records []string
+		want    string
 	}{
 		{name: "nil records"},
 		{name: "empty records", records: []string{}},
 		{
-			name:       "empty SET value",
-			records:    []string{"SET\tJAVA_HOME\t"},
-			wantWriter: "SET\tJAVA_HOME\t\n",
-			wantFile:   "SET\tJAVA_HOME\t",
+			name:    "empty SET value",
+			records: []string{"SET\tJAVA_HOME\t"},
+			want:    "SET\tJAVA_HOME\t\n",
 		},
 		{
-			name:       "SET and UNSET records",
-			records:    []string{"SET\tJAVA_HOME\tC:\\Program Files\\Java", "SET\tJAVM_CURRENT\t", "UNSET\tJAVM_PREVIOUS"},
-			wantWriter: "SET\tJAVA_HOME\tC:\\Program Files\\Java\nSET\tJAVM_CURRENT\t\nUNSET\tJAVM_PREVIOUS\n",
-			wantFile:   "SET\tJAVA_HOME\tC:\\Program Files\\Java\nSET\tJAVM_CURRENT\t\nUNSET\tJAVM_PREVIOUS",
+			name:    "SET and UNSET records",
+			records: []string{"SET\tJAVA_HOME\tC:\\Program Files\\Java", "SET\tJAVM_CURRENT\t", "UNSET\tJAVM_PREVIOUS"},
+			want:    "SET\tJAVA_HOME\tC:\\Program Files\\Java\nSET\tJAVM_CURRENT\t\nUNSET\tJAVM_PREVIOUS\n",
 		},
 		{
-			name:       "literal shell punctuation and Unicode",
-			records:    []string{"SET\tJAVA_HOME\t/opt/Java café; '$HOME' \"quoted\""},
-			wantWriter: "SET\tJAVA_HOME\t/opt/Java café; '$HOME' \"quoted\"\n",
-			wantFile:   "SET\tJAVA_HOME\t/opt/Java café; '$HOME' \"quoted\"",
+			name:    "literal shell punctuation and Unicode",
+			records: []string{"SET\tJAVA_HOME\t/opt/Java café; '$HOME' \"quoted\""},
+			want:    "SET\tJAVA_HOME\t/opt/Java café; '$HOME' \"quoted\"\n",
 		},
 	}
 	for _, tt := range tests {
@@ -159,8 +158,8 @@ func TestShellEnvironmentPreservesValidRecordFormat(t *testing.T) {
 			if err := writeShellEnvironment(&output, tt.records); err != nil {
 				t.Fatal(err)
 			}
-			if got := output.String(); got != tt.wantWriter {
-				t.Fatalf("writer output = %q, want %q", got, tt.wantWriter)
+			if got := output.String(); got != tt.want {
+				t.Fatalf("writer output = %q, want %q", got, tt.want)
 			}
 
 			path := filepath.Join(t.TempDir(), "environment")
@@ -171,8 +170,49 @@ func TestShellEnvironmentPreservesValidRecordFormat(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(got) != tt.wantFile {
-				t.Fatalf("file output = %q, want %q", got, tt.wantFile)
+			if string(got) != tt.want {
+				t.Fatalf("file output = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// The last record of use and deactivate carries JAVA_HOME_BEFORE_JAVM, which
+// deactivate needs to restore JAVA_HOME, so it must survive line-based readers.
+func TestFD3FileTerminatesEveryUseAndDeactivateRecord(t *testing.T) {
+	t.Setenv("JAVM_HOME", t.TempDir())
+	t.Setenv("JAVA_HOME", "/orig")
+	t.Setenv("JAVA_HOME_BEFORE_JAVM", "/orig")
+	t.Setenv("PATH", "/usr/bin")
+	jdk := filepath.Join(t.TempDir(), "temurin@21.0.1")
+	useRecords, err := usePath(jdk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deactivateRecords, err := deactivate()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for name, records := range map[string][]string{"use": useRecords, "deactivate": deactivateRecords} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "fd3")
+			if err := printForShellToEval(records, path); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Keep only newline-terminated lines, as `while read` does.
+			var parsed []string
+			for _, line := range strings.SplitAfter(string(data), "\n") {
+				if text, ok := strings.CutSuffix(line, "\n"); ok {
+					parsed = append(parsed, text)
+				}
+			}
+			if !slices.Equal(parsed, records) {
+				t.Fatalf("newline-terminated records = %q, want %q (file %q)", parsed, records, data)
 			}
 		})
 	}
