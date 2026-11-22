@@ -64,9 +64,9 @@ func TestParseExecArgsReportsUsageErrors(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "no command", args: nil, want: "no command specified; usage: javm exec [--jdk <selector>] <command> [args...]"},
-		{name: "jdk without selector", args: []string{"--jdk"}, want: "--jdk requires a selector; usage: javm exec [--jdk <selector>] <command> [args...]"},
-		{name: "jdk without command", args: []string{"--jdk", "21"}, want: "no command specified; usage: javm exec [--jdk <selector>] <command> [args...]"},
+		{name: "no command", args: nil, want: "no command specified; usage: javm exec [--jdk <selector>] [--] <command> [args...]"},
+		{name: "jdk without selector", args: []string{"--jdk"}, want: "--jdk requires a selector; usage: javm exec [--jdk <selector>] [--] <command> [args...]"},
+		{name: "jdk without command", args: []string{"--jdk", "21"}, want: "no command specified; usage: javm exec [--jdk <selector>] [--] <command> [args...]"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestExecHelpWorksWithDisabledFlagParsing(t *testing.T) {
 	if !strings.Contains(out.String(), "Select a JDK and execute a process") {
 		t.Fatalf("help output = %q", out.String())
 	}
-	if !strings.Contains(out.String(), "exec [--jdk <selector>] <command> [args...]") {
+	if !strings.Contains(out.String(), "exec [--jdk <selector>] [--] <command> [args...]") {
 		t.Fatalf("help output has stale usage: %q", out.String())
 	}
 }
@@ -202,9 +202,8 @@ func TestExecUsesJavaVersionWhenSelectorIsOmitted(t *testing.T) {
 }
 
 func parseExecArgsForTest(args []string) (string, []string, error) {
-	cmd := NewExecCommand()
-	cmd.SetArgs(args)
-	return parseExecArgs(cmd, args)
+	parsed, err := parseExecArgs(args)
+	return parsed.selector, parsed.command, err
 }
 
 func TestBuildJDKEnvironmentDoesNotMutateParent(t *testing.T) {
