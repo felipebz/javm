@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -195,7 +196,8 @@ func TestSymlinkCommandsFailWithHint(t *testing.T) {
 
 	t.Run("link system JDK", func(t *testing.T) {
 		t.Setenv("JAVM_HOME", t.TempDir())
-		jdk := makeFakeJDK(t, filepath.Join(t.TempDir(), "external-jdk"), false)
+		jdk := filepath.Join(t.TempDir(), "external-jdk")
+		makeFakeJDK(t, jdk, runtime.GOOS == "darwin")
 		failAllSymlinks(t)
 		forceGOOS(t, "windows")
 
