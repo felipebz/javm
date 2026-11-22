@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -60,6 +61,50 @@ type application struct {
 	terminal func(io.Writer) bool
 }
 
+func versionText(version, commit, date string, info *debug.BuildInfo) string {
+	if info != nil {
+		if version == "" && info.Main.Version != "" && info.Main.Version != "(devel)" {
+			version = strings.TrimPrefix(info.Main.Version, "v")
+		}
+		var revision, revisionTime string
+		modified := false
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				revision = setting.Value
+			case "vcs.time":
+				revisionTime = setting.Value
+			case "vcs.modified":
+				modified = setting.Value == "true"
+			}
+		}
+		// Go already marks a pseudo-version built from a modified tree with +dirty.
+		if revision != "" && modified && !strings.HasSuffix(version, "+dirty") {
+			revision += "-dirty"
+		}
+		if commit == "" {
+			commit = revision
+		}
+		if date == "" {
+			date = revisionTime
+		}
+	}
+	if version == "" {
+		version = "dev"
+	}
+	details := make([]string, 0, 2)
+	if commit != "" {
+		details = append(details, "commit "+commit)
+	}
+	if date != "" {
+		details = append(details, "built at "+date)
+	}
+	if len(details) == 0 {
+		return version
+	}
+	return fmt.Sprintf("%s (%s)", version, strings.Join(details, ", "))
+}
+
 func newRootCommand(app application) *cobra.Command {
 	root := &cobra.Command{
 		Use:              "javm",
@@ -71,17 +116,8 @@ func newRootCommand(app application) *cobra.Command {
 			if showVersion, _ := cmd.Flags().GetBool("version"); !showVersion {
 				return pflag.ErrHelp
 			}
-			msg := version
-			details := make([]string, 0, 2)
-			if commit != "" {
-				details = append(details, "commit "+commit)
-			}
-			if date != "" {
-				details = append(details, "built at "+date)
-			}
-			if len(details) > 0 {
-				msg = fmt.Sprintf("%s (%s)", version, strings.Join(details, ", "))
-			}
+			buildInfo, _ := debug.ReadBuildInfo()
+			msg := versionText(version, commit, date, buildInfo)
 			if _, err := fmt.Fprintln(cmd.OutOrStdout(), msg); err != nil {
 				return fmt.Errorf("write version: %w", err)
 			}
