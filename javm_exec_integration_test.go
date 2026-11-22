@@ -234,6 +234,33 @@ func createRootExecFixtureWithHome(t *testing.T) (string, string) {
 	return filepath.Join(bin, probe), home
 }
 
+// A marker left behind for an uninstalled JDK makes current fail with exit
+// code 3, and the error is printed once.
+func TestRootCurrentReportsStaleMarker(t *testing.T) {
+	createRootExecFixture(t)
+	gone := filepath.Join(t.TempDir(), "uninstalled-jdk")
+	t.Setenv("JAVM_ACTIVE_JAVA_HOME", gone)
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCommand(application{
+		out:    &stdout,
+		err:    &stderr,
+		logger: log.New(),
+		client: discoapi.NewClient(),
+	})
+	root.SetArgs([]string{"current"})
+	err := root.Execute()
+	if code := exitCode(err); code != 3 {
+		t.Fatalf("exitCode(%v) = %d, want 3", err, code)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want nothing", stdout.String())
+	}
+	if strings.Count(stderr.String(), gone) != 1 || strings.Count(stderr.String(), "\n") != 1 {
+		t.Fatalf("stderr = %q, want one line naming %s", stderr.String(), gone)
+	}
+}
+
 // When use selected a JDK outside JAVM_HOME in the parent shell, exec must
 // drop that JDK's bin instead of leaving it behind the selected one.
 func TestRootExecRemovesPreviouslyActiveJDKFromPath(t *testing.T) {
@@ -354,7 +381,12 @@ javm deactivate || exit 1
 # A discovered JDK lives outside JAVM_HOME; its bin must not stay in PATH.
 javm use testvendor-gradle@17 || exit 1
 javm use testvendor-gradle@17 || exit 1
+[ "$(javm current)" = testvendor-gradle@17 ] || { echo "current=[$(javm current)], want [testvendor-gradle@17]"; exit 1; }
 javm deactivate || exit 1
+# The real PATH may have a system java that discovery knows; hide it.
+PATH=/nonexistent "$JAVM_BINARY" current >/dev/null 2>&1
+rc=$?
+[ "$rc" -eq 3 ] || { echo "current exited with $rc after deactivate, want 3"; exit 1; }
 [ "$PATH" = "$ORIG_PATH" ] || { echo "PATH=[$PATH] after deactivate, want [$ORIG_PATH]"; exit 1; }
 [ "$JAVA_HOME" = /orig ] || { echo "JAVA_HOME=[$JAVA_HOME] after deactivate, want [/orig]"; exit 1; }
 [ -z "${JAVM_ACTIVE_JAVA_HOME+set}" ] || { echo "JAVM_ACTIVE_JAVA_HOME is still set"; exit 1; }
@@ -394,7 +426,16 @@ end
 # A discovered JDK lives outside JAVM_HOME; its bin must not stay in PATH.
 javm use testvendor-gradle@17; or exit 1
 javm use testvendor-gradle@17; or exit 1
+if test (javm current) != testvendor-gradle@17
+    echo "current=["(javm current)"], want [testvendor-gradle@17]"; exit 1
+end
 javm deactivate; or exit 1
+# The real PATH may have a system java that discovery knows; hide it.
+PATH=/nonexistent $JAVM_BINARY current >/dev/null 2>&1
+set -l rc $status
+if test $rc -ne 3
+    echo "current exited with $rc after deactivate, want 3"; exit 1
+end
 if test (string join : $PATH) != "$orig_path"
     echo "PATH=["(string join : $PATH)"] after deactivate, want [$orig_path]"; exit 1
 end

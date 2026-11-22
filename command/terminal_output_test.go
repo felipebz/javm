@@ -133,23 +133,16 @@ func TestWhichRendersHostileJDKPathInert(t *testing.T) {
 
 func TestCurrentRendersHostileJDKNameInert(t *testing.T) {
 	clearColorEnv(t)
-	home := t.TempDir()
-	t.Setenv("JAVM_HOME", home)
+	home := isolateCurrentEnvironment(t)
+	root := filepath.Join(home, "jdk", "temurin@21.0.1")
+	makeFakeJDK(t, root, false)
+	mockLsResult = []discovery.JDK{{Identifier: "temurin@21.0.1\x1b[31mINJECTED", Source: "javm", Path: root}}
+	t.Setenv("JAVM_ACTIVE_JAVA_HOME", root)
 
-	original := lookPath
-	lookPath = func(string) (string, error) {
-		return filepath.Join(home, "jdk", "temurin@21.0.1\x1b[31mINJECTED", "bin", "java"), nil
-	}
-	defer func() { lookPath = original }()
-
-	cmd := NewCurrentCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	if err := cmd.Execute(); err != nil {
+	got, err := runCurrent(t)
+	if err != nil {
 		t.Fatal(err)
 	}
-
-	got := out.String()
 	if containsTerminalEscape(got) {
 		t.Fatalf("current emitted control characters: %q", got)
 	}
