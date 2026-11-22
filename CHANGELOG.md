@@ -1,5 +1,70 @@
 # Changelog
 
+## [1.0.0](https://github.com/felipebz/javm/compare/v0.17.0...v1.0.0) (2026-11-22)
+
+
+### Features
+
+* **cli:** look for .java-version in parent directories ([3653f51](https://github.com/felipebz/javm/commit/3653f51b7aa89e87b25890c207b903668b4ca825))
+
+
+### Bug Fixes
+
+* **alias:** link aliases to resolved JDK paths ([661af35](https://github.com/felipebz/javm/commit/661af3585126c1e927adca4fcf7c9350c8d9eab1))
+* **alias:** reject version selector names ([9463efb](https://github.com/felipebz/javm/commit/9463efb953f2a90d981a6d1c5eb681765f6bde0b))
+* **alias:** report unset aliases as not found ([2f5b006](https://github.com/felipebz/javm/commit/2f5b00610c651e33614c83f320c4602fd1d6e213))
+* **cache:** warn on discovery cache invalidation failures ([d75c2b9](https://github.com/felipebz/javm/commit/d75c2b97635f0da37d557717298e322e02b7617b))
+* **cache:** warn on discovery cache save failures ([0e458bf](https://github.com/felipebz/javm/commit/0e458bfdef8b9df4614a384ae40b7d78a5510906))
+* **cli:** fail with exit 2 when no version and no usable .java-version ([485142c](https://github.com/felipebz/javm/commit/485142cc990d1559524d8a21f764f608cf66e869))
+* **cli:** point command line errors to help ([8b2a50d](https://github.com/felipebz/javm/commit/8b2a50da7020a98e65f3db4704aeb869ae192b00))
+* **cli:** preserve backslashes in quoted paths ([d7fa278](https://github.com/felipebz/javm/commit/d7fa278328e6d4171c668c512a0027667777cc76))
+* **command:** report unknown subcommands as usage errors ([c8a53c0](https://github.com/felipebz/javm/commit/c8a53c0cac054bc448dc3e8ad1c1cab01871d6b6))
+* **current:** detect JDK run by macOS launcher ([5a6de54](https://github.com/felipebz/javm/commit/5a6de54162292634318295bde0ab68904aa5318c))
+* **current:** report discovered JDKs and fail when none is active ([66c5b4f](https://github.com/felipebz/javm/commit/66c5b4f3640c7869b1b77e80d3a63096b103eee5))
+* **default:** migrate legacy default alias handling ([3ba72ae](https://github.com/felipebz/javm/commit/3ba72ae0550c486c6d1619a5f4f3ea25b3407c8b))
+* **default:** print default when selector is omitted ([08cd6d6](https://github.com/felipebz/javm/commit/08cd6d672aa3ceff39ba0380eecdd38780716027))
+* **default:** reject uninstalled defaults and warn when a default stops resolving ([85d026f](https://github.com/felipebz/javm/commit/85d026f46c27d0c310ce6a5a27ac3f44899c0296))
+* **deps:** update module golang.org/x/term to v0.48.0 ([bb1abe8](https://github.com/felipebz/javm/commit/bb1abe8d5c07bf77de57a565f768f7e4511f7d00))
+* **deps:** update module golang.org/x/term to v0.48.0 ([c99f918](https://github.com/felipebz/javm/commit/c99f91836036aeb07c475a56e719d3d94f39c277))
+* **disco:** detect unknown distributions from HTTP errors ([cddc2ad](https://github.com/felipebz/javm/commit/cddc2ad1fd42de66bed0eb3e2a92b79a20c57c23))
+* **disco:** reject distribution names with wrong case ([3b24cdc](https://github.com/felipebz/javm/commit/3b24cdcfccb1ccfd56090c96e43594c61b73c2eb))
+* **discovery:** keep commands working with a broken managed JDK ([9bcaebd](https://github.com/felipebz/javm/commit/9bcaebd59d5f35b6dec08b068da24e3783a9ce05))
+* **distribution:** reject unknown Disco distributions ([33f40e3](https://github.com/felipebz/javm/commit/33f40e33787d5a20c1ddc2ceb1b5cb44fbc2efaf))
+* **error:** sanitize terminal text in errors ([d735c75](https://github.com/felipebz/javm/commit/d735c75c9c7afbca635d995deca1a4d004577a6d))
+* **exec:** preserve child exit status and signals ([47fe829](https://github.com/felipebz/javm/commit/47fe829cf80a30c7295c5113ce977cbcc538c822))
+* **exec:** suggest --jdk for selector-like commands ([3047c8c](https://github.com/felipebz/javm/commit/3047c8cc701c8ffa375f97c616e5957627e04c0c))
+* harden selector and archive path parsing found by fuzzing ([f69f655](https://github.com/felipebz/javm/commit/f69f655922777efc012fed4bc7343ed89d0e941e))
+* **help:** standardize command usage text ([78dab29](https://github.com/felipebz/javm/commit/78dab29311e3c6d5249d1dbb9e11d76cc5a6e805))
+* **init:** reject incomplete cmd environment updates ([69e04da](https://github.com/felipebz/javm/commit/69e04da636197392d5516c17b03fcea031d210a3))
+* **init:** reuse PowerShell init script files ([c3e22b7](https://github.com/felipebz/javm/commit/c3e22b702af7c921ec02d8d441917b7875c74747))
+* **link:** avoid duplicate paths in symlink errors ([0714253](https://github.com/felipebz/javm/commit/0714253029cc8d597ef596f331bf5d8d94cc2b6d))
+* **link:** log old target when removing alias links ([5e8c0f7](https://github.com/felipebz/javm/commit/5e8c0f77316f461562555a6b62ab80246825c8e3))
+* **link:** log old target when removing alias links ([c15a382](https://github.com/felipebz/javm/commit/c15a382337721cf79dcbf7a5b19f22299ff0b8ef))
+* **link:** register external JDKs by path ([acfe827](https://github.com/felipebz/javm/commit/acfe827923e745ffa762dec3a675426c7ecbe3e0))
+* **link:** warn instead of failing when convenience links cannot be created ([8e8da4c](https://github.com/felipebz/javm/commit/8e8da4cb13b3a2186bbf7131b3e76ab4c0608135))
+* **log:** prefix non-info messages by level ([6768033](https://github.com/felipebz/javm/commit/676803366c79f08d3e7889964cb2a66ddef8305f))
+* **ls-remote:** align output columns with distribution ([ad1710d](https://github.com/felipebz/javm/commit/ad1710db4be4f8eacc9d1d14c16451c8bd6a44fb))
+* **ls-remote:** support distribution selectors ([86b802e](https://github.com/felipebz/javm/commit/86b802edf8cda3346d376230cfb8e54e36e49e91))
+* **ls:** align columns when rows have empty cells ([73f267d](https://github.com/felipebz/javm/commit/73f267d34dd9bae6d4d6fa8c5cbc1df7528d5c53))
+* **ls:** group JDKs found through multiple sources ([4cff5c3](https://github.com/felipebz/javm/commit/4cff5c3105e2ac5e8d9212ce6fd2b1446a1be207))
+* **selector:** accept trailing newlines and skip invalid pin files ([709ce61](https://github.com/felipebz/javm/commit/709ce6109be69796b19df7f2687619b366da0745))
+* **selector:** hint modern syntax for legacy Java versions ([d7ba0a8](https://github.com/felipebz/javm/commit/d7ba0a84d2d59a8d2b360be931f8b72381f6d45f))
+* **shell:** restore JAVA_HOME on deactivate in bash and zsh ([e4b18a0](https://github.com/felipebz/javm/commit/e4b18a0d0a9973eee1506513fb75d05a6c7eaf7f))
+* **shell:** undo only the PATH and JAVA_HOME changes javm made ([fc973c5](https://github.com/felipebz/javm/commit/fc973c5fb77722404268bdd474deff4eb6b28c07))
+* **state:** keep lock files in hidden locks directory ([1ae8884](https://github.com/felipebz/javm/commit/1ae88847cc8f647e41af57d300185f587df389c4))
+* **uninstall:** refresh alias links after removal ([8862917](https://github.com/felipebz/javm/commit/8862917bca22032ca68414a0331e857a3a6dada9))
+* **uninstall:** refuse ambiguous version selectors ([2ddbd05](https://github.com/felipebz/javm/commit/2ddbd05bb4b9fe262378a846b878f186ebae9321))
+* **uninstall:** relink pins to discovered JDKs after removal ([c1c3629](https://github.com/felipebz/javm/commit/c1c3629b22f00e5a672e64a208b86dac77dfe55e))
+* **uninstall:** report pin selection changes ([75349cf](https://github.com/felipebz/javm/commit/75349cfa5938f73f71dd71056cf8d0b215d9e70b))
+* **uninstall:** use macOS bundle path in default link test ([e655f70](https://github.com/felipebz/javm/commit/e655f708c0c5ab2e96b4e1b836bd674f5a4c8d00))
+* **uninstall:** warn when pins stop resolving ([2e237e2](https://github.com/felipebz/javm/commit/2e237e237fb5c551386719f8ef0f62bcfb7c6ffc))
+* **version:** use Go build info for version output ([1e9cf2f](https://github.com/felipebz/javm/commit/1e9cf2f9cbb996325461f17b88d0321c82fb5b3a))
+
+
+### Miscellaneous Chores
+
+* bump version to 1.0.0 ([7a651da](https://github.com/felipebz/javm/commit/7a651dad481fa3300b20b7c9ecbc98fb09887fc9))
+
 ## [0.17.0](https://github.com/felipebz/javm/compare/v0.16.0...v0.17.0) (2026-11-18)
 
 
