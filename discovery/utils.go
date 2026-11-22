@@ -218,7 +218,7 @@ func ExtractMetadataFromJavaVersionContext(ctx context.Context, runner Runner, j
 	md := ParseJavaVersionOutput(string(out))
 
 	if md["version"] == "" {
-		return nil, fmt.Errorf("failed to extract metadata")
+		return nil, errors.New("java -XshowSettings:properties -version printed no java.version")
 	}
 	return md, nil
 }

@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"io"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -14,12 +15,19 @@ type Runtime struct {
 	Logger       *log.Logger
 	Err          io.Writer
 	ShowProgress bool
+
+	// warned holds the warnings already logged for this command, so helpers
+	// that list JDKs several times report each problem once.
+	warned *sync.Map
 }
 
 type runtimeContextKey struct{}
 
 // WithRuntime associates command output and diagnostics with an execution context.
 func WithRuntime(ctx context.Context, runtime Runtime) context.Context {
+	if runtime.warned == nil {
+		runtime.warned = &sync.Map{}
+	}
 	return context.WithValue(ctx, runtimeContextKey{}, runtime)
 }
 
@@ -40,6 +48,18 @@ func RuntimeFromContext(ctx context.Context) Runtime {
 
 func loggerFromContext(ctx context.Context) *log.Logger {
 	return RuntimeFromContext(ctx).Logger
+}
+
+// warnOnce logs err as a warning unless the same warning was already logged
+// for this command.
+func warnOnce(ctx context.Context, err error) {
+	runtime := RuntimeFromContext(ctx)
+	if runtime.warned != nil {
+		if _, seen := runtime.warned.LoadOrStore(err.Error(), struct{}{}); seen {
+			return
+		}
+	}
+	runtime.Logger.Warn(err)
 }
 
 func discardLogger() *log.Logger {

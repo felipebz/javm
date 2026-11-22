@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -54,7 +55,14 @@ var lsFunc = func(ctx context.Context) ([]discovery.JDK, error) {
 		return nil, fmt.Errorf("load discovery configuration: %w", err)
 	}
 	manager.Warn = func(err error) {
-		loggerFromContext(ctx).Warn(err)
+		warnings, ok := discoveryWarnings(err)
+		if !ok {
+			warnOnce(ctx, err)
+			return
+		}
+		for _, warning := range warnings {
+			warnOnce(ctx, warning)
+		}
 	}
 
 	return manager.DiscoverAll(ctx)
@@ -66,9 +74,42 @@ func Ls(managedOnly bool) ([]discovery.JDK, error) {
 
 func LsContext(ctx context.Context, managedOnly bool) ([]discovery.JDK, error) {
 	if managedOnly {
-		return discovery.NewJavmSource().DiscoverManaged(ctx)
+		jdks, err := discovery.NewJavmSource().DiscoverManaged(ctx)
+		if err == nil {
+			return jdks, nil
+		}
+		// A broken managed JDK must not block commands that only need the
+		// valid ones; any other failure, including cancellation, is fatal.
+		warnings, ok := discoveryWarnings(err)
+		if !ok {
+			return nil, err
+		}
+		for _, warning := range warnings {
+			warnOnce(ctx, warning)
+		}
+		return jdks, nil
 	}
 	return lsFunc(ctx)
+}
+
+// discoveryWarnings flattens a possibly joined error into its discovery
+// warnings. ok is false when any part is not a *discovery.DiscoveryWarning.
+func discoveryWarnings(err error) ([]error, bool) {
+	if joined, isJoined := err.(interface{ Unwrap() []error }); isJoined {
+		var warnings []error
+		for _, part := range joined.Unwrap() {
+			partWarnings, ok := discoveryWarnings(part)
+			if !ok {
+				return nil, false
+			}
+			warnings = append(warnings, partWarnings...)
+		}
+		return warnings, true
+	}
+	if _, ok := errors.AsType[*discovery.DiscoveryWarning](err); !ok {
+		return nil, false
+	}
+	return []error{err}, true
 }
 
 func LsBestMatch(selector string, managedOnly bool) (string, error) {

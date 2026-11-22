@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -32,10 +33,19 @@ func NewUninstallCommand() *cobra.Command {
 
 func uninstall(ctx context.Context, selector string) error {
 	ver, err := LsBestMatchContext(ctx, selector, true)
-	if err != nil {
-		return err
+	if err == nil {
+		return removeManagedJDK(ver)
 	}
-	return removeManagedJDK(ver)
+	// A JDK whose metadata cannot be read is not listed, so it can only be
+	// removed by its exact directory name.
+	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrUsage) {
+		if dst, dstErr := managedInstallDestination(cfg.Dir(), selector); dstErr == nil {
+			if info, statErr := os.Lstat(dst); statErr == nil && info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
+				return removeManagedJDK(selector)
+			}
+		}
+	}
+	return err
 }
 
 // removeManagedJDK deletes jdk/<identifier> only when it is a real directory,

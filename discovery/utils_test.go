@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"runtime"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -107,6 +109,23 @@ type readDirErrorFS struct {
 
 func (f readDirErrorFS) ReadDir(string) ([]fs.DirEntry, error) {
 	return nil, f.err
+}
+
+func TestValidateJDKExplainsMissingJavaVersion(t *testing.T) {
+	vfs := fstest.MapFS{
+		ExpectedJavaPath("jdk", runtime.GOOS):                     {Data: []byte("java"), Mode: 0o755},
+		path.Join(ExpectedJDKDir("jdk", runtime.GOOS), "release"): {Data: []byte("JAVA_VERSION=\"21.0.4\"\n")},
+	}
+	_, ok, err := ValidateJDK(vfs, fakeRunner{}, "", "jdk", "javm")
+	if ok || err == nil {
+		t.Fatalf("ValidateJDK() = %v, %v, want an error", ok, err)
+	}
+	if strings.Contains(err.Error(), "failed to extract metadata: failed to extract metadata") {
+		t.Fatalf("error repeats itself: %q", err)
+	}
+	if !strings.Contains(err.Error(), "printed no java.version") {
+		t.Fatalf("error %q does not say what went wrong", err)
+	}
 }
 
 func TestValidateJDK(t *testing.T) {

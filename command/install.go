@@ -97,8 +97,26 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 		if err != nil {
 			return "", err
 		}
+		if err := refuseBrokenDestination(local, dst); err != nil {
+			return "", err
+		}
 	}
 	return ver.String(), fetchAndInstall(ctx, ver, packageInfo, dst, false)
+}
+
+// refuseBrokenDestination reports a managed destination that exists but is not
+// a JDK discovery could validate, before anything is downloaded. Removing it
+// is left to the user.
+func refuseBrokenDestination(local []discovery.JDK, dst string) error {
+	if _, err := os.Lstat(dst); err != nil {
+		return nil
+	}
+	name := filepath.Base(dst)
+	if slices.ContainsFunc(local, func(jdk discovery.JDK) bool { return jdk.Identifier == name }) {
+		return nil
+	}
+	return fmt.Errorf("%s already exists but is not a valid JDK; run \"javm uninstall %s\" to remove it first",
+		sanitizeTerminalText(dst), sanitizeTerminalText(name))
 }
 
 // isInstalledPackage reports whether jdk already provides ver. A JDK whose
