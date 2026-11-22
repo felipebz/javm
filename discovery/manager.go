@@ -99,11 +99,20 @@ func (d *Manager) DiscoverAll(ctx context.Context) ([]JDK, error) {
 	cache.LastUpdated = time.Now()
 	cache.ConfigFingerprint = configFingerprint
 	if err := cache.SaveCache(d.CacheFile); err != nil {
-		return nil, fmt.Errorf("failed to save cache: %w", err)
+		return uniqueJDKs, &CacheSaveError{Err: err}
 	}
 
 	return uniqueJDKs, nil
 }
+
+// CacheSaveError reports that the discovery cache could not be saved. The
+// JDKs returned with it are complete: the cache is only an optimization.
+type CacheSaveError struct {
+	Err error
+}
+
+func (e *CacheSaveError) Error() string { return "failed to save cache: " + e.Err.Error() }
+func (e *CacheSaveError) Unwrap() error { return e.Err }
 
 // loadCache reads the discovery cache, replacing a corrupt one with an empty
 // cache after a warning.

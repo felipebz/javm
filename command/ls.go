@@ -66,7 +66,14 @@ var lsFunc = func(ctx context.Context) ([]discovery.JDK, error) {
 		}
 	}
 
-	return manager.DiscoverAll(ctx)
+	jdks, err := manager.DiscoverAll(ctx)
+	if saveErr, ok := errors.AsType[*discovery.CacheSaveError](err); ok {
+		// The list is complete without the cache; only discover refresh,
+		// whose job is to write it, fails on this.
+		warnOnce(ctx, fmt.Errorf("could not save the discovery cache: %w; javm will search for JDKs again on the next command", saveErr.Err))
+		return jdks, nil
+	}
+	return jdks, err
 }
 
 func Ls(managedOnly bool) ([]discovery.JDK, error) {
