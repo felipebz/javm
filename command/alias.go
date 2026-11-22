@@ -35,13 +35,31 @@ func NewAliasCommand() *cobra.Command {
 				}
 				return nil
 			}
-			if err := setAlias(name, args[1]); err != nil {
+			selector := strings.TrimSpace(args[1])
+			if err := validateAliasName(name); err != nil {
 				return err
 			}
-			if err := linkAliasName(cmd.Context(), name); err != nil {
+			// Resolve before writing anything, so a selector that matches no
+			// JDK leaves the alias and its link as they were.
+			jdks, err := LsContext(cmd.Context(), false)
+			if err != nil {
 				return err
 			}
-			return nil
+			if _, err := FindBestMatchJDK(jdks, selector); err != nil {
+				if errors.Is(err, ErrNotFound) {
+					return NotFoundError(fmt.Errorf("no installed JDK matches %q", sanitizeTerminalText(selector)))
+				}
+				return err
+			}
+			if err := setAlias(name, selector); err != nil {
+				return err
+			}
+			// The alias file is already written; selection reads it and does
+			// not need the jdk/<name> link, so a link failure only reports.
+			if err := linkAlias(cmd.Context(), name, jdks); err != nil {
+				return withSymlinkHint(err)
+			}
+			return invalidateDiscoveryCache()
 		},
 		Example: "  javm alias default 1.8\n" +
 			"  javm alias default # show value bound to an alias",
