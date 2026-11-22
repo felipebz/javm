@@ -44,7 +44,7 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 			if customInstallDestination != "" {
 				return nil
 			}
-			return linkLatest(cmd.Context())
+			return warnLinkFailures(cmd.Context(), linkLatest(cmd.Context()))
 		},
 		Example: "  javm install 1.8\n" +
 			"  javm install ~1.8.73 # same as \">=1.8.73 <1.9.0\"",

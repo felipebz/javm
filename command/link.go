@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
@@ -18,16 +19,86 @@ import (
 
 var removePath = os.Remove
 
+// createSymlink and hostGOOS are variables so tests can simulate Windows
+// refusing to create symlinks.
+var (
+	createSymlink = os.Symlink
+	hostGOOS      = runtime.GOOS
+)
+
+// errPrivilegeNotHeld is ERROR_PRIVILEGE_NOT_HELD (1314), returned by
+// os.Symlink on Windows without Developer Mode or an elevated process.
+// syscall.Errno exists on every platform, so no build-tagged file is needed.
+const errPrivilegeNotHeld = syscall.Errno(1314)
+
+// symlinkHint explains a symlink failure caused by missing Windows
+// privileges, or returns "" for any other error.
+func symlinkHint(err error) string {
+	if err == nil || hostGOOS != "windows" || !errors.Is(err, errPrivilegeNotHeld) {
+		return ""
+	}
+	return "creating symlinks on Windows requires Developer Mode or an elevated prompt"
+}
+
+// withSymlinkHint appends symlinkHint to err when it applies.
+func withSymlinkHint(err error) error {
+	if hint := symlinkHint(err); hint != "" {
+		return fmt.Errorf("%w (%s)", err, hint)
+	}
+	return err
+}
+
+// linkRefreshError collects failures to create or replace convenience links
+// (jdk/<dist@feature.interim>, jdk/default, jdk/<alias>). Selection does not
+// depend on these links, so callers that only refresh them may warn instead.
+type linkRefreshError struct{ failures []error }
+
+func (e *linkRefreshError) Error() string   { return errors.Join(e.failures...).Error() }
+func (e *linkRefreshError) Unwrap() []error { return e.failures }
+
+// add records err when it is a link failure and reports whether it was one.
+func (e *linkRefreshError) add(err error) bool {
+	var failure *linkRefreshError
+	if !errors.As(err, &failure) {
+		return false
+	}
+	e.failures = append(e.failures, failure.failures...)
+	return true
+}
+
+func (e *linkRefreshError) result() error {
+	if len(e.failures) == 0 {
+		return nil
+	}
+	return e
+}
+
+// warnLinkFailures logs each convenience-link failure in err once per command
+// and drops it; any other error is returned unchanged.
+func warnLinkFailures(ctx context.Context, err error) error {
+	var failure *linkRefreshError
+	if err == nil || !errors.As(err, &failure) || failure != err {
+		return err
+	}
+	for _, linkErr := range failure.failures {
+		if hint := symlinkHint(linkErr); hint != "" {
+			linkErr = fmt.Errorf("%w (%s; JDK selection is not affected)", linkErr, hint)
+		}
+		warnOnce(ctx, linkErr)
+	}
+	return nil
+}
+
 func replaceSymlink(target, source string) error {
 	err := removePath(source)
 	switch {
 	case err == nil:
 	case errors.Is(err, fs.ErrNotExist):
 	default:
-		return fmt.Errorf("remove existing symlink %q: %w", source, err)
+		return &linkRefreshError{failures: []error{fmt.Errorf("remove existing symlink %q: %w", source, err)}}
 	}
-	if err := os.Symlink(target, source); err != nil {
-		return fmt.Errorf("create symlink %q -> %q: %w", source, target, err)
+	if err := createSymlink(target, source); err != nil {
+		return &linkRefreshError{failures: []error{fmt.Errorf("create symlink %q -> %q: %w", source, target, err)}}
 	}
 	return nil
 }
@@ -39,10 +110,7 @@ func NewLinkCommand() *cobra.Command {
 		Args:  UsageArgs(cobra.RangeArgs(0, 2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				if err := linkLatest(cmd.Context()); err != nil {
-					return err
-				}
-				return nil
+				return withSymlinkHint(linkLatest(cmd.Context()))
 			}
 			if len(args) == 1 {
 				if value := getLink(args[0]); value != "" {
@@ -97,8 +165,8 @@ func link(ctx context.Context, selector string, dir string) error {
 		if err := os.MkdirAll(filepath.Join(cfg.Dir(), "jdk"), 0755); err != nil {
 			return err
 		}
-		if err := os.Symlink(dir, filepath.Join(cfg.Dir(), "jdk", selector)); err != nil {
-			return err
+		if err := createSymlink(dir, filepath.Join(cfg.Dir(), "jdk", selector)); err != nil {
+			return withSymlinkHint(err)
 		}
 	}
 	return invalidateDiscoveryCache()
@@ -122,6 +190,7 @@ func linkLatest(ctx context.Context) (resultErr error) {
 	if err != nil {
 		return err
 	}
+	var refresh linkRefreshError
 	for _, v := range javaversion.VersionSlice(managedVersions(jdks)).TrimTo(javaversion.VPInterim) {
 		name := v.TrimTo(javaversion.VPInterim)
 		target := filepath.Join(cfg.Dir(), "jdk", v.String())
@@ -129,11 +198,15 @@ func linkLatest(ctx context.Context) (resultErr error) {
 			continue
 		}
 		loggerFromContext(ctx).Info(v.String() + " -> " + target)
-		if err := replaceSymlink(target, filepath.Join(cfg.Dir(), "jdk", name)); err != nil {
+		// One link that cannot be created must not keep the others stale.
+		if err := replaceSymlink(target, filepath.Join(cfg.Dir(), "jdk", name)); err != nil && !refresh.add(err) {
 			return err
 		}
 	}
-	return linkAlias(ctx, "default", jdks)
+	if err := linkAlias(ctx, "default", jdks); err != nil && !refresh.add(err) {
+		return err
+	}
+	return refresh.result()
 }
 
 // pruneStaleInterimLinks removes jdk/<dist@feature.interim> entries that no
@@ -193,7 +266,7 @@ func linkAliasName(ctx context.Context, name string) error {
 		return err
 	}
 	if err := linkAlias(ctx, name, jdks); err != nil {
-		return err
+		return withSymlinkHint(err)
 	}
 	return invalidateDiscoveryCache()
 }

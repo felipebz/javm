@@ -83,11 +83,13 @@ func updateTargets(managed []discovery.JDK, selector string) []string {
 	return []string{selector}
 }
 
+// relinkAfterUpdate refreshes the convenience links; a link that cannot be
+// created is only a warning, since JDK selection does not use these links.
 func relinkAfterUpdate(ctx context.Context) error {
-	if err := linkLatest(ctx); err != nil {
+	if err := warnLinkFailures(ctx, linkLatest(ctx)); err != nil {
 		return err
 	}
-	return refreshAliasLinks(ctx)
+	return warnLinkFailures(ctx, refreshAliasLinks(ctx))
 }
 
 type updater struct {
@@ -322,12 +324,16 @@ func refreshAliasLinks(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	var refresh linkRefreshError
 	for _, name := range names {
-		if err := linkAlias(ctx, name, jdks); err != nil {
+		if err := linkAlias(ctx, name, jdks); err != nil && !refresh.add(err) {
 			return err
 		}
 	}
-	return invalidateDiscoveryCache()
+	if err := invalidateDiscoveryCache(); err != nil {
+		return err
+	}
+	return refresh.result()
 }
 
 // aliasNames lists the valid alias names stored in cfg.Dir().
