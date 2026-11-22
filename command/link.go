@@ -262,9 +262,11 @@ func pruneStaleInterimLinks(ctx context.Context, jdks []discovery.JDK) (map[stri
 			links[name] = target
 			continue
 		}
-		err := os.Remove(filepath.Join(cfg.Dir(), "jdk", name))
+		source := filepath.Join(cfg.Dir(), "jdk", name)
+		oldTarget, _ := os.Readlink(source)
+		err := os.Remove(source)
 		if err == nil {
-			loggerFromContext(ctx).Info(name + " -/> " + target)
+			loggerFromContext(ctx).Info(sanitizeTerminalText(name) + " -/> " + sanitizeTerminalText(oldTarget))
 		} else if !os.IsNotExist(err) {
 			return nil, err
 		}
