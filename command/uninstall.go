@@ -29,6 +29,9 @@ func NewUninstallCommand() *cobra.Command {
 			if err := warnLinkFailures(cmd.Context(), linkLatest(cmd.Context())); err != nil {
 				return err
 			}
+			if err := warnLinkFailures(cmd.Context(), refreshAliasLinks(cmd.Context())); err != nil {
+				return err
+			}
 			warnUnresolvedPins(cmd.Context(), pins, removed)
 			return nil
 		},

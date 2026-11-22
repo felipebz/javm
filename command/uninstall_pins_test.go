@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/felipebz/javm/discovery"
 )
 
-func uninstallWithPins(t *testing.T, jdks map[string]string, pins map[string]string, selector string) []string {
+func setupUninstallPins(t *testing.T, jdks map[string]string, pins map[string]string) {
 	t.Helper()
 	t.Setenv("JAVM_HOME", t.TempDir())
 	original := lsFunc
@@ -28,8 +29,11 @@ func uninstallWithPins(t *testing.T, jdks map[string]string, pins map[string]str
 			t.Fatal(err)
 		}
 	}
-	ctx, logs := contextWithLogBuffer(context.Background())
+}
 
+func uninstallLogged(t *testing.T, selector string) *bytes.Buffer {
+	t.Helper()
+	ctx, logs := contextWithLogBuffer(context.Background())
 	cmd := NewUninstallCommand()
 	cmd.SetArgs([]string{selector})
 	cmd.SetOut(&bytes.Buffer{})
@@ -37,6 +41,10 @@ func uninstallWithPins(t *testing.T, jdks map[string]string, pins map[string]str
 	if err := cmd.ExecuteContext(ctx); err != nil {
 		t.Fatalf("uninstall %s error = %v", selector, err)
 	}
+	return logs
+}
+
+func pinWarnings(logs *bytes.Buffer) []string {
 	var warnings []string
 	for line := range strings.Lines(logs.String()) {
 		if strings.Contains(line, "no longer matches an installed JDK") {
@@ -44,6 +52,69 @@ func uninstallWithPins(t *testing.T, jdks map[string]string, pins map[string]str
 		}
 	}
 	return warnings
+}
+
+func uninstallWithPins(t *testing.T, jdks map[string]string, pins map[string]string, selector string) []string {
+	t.Helper()
+	setupUninstallPins(t, jdks, pins)
+	return pinWarnings(uninstallLogged(t, selector))
+}
+
+func TestUninstallRemovesLinkOfAliasThatStopsResolving(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+	setupUninstallPins(t, map[string]string{"temurin@21.0.4": "21.0.4+7"}, nil)
+	if err := runAlias(t, "work", "temurin@21"); err != nil {
+		t.Fatal(err)
+	}
+
+	logs := uninstallLogged(t, "temurin@21")
+	if _, err := os.Lstat(filepath.Join(cfg.Dir(), "jdk", "work")); !os.IsNotExist(err) {
+		t.Fatalf("jdk/work still exists after uninstall: %v", err)
+	}
+	if warnings := pinWarnings(logs); len(warnings) != 1 {
+		t.Fatalf("pin warnings = %q, want one for alias work", warnings)
+	}
+}
+
+func TestUninstallRepointsLinkOfAliasToRemainingJDK(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires privileges on Windows")
+	}
+	setupUninstallPins(t, map[string]string{"temurin@21.0.4": "21.0.4+7", "temurin@21.0.3": "21.0.3+9"}, nil)
+	if err := runAlias(t, "work", "21"); err != nil {
+		t.Fatal(err)
+	}
+	if got := filepath.Base(aliasLinkTarget(t, "work")); got != "temurin@21.0.4" {
+		t.Fatalf("jdk/work -> %s before uninstall, want temurin@21.0.4", got)
+	}
+
+	logs := uninstallLogged(t, "temurin@21.0.4")
+	if got := filepath.Base(aliasLinkTarget(t, "work")); got != "temurin@21.0.3" {
+		t.Fatalf("jdk/work -> %s after uninstall, want temurin@21.0.3", got)
+	}
+	if warnings := pinWarnings(logs); len(warnings) != 0 {
+		t.Fatalf("pin warnings = %q, want none", warnings)
+	}
+}
+
+func TestUninstallWarnsWhenAliasLinkCannotBeCreated(t *testing.T) {
+	setupUninstallPins(t, map[string]string{"temurin@21.0.4": "21.0.4+7", "temurin@21.0.3": "21.0.3+9"},
+		map[string]string{"work.alias": "21"})
+	failAllSymlinks(t)
+	forceGOOS(t, "windows")
+
+	logs := uninstallLogged(t, "temurin@21.0.4")
+	var aliasWarnings []string
+	for _, warning := range symlinkWarnings(logs) {
+		if strings.Contains(warning, filepath.Join("jdk", "work")) {
+			aliasWarnings = append(aliasWarnings, warning)
+		}
+	}
+	if len(aliasWarnings) != 1 || !strings.Contains(aliasWarnings[0], windowsSymlinkHint) {
+		t.Fatalf("link warnings = %q, want one for jdk/work with the Windows hint", symlinkWarnings(logs))
+	}
 }
 
 func TestUninstallWarnsWhenDefaultStopsResolving(t *testing.T) {
