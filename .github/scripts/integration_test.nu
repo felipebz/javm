@@ -13,6 +13,12 @@ def main [java_version: string = "25"] {
     echo (">>> Installing JDK " + $java_version + " (idempotent)")
     javm install $java_version
 
+    # deactivate must restore this value. Clear JAVA_HOME_BEFORE_JAVM so a value
+    # left by an earlier use cannot take its place.
+    let original_java_home = "/javm-ci/original-java-home"
+    $env.JAVA_HOME = $original_java_home
+    hide-env --ignore-errors JAVA_HOME_BEFORE_JAVM
+
     echo (">>> Using JDK " + $java_version)
     javm use $java_version
 
@@ -43,6 +49,21 @@ def main [java_version: string = "25"] {
     # Ensure java on PATH points to current JAVA_HOME
     if not ($java_path | str starts-with $java_home) {
         error make {msg: (">>> ERROR: java on PATH " + $java_path + " does not match JAVA_HOME " + $java_home)}
+    }
+
+    let before = ($env.JAVA_HOME_BEFORE_JAVM? | default "<unset>")
+    if ($before != $original_java_home) {
+        error make {msg: (">>> ERROR: JAVA_HOME_BEFORE_JAVM " + $before + " != " + $original_java_home)}
+    }
+
+    echo ">>> Deactivating JDK"
+    javm deactivate
+    let restored = ($env.JAVA_HOME? | default "<unset>")
+    if ($restored != $original_java_home) {
+        error make {msg: (">>> ERROR: deactivate left JAVA_HOME " + $restored + ", want " + $original_java_home)}
+    }
+    if ("JAVA_HOME_BEFORE_JAVM" in $env) {
+        error make {msg: ">>> ERROR: JAVA_HOME_BEFORE_JAVM is still set after deactivate"}
     }
 
     echo ">>> Done."

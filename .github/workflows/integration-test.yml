@@ -81,10 +81,12 @@ jobs:
 
       - name: Test nushell
         shell: bash
+        # source only defines main; call it, or the script body never runs.
         run: |
           nu -c "
             source ~/.local/share/javm/javm.nu
             source .github/scripts/integration_test.nu
+            main
           "
 
   macos:

@@ -19,6 +19,12 @@ javm ls --details
 Write-Host ">>> Installing JDK $javaVersion (idempotent)"
 javm install "$javaVersion"
 
+# deactivate must restore this value. Clear JAVA_HOME_BEFORE_JAVM so a value
+# left by an earlier use cannot take its place.
+$originalJavaHome = 'C:\javm-ci\original-java-home'
+$env:JAVA_HOME = $originalJavaHome
+Remove-Item -ErrorAction SilentlyContinue -Path env:JAVA_HOME_BEFORE_JAVM
+
 Write-Host ">>> Using JDK $javaVersion"
 javm use "$javaVersion"
 
@@ -46,5 +52,12 @@ if ($javaPathNorm.StartsWith($javaHomeNorm, [StringComparison]::OrdinalIgnoreCas
   Write-Error "java on PATH ($javaPathNorm) does not match JAVA_HOME ($javaHomeNorm)"
   exit 1
 }
+
+if ($env:JAVA_HOME_BEFORE_JAVM -ne $originalJavaHome) { Write-Error "JAVA_HOME_BEFORE_JAVM ($env:JAVA_HOME_BEFORE_JAVM) != $originalJavaHome"; exit 1 }
+
+Write-Host '>>> Deactivating JDK'
+javm deactivate
+if ($env:JAVA_HOME -ne $originalJavaHome) { Write-Error "deactivate left JAVA_HOME=$env:JAVA_HOME, want $originalJavaHome"; exit 1 }
+if (Test-Path env:JAVA_HOME_BEFORE_JAVM) { Write-Error 'JAVA_HOME_BEFORE_JAVM is still set after deactivate'; exit 1 }
 
 Write-Host '>>> Done.'

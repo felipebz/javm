@@ -18,6 +18,12 @@ javm ls --details
 echo ">>> Installing JDK ${JAVA_VERSION} (idempotent)"
 javm install "${JAVA_VERSION}"
 
+# deactivate must restore this value. Clear JAVA_HOME_BEFORE_JAVM so a value
+# left by an earlier use cannot take its place.
+ORIGINAL_JAVA_HOME="/javm-ci/original-java-home"
+export JAVA_HOME="${ORIGINAL_JAVA_HOME}"
+unset JAVA_HOME_BEFORE_JAVM
+
 echo ">>> Using JDK ${JAVA_VERSION}"
 javm use "${JAVA_VERSION}"
 
@@ -48,5 +54,21 @@ case "${JAVA_PATH}" in
   "${JAVA_HOME}"/*) echo "OK: java on PATH matches JAVA_HOME" ;;
   *) echo "ERROR: java on PATH (${JAVA_PATH}) does not match JAVA_HOME (${JAVA_HOME})" ; exit 1 ;;
 esac
+
+if [ "${JAVA_HOME_BEFORE_JAVM:-}" != "${ORIGINAL_JAVA_HOME}" ]; then
+  echo "ERROR: JAVA_HOME_BEFORE_JAVM (${JAVA_HOME_BEFORE_JAVM:-<unset>}) != ${ORIGINAL_JAVA_HOME}"
+  exit 1
+fi
+
+echo ">>> Deactivating JDK"
+javm deactivate
+if [ "${JAVA_HOME:-}" != "${ORIGINAL_JAVA_HOME}" ]; then
+  echo "ERROR: deactivate left JAVA_HOME=${JAVA_HOME:-<unset>}, want ${ORIGINAL_JAVA_HOME}"
+  exit 1
+fi
+if [ -n "${JAVA_HOME_BEFORE_JAVM+set}" ]; then
+  echo "ERROR: JAVA_HOME_BEFORE_JAVM is still set after deactivate"
+  exit 1
+fi
 
 echo ">>> Done."
