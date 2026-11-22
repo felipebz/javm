@@ -208,7 +208,8 @@ Run `javm deactivate`, or open a new shell if no default is set with `javm defau
 **How is javm different from SDKMAN, jEnv, or mise?**\
 javm is a single native binary that runs in PowerShell and Command Prompt as well as Unix shells, without WSL or
 Git Bash. Unlike jEnv, it downloads JDKs itself; unlike general-purpose tool managers, it focuses on JDKs, with Java
-version ranges, discovery of existing JDKs, and `javm exec` for builds.
+version ranges, discovery of existing JDKs, and `javm exec` for builds. See the
+[comparison](https://javm.dev/docs/comparison/).
 
 ## Development
 
