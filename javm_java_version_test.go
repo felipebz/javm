@@ -52,6 +52,7 @@ func TestCommandsWithoutSelectorReportMissingJavaVersion(t *testing.T) {
 	for _, args := range selectorCommands {
 		t.Run(args[0], func(t *testing.T) {
 			workspace, _ := isolatedWorkspace(t)
+			skipIfAncestorHasJavaVersion(t, workspace)
 			stdout, stderr, code := executeRoot(t, args...)
 			if code != exitUsage {
 				t.Fatalf("exit code = %d, want %d\nstdout: %s\nstderr: %s", code, exitUsage, stdout, stderr)
@@ -140,8 +141,10 @@ func TestUseDefaultWithoutDefaultStaysSilent(t *testing.T) {
 	}
 }
 
-func TestWhichUsesValidJavaVersion(t *testing.T) {
-	_, home := isolatedWorkspace(t)
+// writeFakeManagedJDK creates a managed temurin@21.0.1 that discovery accepts
+// without running java, and returns its path.
+func writeFakeManagedJDK(t *testing.T, home string) string {
+	t.Helper()
 	jdk := filepath.Join(home, "jdk", "temurin@21.0.1")
 	jdkHome := jdk
 	if runtime.GOOS == "darwin" {
@@ -161,6 +164,12 @@ func TestWhichUsesValidJavaVersion(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(jdkHome, "release"), []byte(release), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	return jdk
+}
+
+func TestWhichUsesValidJavaVersion(t *testing.T) {
+	_, home := isolatedWorkspace(t)
+	jdk := writeFakeManagedJDK(t, home)
 	if err := os.WriteFile(".java-version", []byte("  temurin@21\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -168,5 +177,46 @@ func TestWhichUsesValidJavaVersion(t *testing.T) {
 	stdout, stderr, code := executeRoot(t, "which")
 	if code != exitSuccess || stdout != jdk+"\n" {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q, want %s", code, stdout, stderr, jdk)
+	}
+}
+
+// Commands run from a subdirectory of a project use the project's
+// .java-version.
+func TestSelectorCommandsUseParentJavaVersion(t *testing.T) {
+	workspace, home := isolatedWorkspace(t)
+	jdk := writeFakeManagedJDK(t, home)
+	if err := os.WriteFile(".java-version", []byte("temurin@21\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	module := filepath.Join(workspace, "module-a", "src")
+	if err := os.MkdirAll(module, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(module)
+
+	stdout, stderr, code := executeRoot(t, "which")
+	if code != exitSuccess || stdout != jdk+"\n" {
+		t.Fatalf("which: exit code = %d, stdout = %q, stderr = %q, want %s", code, stdout, stderr, jdk)
+	}
+
+	// Without a real JVM, a missing command shows that exec resolved the
+	// selector from the parent and selected the JDK before looking it up.
+	_, stderr, code = executeRoot(t, "exec", "javm-test-missing-command")
+	if code != exitNotFound || !strings.Contains(stderr, `"javm-test-missing-command" was not found in the environment for temurin@21`) {
+		t.Fatalf("exec: exit code = %d, stderr = %q, want the command lookup to fail for temurin@21", code, stderr)
+	}
+}
+
+// skipIfAncestorHasJavaVersion skips tests that expect no .java-version to be
+// found, which a file in an ancestor of the temp directory would break.
+func skipIfAncestorHasJavaVersion(t *testing.T, dir string) {
+	t.Helper()
+	for parent := filepath.Dir(dir); ; parent = filepath.Dir(parent) {
+		if _, err := os.Lstat(filepath.Join(parent, ".java-version")); err == nil {
+			t.Skipf("%s has a .java-version, so nothing can be missing below it", parent)
+		}
+		if filepath.Dir(parent) == parent {
+			return
+		}
 	}
 }

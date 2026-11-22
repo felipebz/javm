@@ -21,7 +21,8 @@ func NewExecCommand() *cobra.Command {
 		DisableFlagParsing: true,
 		Long: "Select a JDK and execute a process with JAVA_HOME and PATH set only for that process.\n" +
 			"Native executables run directly; Windows .cmd and .bat wrappers use the system command interpreter.\n" +
-			"Use --jdk to select a JDK explicitly; otherwise the selector is read from .java-version.\n" +
+			"Use --jdk to select a JDK explicitly; otherwise the selector is read from the nearest .java-version\n" +
+			"in the current directory or its parents.\n" +
 			"JAVA_HOME and PATH are changed only for the child process; javm init is not required.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if isExecHelpRequest(args) {

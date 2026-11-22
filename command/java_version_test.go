@@ -25,11 +25,6 @@ func TestJavaVersionSelector(t *testing.T) {
 			want: "temurin@21",
 		},
 		{
-			name:    "missing file",
-			setup:   func(*testing.T) {},
-			wantErr: "no version given and no .java-version found in ",
-		},
-		{
 			name:    "empty file",
 			setup:   func(t *testing.T) { writeJavaVersion(t, "") },
 			wantErr: ".java-version is empty",
@@ -61,6 +56,98 @@ func TestJavaVersionSelector(t *testing.T) {
 	}
 }
 
+// skipIfAncestorHasJavaVersion skips tests that expect no .java-version to be
+// found, which a file in an ancestor of the temp directory would break.
+func skipIfAncestorHasJavaVersion(t *testing.T, dir string) {
+	t.Helper()
+	for parent := filepath.Dir(dir); ; parent = filepath.Dir(parent) {
+		if _, err := os.Lstat(filepath.Join(parent, ".java-version")); err == nil {
+			t.Skipf("%s has a .java-version, so nothing can be missing below it", parent)
+		}
+		if filepath.Dir(parent) == parent {
+			return
+		}
+	}
+}
+
+func TestJavaVersionSelectorReportsNotFound(t *testing.T) {
+	dir := t.TempDir()
+	skipIfAncestorHasJavaVersion(t, dir)
+	t.Chdir(dir)
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = javaVersionSelector()
+	want := "no version given and no .java-version found in " + cwd + " or its parent directories"
+	if err == nil || err.Error() != want {
+		t.Fatalf("javaVersionSelector() error = %v, want %q", err, want)
+	}
+}
+
+func TestJavaVersionSelectorSearchesParents(t *testing.T) {
+	tests := []struct {
+		name    string
+		files   map[string]string // relative to the project root; a trailing / makes a directory
+		want    string
+		wantErr string // a path relative to the root that the error must name, plus its text
+		errText string
+	}{
+		{name: "parent", files: map[string]string{"a/.java-version": " temurin@21\n"}, want: "temurin@21"},
+		{name: "two levels up", files: map[string]string{".java-version": "zulu@17\n"}, want: "zulu@17"},
+		{name: "nearest wins", files: map[string]string{".java-version": "zulu@17", "a/.java-version": "temurin@21"}, want: "temurin@21"},
+		{
+			name:    "empty nearest file does not fall back",
+			files:   map[string]string{"a/b/.java-version": "", ".java-version": "zulu@17"},
+			wantErr: "a/b/.java-version", errText: "is empty",
+		},
+		{
+			name:    "unreadable nearest entry does not fall back",
+			files:   map[string]string{"a/b/.java-version/": "", ".java-version": "zulu@17"},
+			wantErr: "a/b/.java-version", errText: "read ",
+		},
+		{
+			name:    "empty file in the parent",
+			files:   map[string]string{"a/.java-version": " \n"},
+			wantErr: "a/.java-version", errText: "is empty",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			workdir := filepath.Join(root, "a", "b")
+			if err := os.MkdirAll(workdir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for name, content := range tt.files {
+				path := filepath.Join(root, filepath.FromSlash(strings.TrimSuffix(name, "/")))
+				var err error
+				if strings.HasSuffix(name, "/") {
+					err = os.Mkdir(path, 0o755)
+				} else {
+					err = os.WriteFile(path, []byte(content), 0o600)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			t.Chdir(workdir)
+
+			got, err := javaVersionSelector()
+			if tt.wantErr == "" {
+				if err != nil || got != tt.want {
+					t.Fatalf("javaVersionSelector() = %q, %v, want %q", got, err, tt.want)
+				}
+				return
+			}
+			wantPath := filepath.Join(root, filepath.FromSlash(tt.wantErr))
+			if err == nil || !strings.Contains(err.Error(), wantPath) || !strings.Contains(err.Error(), tt.errText) {
+				t.Fatalf("javaVersionSelector() error = %v, want %q naming %s", err, tt.errText, wantPath)
+			}
+		})
+	}
+}
+
 func TestJavaVersionSelectorWrapsReadError(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
@@ -85,6 +172,9 @@ func TestJavaVersionSelectorSanitizesDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(dir)
+	// An empty file names the path in the error without depending on what
+	// the ancestors of the temp directory contain.
+	writeJavaVersion(t, "")
 	_, err := javaVersionSelector()
 	if err == nil || strings.ContainsRune(err.Error(), '\x1b') {
 		t.Fatalf("javaVersionSelector() error = %q, want the directory sanitized", err)

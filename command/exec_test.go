@@ -80,6 +80,7 @@ func TestParseExecArgsReportsUsageErrors(t *testing.T) {
 
 func TestParseExecArgsReportsMissingImplicitSelector(t *testing.T) {
 	workspace := t.TempDir()
+	skipIfAncestorHasJavaVersion(t, workspace)
 	oldWD, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +91,7 @@ func TestParseExecArgsReportsMissingImplicitSelector(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWD) })
 
 	_, _, err = parseExecArgsForTest([]string{"mvn", "test"})
-	if !errors.Is(err, ErrUsage) || !strings.Contains(err.Error(), "no version given and no .java-version found in") {
+	if !errors.Is(err, ErrUsage) || !strings.Contains(err.Error(), "or its parent directories") {
 		t.Fatalf("parseExecArgs() = %v, want missing implicit selector error", err)
 	}
 }
