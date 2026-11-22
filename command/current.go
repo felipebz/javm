@@ -9,12 +9,20 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/felipebz/javm/discovery"
 	"github.com/spf13/cobra"
 )
 
 var lookPath = exec.LookPath
+
+// macOSJavaLauncher and javaHomeRunner are variables so tests can simulate
+// the macOS launcher stub and /usr/libexec/java_home.
+var (
+	macOSJavaLauncher                  = "/usr/bin/java"
+	javaHomeRunner    discovery.Runner = discovery.ExecRunner{}
+)
 
 var errNoActiveJDK = errors.New("no JDK known to javm is active in this shell")
 
@@ -53,6 +61,13 @@ func current(ctx context.Context) (string, error) {
 		}
 		home = filepath.Dir(filepath.Dir(javaPath))
 	}
+	launcher := !fromMarker && hostGOOS == "darwin" && javaPath == macOSJavaLauncher
+	if launcher {
+		home = launcherJavaHome(ctx)
+		if home == "" {
+			return "", NotFoundError(fmt.Errorf("%w (java on PATH is the macOS launcher %s, which finds no JDK to run)", errNoActiveJDK, macOSJavaLauncher))
+		}
+	}
 
 	jdks, err := LsContext(ctx, false)
 	if err != nil {
@@ -64,7 +79,28 @@ func current(ctx context.Context) (string, error) {
 	if fromMarker {
 		return "", NotFoundError(fmt.Errorf("javm activated %s, which is no longer a known JDK", sanitizeTerminalText(home)))
 	}
+	if launcher {
+		return "", NotFoundError(fmt.Errorf("%w (java on PATH is the macOS launcher %s, which runs %s)", errNoActiveJDK, macOSJavaLauncher, sanitizeTerminalText(home)))
+	}
 	return "", NotFoundError(fmt.Errorf("%w (java on PATH is %s)", errNoActiveJDK, sanitizeTerminalText(javaPath)))
+}
+
+// launcherJavaHome returns the JDK home the macOS java launcher runs:
+// JAVA_HOME when it holds a java, otherwise what /usr/libexec/java_home
+// reports, or "" when there is none.
+func launcherJavaHome(ctx context.Context) string {
+	if home := os.Getenv("JAVA_HOME"); home != "" {
+		if info, err := os.Stat(filepath.Join(home, "bin", "java")); err == nil && info.Mode().IsRegular() {
+			return home
+		}
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	out, err := javaHomeRunner.CombinedOutput(ctx, "/usr/libexec/java_home")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // jdkWithHome finds the JDK whose home is home, preferring one managed by
