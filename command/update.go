@@ -54,6 +54,7 @@ func runUpdate(ctx context.Context, client PackagesWithInfoClient, out io.Writer
 		return err
 	}
 
+	warnIfAliasHidesSelector(ctx, selector)
 	targets := updateTargets(managed, selector)
 	if len(targets) == 0 {
 		if _, err := fmt.Fprintln(out, "no managed JDKs to update"); err != nil {

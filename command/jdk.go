@@ -29,7 +29,15 @@ func resolveJDKContext(ctx context.Context, selector string) (discovery.JDK, err
 	if err != nil {
 		return discovery.JDK{}, err
 	}
+	warnIfAliasHidesSelector(ctx, selector)
 	return resolveJDKFromList(jdks, selector)
+}
+
+func warnIfAliasHidesSelector(ctx context.Context, selector string) {
+	if getAlias(selector) != "" && aliasNameIsSelector(selector) {
+		warnOnce(ctx, fmt.Errorf("alias %q hides the version selector %s; rename it with 'javm alias <new-name> <selector>' and 'javm unalias %s'",
+			selector, sanitizeTerminalText(selector), sanitizeTerminalText(selector)))
+	}
 }
 
 const (

@@ -84,27 +84,27 @@ func TestAliasRejectsSelectorWithoutJDK(t *testing.T) {
 	jdk := discoveredJDK(t)
 	stubDiscovery(t, jdk)
 
-	if err := runAlias(t, "x", "99"); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("alias x 99 error = %v, want ErrNotFound", err)
+	if err := runAlias(t, "work", "99"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("alias work 99 error = %v, want ErrNotFound", err)
 	}
-	if _, err := readAlias("x"); !errors.Is(err, os.ErrNotExist) {
+	if _, err := readAlias("work"); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("alias file was written: %v", err)
 	}
-	if _, err := os.Lstat(filepath.Join(cfg.Dir(), "jdk", "x")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("jdk/x was created: %v", err)
+	if _, err := os.Lstat(filepath.Join(cfg.Dir(), "jdk", "work")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("jdk/work was created: %v", err)
 	}
 
-	if err := runAlias(t, "x", "21"); err != nil {
-		t.Fatalf("alias x 21 error = %v", err)
+	if err := runAlias(t, "work", "21"); err != nil {
+		t.Fatalf("alias work 21 error = %v", err)
 	}
-	if err := runAlias(t, "x", "99"); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("alias x 99 error = %v, want ErrNotFound", err)
+	if err := runAlias(t, "work", "99"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("alias work 99 error = %v, want ErrNotFound", err)
 	}
-	if value, err := readAlias("x"); err != nil || value != "21" {
+	if value, err := readAlias("work"); err != nil || value != "21" {
 		t.Fatalf("alias file = %q, %v, want the old value 21", value, err)
 	}
-	if target := aliasLinkTarget(t, "x"); target != jdk.Path {
-		t.Fatalf("jdk/x -> %q, want it unchanged at %q", target, jdk.Path)
+	if target := aliasLinkTarget(t, "work"); target != jdk.Path {
+		t.Fatalf("jdk/work -> %q, want it unchanged at %q", target, jdk.Path)
 	}
 }
 

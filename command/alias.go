@@ -10,13 +10,20 @@ import (
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/internal/state"
+	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
 )
+
+func aliasNameIsSelector(name string) bool {
+	_, err := javaversion.ParseRange(name)
+	return err == nil
+}
 
 func NewAliasCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "alias [name] [version]",
 		Short: "Resolve or update an alias",
+		Long:  "Bind a name to a JDK selector. Names that are version selectors themselves (17, 21.0.4, x) and 'default' are not allowed.",
 		Args:  UsageArgs(cobra.RangeArgs(1, 2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
@@ -41,6 +48,9 @@ func NewAliasCommand() *cobra.Command {
 			}
 			if name == "default" {
 				return UsageError(errors.New("'default' is reserved; set the default with 'javm default <selector>'"))
+			}
+			if aliasNameIsSelector(name) {
+				return UsageError(fmt.Errorf("alias name %q looks like a version selector and would hide it; choose another name, such as %q", name, "java"+name))
 			}
 			// Resolve before writing anything, so a selector that matches no
 			// JDK leaves the alias and its link as they were.
