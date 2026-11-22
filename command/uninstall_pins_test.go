@@ -108,7 +108,8 @@ func TestUninstallWarnsWhenAliasLinkCannotBeCreated(t *testing.T) {
 	logs := uninstallLogged(t, "temurin@21.0.4")
 	var aliasWarnings []string
 	for _, warning := range symlinkWarnings(logs) {
-		if strings.Contains(warning, filepath.Join("jdk", "work")) {
+		// logrus quotes the message, doubling Windows backslashes, so match the link name only.
+		if strings.Contains(warning, "work -> ") {
 			aliasWarnings = append(aliasWarnings, warning)
 		}
 	}
