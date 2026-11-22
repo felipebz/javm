@@ -7,9 +7,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discoapi"
 	"github.com/spf13/cobra"
 )
@@ -30,8 +33,16 @@ func (f *fakeDisco) client(t *testing.T) *discoapi.Client {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/packages"):
 			f.packageCalls++
+			// Like the real API, the distribution matches in any case and the
+			// packages keep their own spelling.
 			distribution := r.URL.Query().Get("distribution")
-			packages, ok := f.packages[distribution]
+			var packages []discoapi.Package
+			ok := false
+			for name, list := range f.packages {
+				if strings.EqualFold(name, distribution) {
+					packages, ok = list, true
+				}
+			}
 			switch {
 			case r.URL.Query().Get("operating_system") == "bogus":
 				w.WriteHeader(http.StatusBadRequest)
@@ -102,8 +113,31 @@ func TestUnknownDistributionAnsweredWith400IsUsageError(t *testing.T) {
 	assertUnknownDistribution(t, err, "foo", "")
 	_, err = runDiscoCommand(t, NewLsRemoteCommand(client), "foo")
 	assertUnknownDistribution(t, err, "foo", "")
-	_, err = runDiscoCommand(t, NewLsRemoteCommand(client), "ZULU")
+}
+
+func TestDistributionInWrongCaseIsUsageError(t *testing.T) {
+	disco := temurinAndZulu()
+	disco.packages["zulu"] = []discoapi.Package{{Id: "z21", JavaVersion: "21.0.5+11", Distribution: "zulu", DistributionVersion: "21.38.21"}}
+	client := disco.client(t)
+
+	for _, args := range [][]string{{"ZULU"}, {"ZULU@21"}, {"--distribution", "ZULU"}} {
+		out, err := runDiscoCommand(t, NewLsRemoteCommand(client), args...)
+		assertUnknownDistribution(t, err, "ZULU", `did you mean "zulu"?`)
+		if out != "" {
+			t.Fatalf("ls-remote %v printed %q", args, out)
+		}
+	}
+	_, err := runDiscoCommand(t, NewInstallCommand(client), "ZULU@21")
 	assertUnknownDistribution(t, err, "ZULU", `did you mean "zulu"?`)
+	if entries, _ := os.ReadDir(filepath.Join(cfg.Dir(), "jdk")); len(entries) != 0 {
+		t.Fatalf("install ZULU@21 left %d entries in jdk/", len(entries))
+	}
+
+	disco.packageCalls, disco.distributionCalls = 0, 0
+	out, err := runDiscoCommand(t, NewLsRemoteCommand(client), "zulu")
+	if err != nil || !strings.Contains(out, "zulu@21") || disco.packageCalls != 1 || disco.distributionCalls != 0 {
+		t.Fatalf("ls-remote zulu = %q, %v; requests %d/%d, want output, 1 packages and 0 distributions requests", out, err, disco.packageCalls, disco.distributionCalls)
+	}
 }
 
 func TestKnownDistributionAnsweredWith400StaysNetworkError(t *testing.T) {

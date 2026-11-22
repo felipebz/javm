@@ -62,6 +62,12 @@ func makePackageIndex(ctx context.Context, client PackagesClient, osFlag, archFl
 			return nil, err
 		}
 		index.knownEmpty = known
+	} else if distributionFlag != "" && !slices.ContainsFunc(pkgs, func(p discoapi.Package) bool { return p.Distribution == distributionFlag }) {
+		// The API matches the name in any case, but installed identifiers keep
+		// it as typed, so a name the list lacks exactly is rejected.
+		if _, err := checkDistribution(ctx, client, distributionFlag); err != nil {
+			return nil, err
+		}
 	}
 	return index, nil
 }
