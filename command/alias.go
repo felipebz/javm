@@ -27,6 +27,9 @@ func NewAliasCommand() *cobra.Command {
 		Args:  UsageArgs(cobra.RangeArgs(1, 2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
+			if len(args) == 1 && name == "default" {
+				return printDefault(cmd)
+			}
 			if len(args) == 1 {
 				value, err := readAlias(name)
 				if errors.Is(err, fs.ErrNotExist) {

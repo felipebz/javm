@@ -17,10 +17,14 @@ import (
 // NewDefaultCommand creates the `javm default` CLI command.
 func NewDefaultCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "default <selector>",
-		Short: "Set the default JDK for new shells",
-		Args:  UsageArgs(cobra.ExactArgs(1)),
+		Use:   "default [selector]",
+		Short: "Show or set the default JDK for new shells",
+		Long:  "Without a selector, print the default JDK selector. With one, set the default JDK for new shells.",
+		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return printDefault(cmd)
+			}
 			ver := strings.TrimSpace(args[0])
 			if err := validateDefaultSelector(args[0]); err != nil {
 				return err
@@ -48,6 +52,22 @@ func NewDefaultCommand() *cobra.Command {
 			return warnLinkFailures(cmd.Context(), pointLink(cmd.Context(), "default", jdk.Path))
 		},
 	}
+}
+
+// printDefault writes the stored default selector without resolving it, so
+// it needs neither discovery nor a writable JAVM_HOME.
+func printDefault(cmd *cobra.Command) error {
+	selector, err := effectiveDefaultVersion(func(err error) { warnOnce(cmd.Context(), err) })
+	if errors.Is(err, fs.ErrNotExist) {
+		return NotFoundError(errors.New("no default JDK is set; set one with 'javm default <selector>'"))
+	}
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(cmd.OutOrStdout(), sanitizeTerminalText(selector)); err != nil {
+		return fmt.Errorf("write default version: %w", err)
+	}
+	return nil
 }
 
 // effectiveDefaultVersion returns default-version, or the legacy default.alias

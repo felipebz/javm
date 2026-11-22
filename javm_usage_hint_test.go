@@ -16,7 +16,7 @@ func TestCommandLineShapeErrorsPointToHelp(t *testing.T) {
 		message string
 		path    string
 	}{
-		{[]string{"default"}, "accepts 1 arg(s), received 0", "javm default"},
+		{[]string{"default", "a", "b"}, "accepts at most 1 arg(s), received 2", "javm default"},
 		{[]string{"alias", "a", "b", "c"}, "accepts between 1 and 2 arg(s), received 3", "javm alias"},
 		{[]string{"ls", "--bogus"}, "unknown flag: --bogus", "javm ls"},
 		{[]string{"ls-remote", "--os"}, "flag needs an argument: --os", "javm ls-remote"},
