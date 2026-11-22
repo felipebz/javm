@@ -26,61 +26,68 @@ func NewAliasCommand() *cobra.Command {
 		Long:  "Bind a name to a JDK selector. Names that are version selectors themselves (17, 21.0.4, x) and 'default' are not allowed.",
 		Args:  UsageArgs(cobra.RangeArgs(1, 2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-			if len(args) == 1 && name == "default" {
-				return printDefault(cmd)
-			}
 			if len(args) == 1 {
-				value, err := readAlias(name)
-				if errors.Is(err, fs.ErrNotExist) {
-					return aliasNotSetError(name)
-				}
-				if err != nil {
-					return err
-				}
-				if value != "" {
-					if _, err := fmt.Fprintln(cmd.OutOrStdout(), value); err != nil {
-						return fmt.Errorf("write alias: %w", err)
-					}
-				}
-				return nil
+				return printAlias(cmd, args[0])
 			}
-			selector := strings.TrimSpace(args[1])
-			if err := validateAliasName(name); err != nil {
-				return err
-			}
-			if name == "default" {
-				return UsageError(errors.New("'default' is reserved; set the default with 'javm default <selector>'"))
-			}
-			if aliasNameIsSelector(name) {
-				return UsageError(fmt.Errorf("alias name %q looks like a version selector and would hide it; choose another name, such as %q", name, "java"+name))
-			}
-			// Resolve before writing anything, so a selector that matches no
-			// JDK leaves the alias and its link as they were.
-			jdks, err := LsContext(cmd.Context(), false)
-			if err != nil {
-				return err
-			}
-			if _, err := FindBestMatchJDK(jdks, selector); err != nil {
-				if errors.Is(err, ErrNotFound) {
-					return NotFoundError(fmt.Errorf("no installed JDK matches %q", sanitizeTerminalText(selector)))
-				}
-				return err
-			}
-			if err := setAlias(name, selector); err != nil {
-				return err
-			}
-			// The alias file is already written; selection reads it and does
-			// not need the jdk/<name> link, so a link failure only reports.
-			if err := linkAlias(cmd.Context(), name, jdks); err != nil {
-				return withSymlinkHint(err)
-			}
-			warnCacheInvalidation(cmd.Context())
-			return nil
+			return setAliasCommand(cmd, args[0], strings.TrimSpace(args[1]))
 		},
 		Example: "  javm alias work temurin@21\n" +
 			"  javm alias work # show the selector bound to an alias",
 	}
+}
+
+// printAlias writes the selector bound to name; "default" shows the default.
+func printAlias(cmd *cobra.Command, name string) error {
+	if name == "default" {
+		return printDefault(cmd)
+	}
+	value, err := readAlias(name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return aliasNotSetError(name)
+	}
+	if err != nil {
+		return err
+	}
+	if value != "" {
+		if _, err := fmt.Fprintln(cmd.OutOrStdout(), value); err != nil {
+			return fmt.Errorf("write alias: %w", err)
+		}
+	}
+	return nil
+}
+
+func setAliasCommand(cmd *cobra.Command, name, selector string) error {
+	if err := validateAliasName(name); err != nil {
+		return err
+	}
+	if name == "default" {
+		return UsageError(errors.New("'default' is reserved; set the default with 'javm default <selector>'"))
+	}
+	if aliasNameIsSelector(name) {
+		return UsageError(fmt.Errorf("alias name %q looks like a version selector and would hide it; choose another name, such as %q", name, "java"+name))
+	}
+	// Resolve before writing anything, so a selector that matches no
+	// JDK leaves the alias and its link as they were.
+	jdks, err := LsContext(cmd.Context(), false)
+	if err != nil {
+		return err
+	}
+	if _, err := FindBestMatchJDK(jdks, selector); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return NotFoundError(fmt.Errorf("no installed JDK matches %q", sanitizeTerminalText(selector)))
+		}
+		return err
+	}
+	if err := setAlias(name, selector); err != nil {
+		return err
+	}
+	// The alias file is already written; selection reads it and does
+	// not need the jdk/<name> link, so a link failure only reports.
+	if err := linkAlias(cmd.Context(), name, jdks); err != nil {
+		return withSymlinkHint(err)
+	}
+	warnCacheInvalidation(cmd.Context())
+	return nil
 }
 
 func NewUnaliasCommand() *cobra.Command {

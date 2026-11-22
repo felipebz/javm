@@ -16,20 +16,20 @@ func linkedAndDiscovered(t *testing.T) []discovery.JDK {
 	t.Helper()
 	skipWithoutSymlinks(t)
 	t.Setenv("JAVM_HOME", t.TempDir())
-	real := filepath.Join(t.TempDir(), "jdks", "temurin-21.0.4")
-	if err := os.MkdirAll(real, 0o755); err != nil {
+	realDir := filepath.Join(t.TempDir(), "jdks", "temurin-21.0.4")
+	if err := os.MkdirAll(realDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	link := filepath.Join(os.Getenv("JAVM_HOME"), "jdk", "system@21.0.4")
 	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(real, link); err != nil {
+	if err := os.Symlink(realDir, link); err != nil {
 		t.Fatal(err)
 	}
 	return []discovery.JDK{
 		{Identifier: "system@21.0.4", Version: "21.0.4", Vendor: "Eclipse Adoptium", Architecture: "x64", Source: "javm", Path: link},
-		{Identifier: "eclipse-adoptium-intellij@21", Version: "21.0.4", Vendor: "Eclipse Adoptium", Architecture: "x64", Source: "intellij", Path: real},
+		{Identifier: "eclipse-adoptium-intellij@21", Version: "21.0.4", Vendor: "Eclipse Adoptium", Architecture: "x64", Source: "intellij", Path: realDir},
 	}
 }
 

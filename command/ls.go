@@ -250,7 +250,7 @@ func groupJDKs(jdks []discovery.JDK) []jdkGroup {
 
 func rowPreference(jdk discovery.JDK) int {
 	switch {
-	case jdk.Source == "javm" && !strings.HasPrefix(jdk.Identifier, "system@"):
+	case jdk.Source == "javm" && !isSystemSelector(jdk.Identifier):
 		return 0
 	case jdk.Source == "javm":
 		return 1

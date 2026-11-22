@@ -2,5 +2,6 @@
 
 package state
 
-// hideDirectory is a no-op: the leading dot already hides the directory.
-func hideDirectory(string) {}
+func hideDirectory(string) {
+	// Nothing to do: the leading dot already hides the directory.
+}

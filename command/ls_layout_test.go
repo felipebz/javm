@@ -44,12 +44,8 @@ func assertColumnsAligned(t *testing.T, table string, columns ...string) {
 	}
 	starts[0] = true
 	for _, line := range lines[1:] {
-		// A cell starts at the line start or after two or more spaces; group
-		// member rows indent SOURCE and NAME by two spaces.
-		for i := range len(line) {
-			if line[i] == ' ' || (i > 0 && line[i-1] != ' ') || (i > 1 && line[i-2] != ' ') {
-				continue
-			}
+		for _, i := range cellStarts(line) {
+			// Group member rows indent SOURCE and NAME by two spaces.
 			if !starts[i] && !(strings.HasPrefix(line, "  ") && starts[i-2]) {
 				t.Fatalf("a cell starts at offset %d, not at a column, in %q:\n%s", i, line, table)
 			}
@@ -60,6 +56,18 @@ func assertColumnsAligned(t *testing.T, table string, columns ...string) {
 			t.Fatalf("line %q ends with a space:\n%s", line, table)
 		}
 	}
+}
+
+// cellStarts returns the offsets where a cell starts in a laid out line: the
+// first non-space character of the line or one after two or more spaces.
+func cellStarts(line string) []int {
+	var starts []int
+	for i := range len(line) {
+		if line[i] != ' ' && (i == 0 || line[i-1] == ' ' && (i == 1 || line[i-2] == ' ')) {
+			starts = append(starts, i)
+		}
+	}
+	return starts
 }
 
 func TestLsColumnsAlignWhenSelectedByIsEmpty(t *testing.T) {

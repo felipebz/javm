@@ -32,44 +32,52 @@ func (f *fakeDisco) client(t *testing.T) *discoapi.Client {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/packages"):
-			f.packageCalls++
-			// Like the real API, the distribution matches in any case and the
-			// packages keep their own spelling.
-			distribution := r.URL.Query().Get("distribution")
-			var packages []discoapi.Package
-			ok := false
-			for name, list := range f.packages {
-				if strings.EqualFold(name, distribution) {
-					packages, ok = list, true
-				}
-			}
-			switch {
-			case r.URL.Query().Get("operating_system") == "bogus":
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(`{"result":[],"message":"invalid operating system"}`))
-			case !ok:
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(`{"result":[],"message":"` + distribution + ` is an unsupported distribution"}`))
-			default:
-				_ = json.NewEncoder(w).Encode(discoapi.PackagesResponse{Packages: packages})
-			}
+			f.servePackages(w, r)
 		case strings.HasSuffix(r.URL.Path, "/distributions"):
-			f.distributionCalls++
-			if f.failDistributions {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			var response discoapi.DistributionsResponse
-			for _, name := range f.distributions {
-				response.Distributions = append(response.Distributions, discoapi.Distribution{Name: name, APIParameter: name})
-			}
-			_ = json.NewEncoder(w).Encode(response)
+			f.serveDistributions(w)
 		default:
 			http.NotFound(w, r)
 		}
 	}))
 	t.Cleanup(server.Close)
 	return &discoapi.Client{BaseURL: server.URL, HTTPClient: server.Client()}
+}
+
+// servePackages matches the distribution in any case, as the real API does,
+// and returns the packages in their own spelling.
+func (f *fakeDisco) servePackages(w http.ResponseWriter, r *http.Request) {
+	f.packageCalls++
+	distribution := r.URL.Query().Get("distribution")
+	var packages []discoapi.Package
+	ok := false
+	for name, list := range f.packages {
+		if strings.EqualFold(name, distribution) {
+			packages, ok = list, true
+		}
+	}
+	switch {
+	case r.URL.Query().Get("operating_system") == "bogus":
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"result":[],"message":"invalid operating system"}`))
+	case !ok:
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"result":[],"message":"` + distribution + ` is an unsupported distribution"}`))
+	default:
+		_ = json.NewEncoder(w).Encode(discoapi.PackagesResponse{Packages: packages})
+	}
+}
+
+func (f *fakeDisco) serveDistributions(w http.ResponseWriter) {
+	f.distributionCalls++
+	if f.failDistributions {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var response discoapi.DistributionsResponse
+	for _, name := range f.distributions {
+		response.Distributions = append(response.Distributions, discoapi.Distribution{Name: name, APIParameter: name})
+	}
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func temurinAndZulu() *fakeDisco {

@@ -147,7 +147,7 @@ func NewLinkCommand() *cobra.Command {
 				return UsageError(errors.New("a JDK path is required; " + linkUsage))
 			case len(args) == 2 && isSystemSelector(args[0]) && name == "":
 				name, dir = args[0], args[1]
-				version := sanitizeTerminalText(strings.TrimPrefix(name, "system@"))
+				version := sanitizeTerminalText(strings.TrimPrefix(name, systemPrefix))
 				warnOnce(cmd.Context(), fmt.Errorf("'javm link system@%s <path>' is deprecated; use 'javm link <path> --name %s'", version, version))
 			case len(args) == 2:
 				return UsageError(errors.New("too many arguments; " + linkUsage))
@@ -191,7 +191,7 @@ func linkJDK(ctx context.Context, dir, name string) error {
 	if err != nil {
 		return err
 	}
-	identifier := "system@" + version
+	identifier := systemPrefix + version
 	source := filepath.Join(cfg.Dir(), "jdk", identifier)
 	info, err := os.Lstat(source)
 	switch {
@@ -234,8 +234,8 @@ func linkJDK(ctx context.Context, dir, name string) error {
 // versions (1.8.0_402), which javm writes without the "1." (8.0.402).
 func linkVersion(ctx context.Context, dir, name string) (string, error) {
 	if name != "" {
-		name = strings.TrimPrefix(name, "system@")
-		if _, err := javaversion.ParseVersion("system@" + name); err != nil {
+		name = strings.TrimPrefix(name, systemPrefix)
+		if _, err := javaversion.ParseVersion(systemPrefix + name); err != nil {
 			return "", UsageError(err)
 		}
 		return name, nil
@@ -267,22 +267,15 @@ func unlinkJDK(ctx context.Context, arg string) error {
 	jdkDir := filepath.Join(cfg.Dir(), "jdk")
 	identifier := arg
 	if !isSystemSelector(identifier) {
-		identifier = "system@" + arg
+		identifier = systemPrefix + arg
 	}
 	if _, err := javaversion.ParseVersion(identifier); err == nil && isSymlink(filepath.Join(jdkDir, identifier)) {
 		return removeSystemLink(ctx, identifier)
 	}
 	if info, err := os.Stat(arg); err == nil && info.IsDir() {
-		entries, err := os.ReadDir(jdkDir)
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		matches, err := systemLinksTo(jdkDir, arg)
+		if err != nil {
 			return err
-		}
-		var matches []string
-		for _, entry := range entries {
-			path := filepath.Join(jdkDir, entry.Name())
-			if isSystemSelector(entry.Name()) && isSymlink(path) && canonicalHome(path) == canonicalHome(arg) {
-				matches = append(matches, entry.Name())
-			}
 		}
 		switch len(matches) {
 		case 0:
@@ -302,6 +295,22 @@ func unlinkJDK(ctx context.Context, arg string) error {
 		}
 	}
 	return NotFoundError(fmt.Errorf("no link matches %s; see 'javm ls' for the available JDKs", quotePath(arg)))
+}
+
+// systemLinksTo lists the system@ links in jdkDir whose target is dir.
+func systemLinksTo(jdkDir, dir string) ([]string, error) {
+	entries, err := os.ReadDir(jdkDir)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	var matches []string
+	for _, entry := range entries {
+		path := filepath.Join(jdkDir, entry.Name())
+		if isSystemSelector(entry.Name()) && isSymlink(path) && canonicalHome(path) == canonicalHome(dir) {
+			matches = append(matches, entry.Name())
+		}
+	}
+	return matches, nil
 }
 
 func isSymlink(path string) bool {
@@ -393,8 +402,11 @@ func managedVersions(jdks []discovery.JDK) []*javaversion.Version {
 	return versions
 }
 
+// systemPrefix starts the identifier of a JDK linked with 'javm link'.
+const systemPrefix = "system@"
+
 func isSystemSelector(name string) bool {
-	return strings.HasPrefix(name, "system@")
+	return strings.HasPrefix(name, systemPrefix)
 }
 
 func linkAliasName(ctx context.Context, name string) error {

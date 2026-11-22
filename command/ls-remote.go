@@ -86,20 +86,9 @@ func runLsRemote(ctx context.Context, out io.Writer, client PackagesClient, sele
 		return err
 	}
 	if opts.distributionFlag {
-		if distribution != "" && distribution != opts.distribution {
-			return UsageError(fmt.Errorf("--distribution %q conflicts with the distribution %q in the selector", opts.distribution, distribution))
+		if err := warnDistributionFlag(ctx, selector, distribution, opts.distribution); err != nil {
+			return err
 		}
-		newForm := opts.distribution
-		if distribution == "" && selector != "" {
-			newForm += "@" + selector
-		} else if selector != "" {
-			newForm = selector
-		}
-		hint := "use: javm ls-remote " + shellWord(sanitizeTerminalText(newForm))
-		if strings.ContainsAny(newForm, "\"$`\\") && strings.Contains(newForm, "'") {
-			hint = "name the distribution in the selector"
-		}
-		warnOnce(ctx, fmt.Errorf("--distribution is deprecated; %s", hint))
 	}
 	if distribution == "" {
 		distribution = opts.distribution
@@ -131,6 +120,27 @@ func runLsRemote(ctx context.Context, out io.Writer, client PackagesClient, sele
 	}
 
 	return printVersions(out, vs, packageIndex, r, trimToValue)
+}
+
+// warnDistributionFlag rejects a --distribution that conflicts with the
+// selector and otherwise warns that the flag is deprecated, suggesting the
+// selector form.
+func warnDistributionFlag(ctx context.Context, selector, distribution, flag string) error {
+	if distribution != "" && distribution != flag {
+		return UsageError(fmt.Errorf("--distribution %q conflicts with the distribution %q in the selector", flag, distribution))
+	}
+	newForm := flag
+	if distribution == "" && selector != "" {
+		newForm += "@" + selector
+	} else if selector != "" {
+		newForm = selector
+	}
+	hint := "use: javm ls-remote " + shellWord(sanitizeTerminalText(newForm))
+	if strings.ContainsAny(newForm, "\"$`\\") && strings.Contains(newForm, "'") {
+		hint = "name the distribution in the selector"
+	}
+	warnOnce(ctx, fmt.Errorf("--distribution is deprecated; %s", hint))
+	return nil
 }
 
 // shellWord returns s ready to paste into a POSIX shell, PowerShell or cmd: as

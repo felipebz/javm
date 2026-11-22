@@ -73,18 +73,7 @@ func versionText(version, commit, date string, info *debug.BuildInfo) string {
 		if version == "" && info.Main.Version != "" && info.Main.Version != "(devel)" {
 			version = strings.TrimPrefix(info.Main.Version, "v")
 		}
-		var revision, revisionTime string
-		modified := false
-		for _, setting := range info.Settings {
-			switch setting.Key {
-			case "vcs.revision":
-				revision = setting.Value
-			case "vcs.time":
-				revisionTime = setting.Value
-			case "vcs.modified":
-				modified = setting.Value == "true"
-			}
-		}
+		revision, revisionTime, modified := vcsSettings(info)
 		// Go already marks a pseudo-version built from a modified tree with +dirty.
 		if revision != "" && modified && !strings.HasSuffix(version, "+dirty") {
 			revision += "-dirty"
@@ -110,6 +99,22 @@ func versionText(version, commit, date string, info *debug.BuildInfo) string {
 		return version
 	}
 	return fmt.Sprintf("%s (%s)", version, strings.Join(details, ", "))
+}
+
+// vcsSettings returns the revision, its time and whether the tree was
+// modified, as recorded by the Go toolchain in the build info.
+func vcsSettings(info *debug.BuildInfo) (revision, revisionTime string, modified bool) {
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			revision = setting.Value
+		case "vcs.time":
+			revisionTime = setting.Value
+		case "vcs.modified":
+			modified = setting.Value == "true"
+		}
+	}
+	return revision, revisionTime, modified
 }
 
 func newRootCommand(app application) *cobra.Command {
