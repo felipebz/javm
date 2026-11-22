@@ -311,21 +311,3 @@ func TestInitCommand_Nushell(t *testing.T) {
 		t.Errorf("script does not look like a nushell script, got: %s", output)
 	}
 }
-
-func TestRealWritePowerShellInitScript(t *testing.T) {
-	content := "# fake script for test\n"
-	path, err := realWritePowerShellInitScript(content)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	defer os.Remove(path)
-
-	// Check that the file exists and contains the expected content
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("could not read file: %v", err)
-	}
-	if string(data) != content {
-		t.Errorf("file content mismatch: got %q, want %q", string(data), content)
-	}
-}

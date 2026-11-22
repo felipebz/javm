@@ -1,14 +1,19 @@
 package command
 
 import (
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 
+	"github.com/felipebz/javm/cfg"
+	"github.com/felipebz/javm/internal/state"
 	"github.com/spf13/cobra"
 )
 
@@ -168,16 +173,26 @@ func sortedShells() []string {
 	return keys
 }
 
+// realWritePowerShellInitScript stores the script under a content-hash name in
+// JAVM_HOME, so new shells reuse one file instead of each leaving a temp file.
 func realWritePowerShellInitScript(script string) (string, error) {
-	tempDir := os.TempDir()
-	scriptFile, err := os.CreateTemp(tempDir, "javm-init-*.ps1")
-	if err != nil {
-		return "", err
+	dir := filepath.Join(cfg.Dir(), "init")
+	sum := sha256.Sum256([]byte(script))
+	path := filepath.Join(dir, "javm-init-"+hex.EncodeToString(sum[:8])+".ps1")
+	if existing, err := os.ReadFile(path); err == nil && string(existing) == script {
+		return path, nil
 	}
-	defer scriptFile.Close()
-
-	if _, err := scriptFile.WriteString(script); err != nil {
-		return "", err
+	if err := state.AtomicWriteFile(path, []byte(script), 0o600); err != nil {
+		return "", fmt.Errorf("write PowerShell init script to %s: %w", sanitizeTerminalText(dir), err)
 	}
-	return scriptFile.Name(), nil
+	// Best effort: a script still open in another shell can fail to delete on
+	// Windows and is retried the next time the script changes.
+	if previous, err := filepath.Glob(filepath.Join(dir, "javm-init-*.ps1")); err == nil {
+		for _, old := range previous {
+			if old != path {
+				_ = os.Remove(old)
+			}
+		}
+	}
+	return path, nil
 }
