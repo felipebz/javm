@@ -10,22 +10,20 @@ import (
 )
 
 func TestDeactivate(t *testing.T) {
-	prevPath := os.Getenv("PATH")
 	sep := string(os.PathListSeparator)
-	defer func() { os.Setenv("PATH", prevPath) }()
 	javaHome := filepath.Join(cfg.Dir(), "jdk", "zulu@1.8.72")
 	javaPath := filepath.Join(javaHome, "bin")
-	os.Setenv("PATH", "/usr/local/bin"+sep+javaPath+sep+"/system-jdk/bin"+sep+"/usr/bin")
-	os.Setenv("JAVA_HOME", javaHome)
-	os.Setenv("JAVA_HOME_BEFORE_JAVM", "/system-jdk")
-	actual, err := deactivate()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	actual := deactivateRecords([]string{
+		"PATH=/usr/local/bin" + sep + javaPath + sep + "/system-jdk/bin" + sep + "/usr/bin",
+		"JAVA_HOME=" + javaHome,
+		"JAVA_HOME_BEFORE_JAVM=/system-jdk",
+		"JAVM_ACTIVE_JAVA_HOME=" + javaHome,
+	})
 	expected := []string{
 		"SET\tPATH\t" + "/usr/local/bin" + sep + "/system-jdk/bin" + sep + "/usr/bin",
 		"SET\tJAVA_HOME\t" + "/system-jdk",
 		"UNSET\tJAVA_HOME_BEFORE_JAVM",
+		"UNSET\tJAVM_ACTIVE_JAVA_HOME",
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("actual: %v != expected: %v", actual, expected)
@@ -33,19 +31,13 @@ func TestDeactivate(t *testing.T) {
 }
 
 func TestDeactivateInUnusedEnv(t *testing.T) {
-	prevPath := os.Getenv("PATH")
-	defer func() { os.Setenv("PATH", prevPath) }()
-	os.Setenv("PATH", "/usr/local/bin:/system-jdk/bin:/usr/bin")
-	os.Setenv("JAVA_HOME", "/system-jdk")
-	os.Unsetenv("JAVA_HOME_BEFORE_JAVM")
-	actual, err := deactivate()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	sep := string(os.PathListSeparator)
+	path := "/usr/local/bin" + sep + "/system-jdk/bin" + sep + "/usr/bin"
+	actual := deactivateRecords([]string{"PATH=" + path, "JAVA_HOME=/system-jdk"})
 	expected := []string{
-		"SET\tPATH\t" + "/usr/local/bin:/system-jdk/bin:/usr/bin",
-		"SET\tJAVA_HOME\t" + "/system-jdk",
+		"SET\tPATH\t" + path,
 		"UNSET\tJAVA_HOME_BEFORE_JAVM",
+		"UNSET\tJAVM_ACTIVE_JAVA_HOME",
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("actual: %v != expected: %v", actual, expected)

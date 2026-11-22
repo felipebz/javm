@@ -183,18 +183,17 @@ func TestFD3FileTerminatesEveryUseAndDeactivateRecord(t *testing.T) {
 	t.Setenv("JAVM_HOME", t.TempDir())
 	t.Setenv("JAVA_HOME", "/orig")
 	t.Setenv("JAVA_HOME_BEFORE_JAVM", "/orig")
+	t.Setenv("JAVM_ACTIVE_JAVA_HOME", "")
+	os.Unsetenv("JAVM_ACTIVE_JAVA_HOME")
 	t.Setenv("PATH", "/usr/bin")
 	jdk := filepath.Join(t.TempDir(), "temurin@21.0.1")
-	useRecords, err := usePath(jdk)
+	used, err := usePath(jdk)
 	if err != nil {
 		t.Fatal(err)
 	}
-	deactivateRecords, err := deactivate()
-	if err != nil {
-		t.Fatal(err)
-	}
+	deactivated := deactivateRecords(os.Environ())
 
-	for name, records := range map[string][]string{"use": useRecords, "deactivate": deactivateRecords} {
+	for name, records := range map[string][]string{"use": used, "deactivate": deactivated} {
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "fd3")
 			if err := printForShellToEval(records, path); err != nil {

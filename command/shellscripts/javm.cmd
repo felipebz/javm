@@ -42,11 +42,15 @@ if not "%_JAVM_EXIT_CODE%"=="0" goto javm_cleanup
 if not exist "%_JAVM_ENV_FILE%" if defined _JAVM_APPLY_DEFAULT goto javm_skip_default
 if not exist "%_JAVM_ENV_FILE%" goto javm_missing_environment
 
+rem Without a JAVA_HOME record, deactivate leaves JAVA_HOME as it is.
+set "_JAVM_NEW_JAVA_HOME=%JAVA_HOME%"
 for /f "usebackq tokens=1,2,* delims=	" %%A in ("%_JAVM_ENV_FILE%") do (
     if /i "%%A"=="SET" if /i "%%B"=="PATH" set "_JAVM_NEW_PATH=%%C"
     if /i "%%A"=="SET" if /i "%%B"=="JAVA_HOME" set "_JAVM_NEW_JAVA_HOME=%%C"
+    if /i "%%A"=="UNSET" if /i "%%B"=="JAVA_HOME" set "_JAVM_NEW_JAVA_HOME="
     if /i "%%A"=="SET" if /i "%%B"=="JAVA_HOME_BEFORE_JAVM" set "_JAVM_NEW_JAVA_HOME_BEFORE_JAVM=%%C"
     if /i "%%A"=="UNSET" if /i "%%B"=="JAVA_HOME_BEFORE_JAVM" set "_JAVM_UNSET_JAVA_HOME_BEFORE_JAVM=1"
+    if /i "%%A"=="SET" if /i "%%B"=="JAVM_ACTIVE_JAVA_HOME" set "_JAVM_NEW_JAVM_ACTIVE_JAVA_HOME=%%C"
 )
 
 if defined _JAVM_APPLY_DEFAULT goto javm_apply_default
@@ -71,7 +75,7 @@ goto javm_after_default
 :javm_apply_default
 del /q "%_JAVM_ENV_FILE%" >nul 2>&1
 rmdir "%_JAVM_TEMP_DIR%" >nul 2>&1
-endlocal & set "PATH=%_JAVM_NEW_PATH%" & set "JAVA_HOME=%_JAVM_NEW_JAVA_HOME%" & set "JAVA_HOME_BEFORE_JAVM=%_JAVM_NEW_JAVA_HOME_BEFORE_JAVM%" & set "_JAVM_DEFAULT_INITIALIZED=1"
+endlocal & set "PATH=%_JAVM_NEW_PATH%" & set "JAVA_HOME=%_JAVM_NEW_JAVA_HOME%" & set "JAVA_HOME_BEFORE_JAVM=%_JAVM_NEW_JAVA_HOME_BEFORE_JAVM%" & set "JAVM_ACTIVE_JAVA_HOME=%_JAVM_NEW_JAVM_ACTIVE_JAVA_HOME%" & set "_JAVM_DEFAULT_INITIALIZED=1"
 
 :javm_after_default
 setlocal DisableDelayedExpansion
@@ -81,9 +85,9 @@ goto javm_dispatch
 :javm_apply_use
 del /q "%_JAVM_ENV_FILE%" >nul 2>&1
 rmdir "%_JAVM_TEMP_DIR%" >nul 2>&1
-endlocal & set "PATH=%_JAVM_NEW_PATH%" & set "JAVA_HOME=%_JAVM_NEW_JAVA_HOME%" & set "JAVA_HOME_BEFORE_JAVM=%_JAVM_NEW_JAVA_HOME_BEFORE_JAVM%" & set "_JAVM_DEFAULT_INITIALIZED=1" & exit /b %_JAVM_EXIT_CODE%
+endlocal & set "PATH=%_JAVM_NEW_PATH%" & set "JAVA_HOME=%_JAVM_NEW_JAVA_HOME%" & set "JAVA_HOME_BEFORE_JAVM=%_JAVM_NEW_JAVA_HOME_BEFORE_JAVM%" & set "JAVM_ACTIVE_JAVA_HOME=%_JAVM_NEW_JAVM_ACTIVE_JAVA_HOME%" & set "_JAVM_DEFAULT_INITIALIZED=1" & exit /b %_JAVM_EXIT_CODE%
 
 :javm_apply_deactivate
 del /q "%_JAVM_ENV_FILE%" >nul 2>&1
 rmdir "%_JAVM_TEMP_DIR%" >nul 2>&1
-endlocal & set "PATH=%_JAVM_NEW_PATH%" & set "JAVA_HOME=%_JAVM_NEW_JAVA_HOME%" & set "JAVA_HOME_BEFORE_JAVM=" & set "_JAVM_DEFAULT_INITIALIZED=1" & exit /b %_JAVM_EXIT_CODE%
+endlocal & set "PATH=%_JAVM_NEW_PATH%" & set "JAVA_HOME=%_JAVM_NEW_JAVA_HOME%" & set "JAVA_HOME_BEFORE_JAVM=" & set "JAVM_ACTIVE_JAVA_HOME=" & set "_JAVM_DEFAULT_INITIALIZED=1" & exit /b %_JAVM_EXIT_CODE%

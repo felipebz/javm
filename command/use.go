@@ -70,18 +70,30 @@ func UseContext(ctx context.Context, selector string) ([]string, error) {
 }
 
 func usePath(path string) ([]string, error) {
-	env := os.Environ()
+	return useRecords(path, os.Environ())
+}
+
+func useRecords(path string, env []string) ([]string, error) {
 	selected, err := buildJDKEnvironment(path, env)
 	if err != nil {
 		return nil, err
 	}
-	systemJavaHome, overrideWasSet := lookupEnvironmentValue(env, "JAVA_HOME_BEFORE_JAVM")
-	if !overrideWasSet {
-		systemJavaHome, _ = lookupEnvironmentValue(env, "JAVA_HOME")
-	}
-	return []string{
+	records := []string{
 		"SET\tPATH\t" + selected.Path,
 		"SET\tJAVA_HOME\t" + selected.JavaHome,
-		"SET\tJAVA_HOME_BEFORE_JAVM\t" + systemJavaHome,
-	}, nil
+		"SET\t" + activeJavaHomeKey + "\t" + selected.JavaHome,
+	}
+	if original, ok := originalJavaHome(env); ok {
+		return append(records, "SET\t"+javaHomeBeforeJavmKey+"\t"+original), nil
+	}
+	return append(records, "UNSET\t"+javaHomeBeforeJavmKey), nil
+}
+
+// originalJavaHome returns the JAVA_HOME the user had before javm activated
+// the shell; ok is false when there was none.
+func originalJavaHome(env []string) (string, bool) {
+	if _, active := activeJavaHome(env); active {
+		return lookupEnvironmentValue(env, javaHomeBeforeJavmKey)
+	}
+	return lookupEnvironmentValue(env, "JAVA_HOME")
 }

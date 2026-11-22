@@ -56,6 +56,10 @@ func TestUse(t *testing.T) {
 	}
 	os.Setenv("PATH", "/usr/local/bin"+sep+filepath.Join(cfg.Dir(), "jdk", "1.6.0", "bin")+sep+"/usr/bin")
 	os.Setenv("JAVA_HOME", "/system-jdk")
+	for _, key := range []string{"JAVA_HOME_BEFORE_JAVM", "JAVM_ACTIVE_JAVA_HOME"} {
+		t.Setenv(key, "")
+		os.Unsetenv(key)
+	}
 	actual, err := Use("1.7")
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -63,6 +67,7 @@ func TestUse(t *testing.T) {
 	expected := []string{
 		"SET\tPATH\t" + javaPath + sep + "/usr/local/bin" + sep + "/usr/bin",
 		"SET\tJAVA_HOME\t" + javaHome,
+		"SET\tJAVM_ACTIVE_JAVA_HOME\t" + javaHome,
 		"SET\tJAVA_HOME_BEFORE_JAVM\t" + "/system-jdk",
 	}
 	if !reflect.DeepEqual(actual, expected) {

@@ -32,6 +32,27 @@ func resolveJDKContext(ctx context.Context, selector string) (discovery.JDK, err
 	return resolveJDKFromList(jdks, selector)
 }
 
+const (
+	javaHomeBeforeJavmKey = "JAVA_HOME_BEFORE_JAVM"
+	// activeJavaHomeKey holds the exact JAVA_HOME javm set; it is never empty
+	// while set, so it survives shells that drop empty variables.
+	activeJavaHomeKey = "JAVM_ACTIVE_JAVA_HOME"
+)
+
+// activeJavaHome reports whether javm activated the current shell and the
+// JAVA_HOME it set. Shells activated by an older javm only carry
+// JAVA_HOME_BEFORE_JAVM; their current JAVA_HOME is the active one.
+func activeJavaHome(env []string) (string, bool) {
+	if value, ok := lookupEnvironmentValue(env, activeJavaHomeKey); ok && value != "" {
+		return value, true
+	}
+	if _, ok := lookupEnvironmentValue(env, javaHomeBeforeJavmKey); ok {
+		value, _ := lookupEnvironmentValue(env, "JAVA_HOME")
+		return value, true
+	}
+	return "", false
+}
+
 type jdkEnvironment struct {
 	JavaHome string
 	Path     string
@@ -50,7 +71,8 @@ func buildJDKEnvironment(jdkPath string, env []string) (jdkEnvironment, error) {
 	}
 
 	currentPath, pathWasSet := lookupEnvironmentValue(env, "PATH")
-	remainingPath, hasRemainingPathEntries := stripManagedJDKPathsWithPresence(currentPath)
+	active, _ := activeJavaHome(env)
+	remainingPath, hasRemainingPathEntries := stripManagedJDKPathsWithPresence(currentPath, active)
 	if !pathWasSet {
 		hasRemainingPathEntries = false
 	}
@@ -65,11 +87,15 @@ func buildJDKEnvironment(jdkPath string, env []string) (jdkEnvironment, error) {
 }
 
 func stripManagedJDKPaths(pathValue string) string {
-	remaining, _ := stripManagedJDKPathsWithPresence(pathValue)
+	remaining, _ := stripManagedJDKPathsWithPresence(pathValue, "")
 	return remaining
 }
 
-func stripManagedJDKPathsWithPresence(pathValue string) (string, bool) {
+// stripManagedJDKPathsWithPresence removes the PATH entries javm added: every
+// entry under JAVM_HOME/jdk and, when activeJavaHome is set, the first entry
+// equal to its bin. Only the first one goes, because javm prepends its entry
+// and a later identical entry belongs to the user. Empty entries are kept.
+func stripManagedJDKPathsWithPresence(pathValue, activeJavaHome string) (string, bool) {
 	if pathValue == "" {
 		return "", true
 	}
@@ -82,14 +108,39 @@ func stripManagedJDKPathsWithPresence(pathValue string) (string, bool) {
 	if err != nil {
 		return pathValue, true
 	}
+	activeBin := ""
+	if activeJavaHome != "" {
+		activeBin = filepath.Join(activeJavaHome, "bin")
+	}
 
 	filtered := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		if !isUnderPath(entry, managedRoot) {
-			filtered = append(filtered, entry)
+		if isUnderPath(entry, managedRoot) {
+			continue
 		}
+		if activeBin != "" && samePath(entry, activeBin) {
+			activeBin = ""
+			continue
+		}
+		filtered = append(filtered, entry)
 	}
 	return strings.Join(filtered, string(os.PathListSeparator)), len(filtered) > 0
+}
+
+// samePath compares cleaned absolute paths, ignoring case on Windows.
+func samePath(left, right string) bool {
+	if left == "" || right == "" {
+		return false
+	}
+	left, leftErr := filepath.Abs(left)
+	right, rightErr := filepath.Abs(right)
+	if leftErr != nil || rightErr != nil {
+		return false
+	}
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(left, right)
+	}
+	return left == right
 }
 
 func isUnderPath(candidate, root string) bool {

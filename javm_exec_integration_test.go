@@ -224,8 +224,42 @@ func createRootExecFixtureWithHome(t *testing.T) (string, string) {
 	t.Setenv("PATH", t.TempDir())
 	t.Setenv("JAVA_HOME", "/parent/java")
 	t.Setenv("JAVM_TEST_EXIT", "")
+	// A shell where javm already ran use would make the first use in these
+	// tests look like a re-activation.
+	for _, key := range []string{"JAVM_ACTIVE_JAVA_HOME", "JAVA_HOME_BEFORE_JAVM"} {
+		t.Setenv(key, "")
+		os.Unsetenv(key)
+	}
 
 	return filepath.Join(bin, probe), home
+}
+
+// When use selected a JDK outside JAVM_HOME in the parent shell, exec must
+// drop that JDK's bin instead of leaving it behind the selected one.
+func TestRootExecRemovesPreviouslyActiveJDKFromPath(t *testing.T) {
+	probe := createRootExecFixture(t)
+	discovered := t.TempDir()
+	discoveredBin := filepath.Join(discovered, "bin")
+	userPath := os.Getenv("PATH")
+	t.Setenv("PATH", discoveredBin+string(os.PathListSeparator)+userPath)
+	t.Setenv("JAVA_HOME", discovered)
+	t.Setenv("JAVM_ACTIVE_JAVA_HOME", discovered)
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCommand(application{
+		out:    &stdout,
+		err:    &stderr,
+		logger: log.New(),
+		client: discoapi.NewClient(),
+	})
+	root.SetArgs([]string{"exec", filepath.Base(probe)})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("root.Execute() = %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+	want := "PATH=" + filepath.Dir(probe) + string(os.PathListSeparator) + userPath + "\n"
+	if !strings.Contains(stdout.String(), want) {
+		t.Fatalf("child output = %q, want line %q", stdout.String(), want)
+	}
 }
 
 // The bash/zsh and fish wrappers read the --fd3 records with `read`, which
@@ -258,6 +292,7 @@ func TestShellIntegrationDeactivateRestoresJavaHome(t *testing.T) {
 	}
 	shellPath := os.Getenv("PATH")
 	createRootExecFixture(t)
+	gradleHome := createGradleJDK(t)
 
 	_, testFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -277,7 +312,7 @@ func TestShellIntegrationDeactivateRestoresJavaHome(t *testing.T) {
 				t.Fatal(err)
 			}
 			cmd := osExec.Command(shell, append(scripts[name].args, runner)...)
-			cmd.Env = append(os.Environ(), "PATH="+shellPath, "JAVM_BINARY="+binary)
+			cmd.Env = append(os.Environ(), "PATH="+shellPath, "JAVM_BINARY="+binary, "GRADLE_USER_HOME="+gradleHome)
 			if output, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("%s use/deactivate round trip failed: %v\n%s", name, err, output)
 			}
@@ -285,22 +320,62 @@ func TestShellIntegrationDeactivateRestoresJavaHome(t *testing.T) {
 	}
 }
 
+// createGradleJDK registers a fake JDK outside JAVM_HOME that discovery finds
+// as testvendor-gradle@17.
+func createGradleJDK(t *testing.T) string {
+	t.Helper()
+	gradleHome := t.TempDir()
+	jdk := filepath.Join(gradleHome, "jdks", "test-jdk-17")
+	if err := os.MkdirAll(filepath.Join(jdk, "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(jdk, "bin", "java"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(jdk, "release"), []byte("JAVA_VERSION=\"17.0.9\"\nJAVA_VENDOR=\"TestVendor\"\nOS_ARCH=\"x64\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return gradleHome
+}
+
 func posixDeactivateScript(shell string) string {
 	return `eval "$("$JAVM_BINARY" init ` + shell + `)"
+ORIG_PATH=$PATH
 export JAVA_HOME=/orig
 unset JAVA_HOME_BEFORE_JAVM
+unset JAVM_ACTIVE_JAVA_HOME
 javm use 21 || exit 1
 [ "$JAVA_HOME" != /orig ] || { echo "use did not change JAVA_HOME"; exit 1; }
 [ "$JAVA_HOME_BEFORE_JAVM" = /orig ] || { echo "JAVA_HOME_BEFORE_JAVM=[$JAVA_HOME_BEFORE_JAVM], want [/orig]"; exit 1; }
 javm deactivate || exit 1
 [ "$JAVA_HOME" = /orig ] || { echo "JAVA_HOME=[$JAVA_HOME] after deactivate, want [/orig]"; exit 1; }
 [ -z "${JAVA_HOME_BEFORE_JAVM+set}" ] || { echo "JAVA_HOME_BEFORE_JAVM is still set"; exit 1; }
+
+# A discovered JDK lives outside JAVM_HOME; its bin must not stay in PATH.
+javm use testvendor-gradle@17 || exit 1
+javm use testvendor-gradle@17 || exit 1
+javm deactivate || exit 1
+[ "$PATH" = "$ORIG_PATH" ] || { echo "PATH=[$PATH] after deactivate, want [$ORIG_PATH]"; exit 1; }
+[ "$JAVA_HOME" = /orig ] || { echo "JAVA_HOME=[$JAVA_HOME] after deactivate, want [/orig]"; exit 1; }
+[ -z "${JAVM_ACTIVE_JAVA_HOME+set}" ] || { echo "JAVM_ACTIVE_JAVA_HOME is still set"; exit 1; }
+
+# Without an original JAVA_HOME, deactivate unsets it instead of leaving it empty.
+unset JAVA_HOME
+javm use 21 || exit 1
+javm use testvendor-gradle@17 || exit 1
+javm deactivate || exit 1
+[ -z "${JAVA_HOME+set}" ] || { echo "JAVA_HOME=[$JAVA_HOME] after deactivate, want unset"; exit 1; }
+[ "$PATH" = "$ORIG_PATH" ] || { echo "PATH=[$PATH] after deactivate, want [$ORIG_PATH]"; exit 1; }
 `
 }
 
 const fishDeactivateScript = `$JAVM_BINARY init fish | source
+# The wrapper assigns PATH as one colon-separated element; compare what child
+# processes see.
+set -l orig_path (string join : $PATH)
 set -gx JAVA_HOME /orig
 set -e JAVA_HOME_BEFORE_JAVM
+set -e JAVM_ACTIVE_JAVA_HOME
 javm use 21; or exit 1
 if test "$JAVA_HOME" = /orig
     echo "use did not change JAVA_HOME"; exit 1
@@ -314,5 +389,31 @@ if test "$JAVA_HOME" != /orig
 end
 if set -q JAVA_HOME_BEFORE_JAVM
     echo "JAVA_HOME_BEFORE_JAVM is still set"; exit 1
+end
+
+# A discovered JDK lives outside JAVM_HOME; its bin must not stay in PATH.
+javm use testvendor-gradle@17; or exit 1
+javm use testvendor-gradle@17; or exit 1
+javm deactivate; or exit 1
+if test (string join : $PATH) != "$orig_path"
+    echo "PATH=["(string join : $PATH)"] after deactivate, want [$orig_path]"; exit 1
+end
+if test "$JAVA_HOME" != /orig
+    echo "JAVA_HOME=[$JAVA_HOME] after deactivate, want [/orig]"; exit 1
+end
+if set -q JAVM_ACTIVE_JAVA_HOME
+    echo "JAVM_ACTIVE_JAVA_HOME is still set"; exit 1
+end
+
+# Without an original JAVA_HOME, deactivate unsets it instead of leaving it empty.
+set -e JAVA_HOME
+javm use 21; or exit 1
+javm use testvendor-gradle@17; or exit 1
+javm deactivate; or exit 1
+if set -q JAVA_HOME
+    echo "JAVA_HOME=[$JAVA_HOME] after deactivate, want unset"; exit 1
+end
+if test (string join : $PATH) != "$orig_path"
+    echo "PATH=["(string join : $PATH)"] after deactivate, want [$orig_path]"; exit 1
 end
 `

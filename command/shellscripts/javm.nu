@@ -14,7 +14,7 @@ def --env --wrapped javm [...args] {
                 if $change.op == "SET" {
                     load-env { ($change.key): $change.val }
                 } else if $change.op == "UNSET" {
-                    hide-env $change.key
+                    hide-env --ignore-errors $change.key
                 }
             }
             rm -f $fd3

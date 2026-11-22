@@ -2,10 +2,7 @@ package command
 
 import (
 	"os"
-	"path/filepath"
-	"regexp"
 
-	"github.com/felipebz/javm/cfg"
 	"github.com/spf13/cobra"
 )
 
@@ -15,10 +12,7 @@ func NewDeactivateCommand() *cobra.Command {
 		Short: "Undo effects of `javm` on current shell",
 		Args:  UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out, err := deactivate()
-			if err != nil {
-				return err
-			}
+			out := deactivateRecords(os.Environ())
 			fd3, _ := cmd.Flags().GetString("fd3")
 			return printForShellToEval(out, fd3)
 		},
@@ -28,19 +22,23 @@ func NewDeactivateCommand() *cobra.Command {
 	return cmd
 }
 
-func deactivate() ([]string, error) {
-	sep := string(os.PathListSeparator)
-	pth, _ := os.LookupEnv("PATH")
-	rgxp := regexp.MustCompile(regexp.QuoteMeta(filepath.Join(cfg.Dir(), "jdk")) + "[^" + sep + "]+[" + sep + "]")
-	// strip references to managed jdks dir, otherwise leave unchanged
-	pth = rgxp.ReplaceAllString(pth, "")
-	javaHome, overrideWasSet := os.LookupEnv("JAVA_HOME_BEFORE_JAVM")
-	if !overrideWasSet {
-		javaHome, _ = os.LookupEnv("JAVA_HOME")
+// deactivateRecords undoes exactly what use changed: the PATH entries javm
+// added and, when javm is active, JAVA_HOME. An inactive shell keeps its
+// JAVA_HOME.
+func deactivateRecords(env []string) []string {
+	active, isActive := activeJavaHome(env)
+	pathValue, _ := lookupEnvironmentValue(env, "PATH")
+	remaining, _ := stripManagedJDKPathsWithPresence(pathValue, active)
+	records := []string{"SET\tPATH\t" + remaining}
+	if isActive {
+		if original, ok := lookupEnvironmentValue(env, javaHomeBeforeJavmKey); ok {
+			records = append(records, "SET\tJAVA_HOME\t"+original)
+		} else {
+			records = append(records, "UNSET\tJAVA_HOME")
+		}
 	}
-	return []string{
-		"SET\tPATH\t" + pth,
-		"SET\tJAVA_HOME\t" + javaHome,
-		"UNSET\tJAVA_HOME_BEFORE_JAVM",
-	}, nil
+	return append(records,
+		"UNSET\t"+javaHomeBeforeJavmKey,
+		"UNSET\t"+activeJavaHomeKey,
+	)
 }
