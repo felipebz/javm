@@ -15,6 +15,7 @@ func NewConfigCommand() *cobra.Command {
 		Short:        "Manage javm configuration",
 		SilenceUsage: true,
 		Args:         UsageArgs(cobra.NoArgs),
+		RunE:         showHelp,
 	}
 
 	getCmd := &cobra.Command{

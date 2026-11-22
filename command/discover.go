@@ -29,6 +29,7 @@ func NewDiscoverCommand() *cobra.Command {
 		Short: "Manage JDK discovery",
 		Long:  "Discover JDK installations on the system",
 		Args:  UsageArgs(cobra.NoArgs),
+		RunE:  showHelp,
 	}
 
 	cmd.AddCommand(

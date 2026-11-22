@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // The sentinels below are the command-layer error classes consumed by the
@@ -60,4 +61,9 @@ func UsageArgs(validate cobra.PositionalArgs) cobra.PositionalArgs {
 		}
 		return nil
 	}
+}
+
+// Without a RunE, Cobra shows the help before validating Args.
+func showHelp(*cobra.Command, []string) error {
+	return pflag.ErrHelp
 }
