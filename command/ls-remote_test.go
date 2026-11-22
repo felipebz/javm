@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/felipebz/javm/discoapi"
@@ -40,9 +41,9 @@ func TestNewLsRemoteCommand_DefaultAndFlags(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	got := out.String()
-	want := `Identifier           Full Version    Distribution Version
-temurin@17.0.8       17.0.8          temurin 17.0.8
-temurin@21.0.1       21.0.1          temurin 21.0.1
+	want := `Identifier       Full Version   Distribution   Distribution Version
+temurin@17.0.8   17.0.8         temurin        17.0.8
+temurin@21.0.1   21.0.1         temurin        21.0.1
 `
 	if got != want {
 		t.Errorf("default got:\n%q\nwant:\n%q", got, want)
@@ -58,8 +59,8 @@ temurin@21.0.1       21.0.1          temurin 21.0.1
 		t.Fatalf("unexpected error: %v", err)
 	}
 	got = out.String()
-	want = `Identifier           Full Version    Distribution Version
-zulu@19.0.1          19.0.1          zulu 19.0.1
+	want = `Identifier    Full Version   Distribution   Distribution Version
+zulu@19.0.1   19.0.1         zulu           19.0.1
 `
 	if got != want {
 		t.Errorf("--distribution=zulu got:\n%q\nwant:\n%q", got, want)
@@ -75,8 +76,8 @@ zulu@19.0.1          19.0.1          zulu 19.0.1
 		t.Fatalf("unexpected error: %v", err)
 	}
 	got = out.String()
-	want = `Identifier           Full Version    Distribution Version
-temurin@21.0.1       21.0.1          temurin 21.0.1
+	want = `Identifier       Full Version   Distribution   Distribution Version
+temurin@21.0.1   21.0.1         temurin        21.0.1
 `
 	if got != want {
 		t.Errorf("--distribution= got:\n%q\nwant:\n%q", got, want)
@@ -93,8 +94,8 @@ temurin@21.0.1       21.0.1          temurin 21.0.1
 		t.Fatalf("unexpected error: %v", err)
 	}
 	got = out.String()
-	want = `Identifier           Full Version    Distribution Version
-temurin@21.0.1       21.0.1          temurin 21.0.1
+	want = `Identifier       Full Version   Distribution   Distribution Version
+temurin@21.0.1   21.0.1         temurin        21.0.1
 `
 	if got != want {
 		t.Errorf("range got:\n%q\nwant:\n%q", got, want)
@@ -129,8 +130,8 @@ func TestRunLsRemote_SpecificDistribution(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	got := out.String()
-	want := `Identifier           Full Version    Distribution Version
-zulu@17.0.8          17.0.8+1        zulu 20.0.8
+	want := `Identifier    Full Version   Distribution   Distribution Version
+zulu@17.0.8   17.0.8+1       zulu           20.0.8
 `
 	if got != want {
 		t.Errorf("specific got:\n%q\nwant:\n%q", got, want)
@@ -151,8 +152,8 @@ func TestRunLsRemote_WithRange(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	got := out.String()
-	want := `Identifier           Full Version    Distribution Version
-temurin@21.0.1       21.0.1          temurin 21.0.1
+	want := `Identifier       Full Version   Distribution   Distribution Version
+temurin@21.0.1   21.0.1         temurin        21.0.1
 `
 	if got != want {
 		t.Errorf("range got:\n%q\nwant:\n%q", got, want)
@@ -171,8 +172,8 @@ func TestRunLsRemoteSelectsLatestCompleteJavaVersion(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := `Identifier           Full Version    Distribution Version
-temurin@25           25.0.4.1+1      temurin 25.0.4.1
+	want := `Identifier   Full Version   Distribution   Distribution Version
+temurin@25   25.0.4.1+1     temurin        25.0.4.1
 `
 	if got := out.String(); got != want {
 		t.Fatalf("latest Java version output =\n%q\nwant:\n%q", got, want)
@@ -201,5 +202,58 @@ func TestLsRemotePropagatesCancellation(t *testing.T) {
 
 	if err := cmd.ExecuteContext(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected cancellation error, got %v", err)
+	}
+}
+
+func TestRunLsRemoteWithoutMatchPrintsNothing(t *testing.T) {
+	mock := &mockPackagesClient{Pkgs: []discoapi.Package{
+		{JavaVersion: "17.0.8", Distribution: "temurin", DistributionVersion: "17.0.8"},
+	}}
+	var out bytes.Buffer
+	if err := runLsRemote(context.Background(), &out, mock, ">=99", lsRemoteOptions{os: "linux", arch: "amd64", latest: "patch"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("output = %q, want nothing when no version matches", out.String())
+	}
+}
+
+// Every column starts where its header starts, however long the values are,
+// and each row has one value per header.
+func TestRunLsRemoteAlignsColumnsToContent(t *testing.T) {
+	mock := &mockPackagesClient{Pkgs: []discoapi.Package{
+		{JavaVersion: "23.1.6+2", Distribution: "liberica-native", DistributionVersion: "23.1.6"},
+		{JavaVersion: "21.0.4+7", Distribution: "temurin", DistributionVersion: "21.0.4"},
+	}}
+	var out bytes.Buffer
+	if err := runLsRemote(context.Background(), &out, mock, "", lsRemoteOptions{os: "linux", arch: "amd64", latest: "patch"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	lines := strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n")
+	if len(lines) != 3 || !strings.Contains(out.String(), "liberica-native@23.1.6") {
+		t.Fatalf("output = %q, want a header and two rows", out.String())
+	}
+
+	headers := []string{"Identifier", "Full Version", "Distribution", "Distribution Version"}
+	starts := make([]int, len(headers))
+	offset := 0
+	for i, header := range headers {
+		index := strings.Index(lines[0][offset:], header)
+		if index < 0 {
+			t.Fatalf("header %q is missing from %q", header, lines[0])
+		}
+		starts[i] = offset + index
+		offset = starts[i] + len(header)
+	}
+	for _, row := range lines[1:] {
+		// The values contain no spaces, so whitespace splitting counts them.
+		if fields := strings.Fields(row); len(fields) != len(headers) {
+			t.Fatalf("row %q has %d values, want %d", row, len(fields), len(headers))
+		}
+		for _, start := range starts[1:] {
+			if len(row) <= start || row[start] == ' ' || row[start-1] != ' ' {
+				t.Fatalf("row %q does not start a column at offset %d like the header %q", row, start, lines[0])
+			}
+		}
 	}
 }

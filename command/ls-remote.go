@@ -9,6 +9,7 @@ import (
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/javaversion"
+	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
 
@@ -78,27 +79,30 @@ func runLsRemote(ctx context.Context, out io.Writer, client PackagesClient, rang
 }
 
 func printVersions(out io.Writer, versions []*javaversion.Version, packageIndex *packageIndex, r *javaversion.Range, value javaversion.VersionPart) error {
-	headerPrinted := false
+	rows := [][]tableCell{{
+		{"Identifier", roleHeader},
+		{"Full Version", roleHeader},
+		{"Distribution", roleHeader},
+		{"Distribution Version", roleHeader},
+	}}
 	for _, v := range versions {
 		if r != nil && !r.Contains(v) {
 			continue
 		}
 		pkg := packageIndex.ByVersion[v]
-
-		if !headerPrinted {
-			if _, err := fmt.Fprintf(out, "%-20s %-15s %s\n", "Identifier", "Full Version", "Distribution Version"); err != nil {
-				return fmt.Errorf("write remote JDK header: %w", err)
-			}
-			headerPrinted = true
-		}
-
-		identifier := sanitizeTerminalText(v.TrimTo(value))
-		javaVersion := sanitizeTerminalText(pkg.JavaVersion)
-		distribution := sanitizeTerminalText(pkg.Distribution)
-		distributionVersion := sanitizeTerminalText(pkg.DistributionVersion)
-		if _, err := fmt.Fprintf(out, "%-20s %-15s %s %s\n", identifier, javaVersion, distribution, distributionVersion); err != nil {
-			return fmt.Errorf("write remote JDK: %w", err)
-		}
+		rows = append(rows, []tableCell{
+			{sanitizeTerminalText(v.TrimTo(value)), roleDefault},
+			{sanitizeTerminalText(pkg.JavaVersion), roleDefault},
+			{sanitizeTerminalText(pkg.Distribution), roleDefault},
+			{sanitizeTerminalText(pkg.DistributionVersion), roleDefault},
+		})
+	}
+	// Without a matching version nothing is printed, not even the header.
+	if len(rows) == 1 {
+		return nil
+	}
+	if err := writeTable(out, newStyles(out, termenv.WithProfile(termenv.Ascii)), rows); err != nil {
+		return fmt.Errorf("write remote JDKs: %w", err)
 	}
 	return nil
 }

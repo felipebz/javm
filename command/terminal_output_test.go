@@ -171,7 +171,7 @@ func TestLsRemoteRendersHostileMetadataInert(t *testing.T) {
 	if containsTerminalEscape(got) {
 		t.Fatalf("ls-remote emitted control characters: %q", got)
 	}
-	if want := "temurin 21.0.1]52;c;cHduZWQ="; !strings.Contains(got, want) {
+	if want := "21.0.1]52;c;cHduZWQ="; !strings.Contains(got, want) {
 		t.Fatalf("ls-remote output %q does not contain %q", got, want)
 	}
 }
