@@ -55,6 +55,10 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 }
 
 func runInstall(ctx context.Context, client PackagesWithInfoClient, selector string, dst string) (string, error) {
+	if name, ok := distributionWithoutVersion(selector); ok {
+		return "", UsageError(fmt.Errorf("a version is required: use %q; run 'javm ls-remote %s' to see the available versions",
+			name+"@<version>", sanitizeTerminalText(name)))
+	}
 	rng, err := javaversion.ParseRange(selector)
 	if err != nil {
 		return "", UsageError(err)
@@ -102,6 +106,24 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 		}
 	}
 	return ver.String(), fetchAndInstall(ctx, ver, packageInfo, dst, false)
+}
+
+// distributionWithoutVersion reports a selector that names only a
+// distribution: "zulu@", or a bare "zulu" that is not a range.
+func distributionWithoutVersion(selector string) (string, bool) {
+	trimmed := strings.TrimSpace(selector)
+	if name, ok := strings.CutSuffix(trimmed, "@"); ok {
+		_, err := javaversion.ParseRange(trimmed)
+		return name, err == nil
+	}
+	if strings.Contains(trimmed, "@") {
+		return "", false
+	}
+	if _, err := javaversion.ParseRange(trimmed); err == nil {
+		return "", false
+	}
+	_, err := javaversion.ParseRange(trimmed + "@")
+	return trimmed, err == nil
 }
 
 // refuseBrokenDestination reports a managed destination that exists but is not

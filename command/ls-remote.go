@@ -17,7 +17,9 @@ type lsRemoteOptions struct {
 	os           string
 	arch         string
 	distribution string
-	latest       string
+	// distributionFlag is set when --distribution was given explicitly.
+	distributionFlag bool
+	latest           string
 }
 
 func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
@@ -26,40 +28,87 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 	defaultDistribution, _ := cfg.EffectiveValue("java.default_distribution")
 
 	cmd := &cobra.Command{
-		Use:   "ls-remote",
+		Use:   "ls-remote [<distribution>[@<range>] | <range>]",
 		Short: "List remote versions available for install",
-		Args:  UsageArgs(cobra.MaximumNArgs(1)),
+		Long: "List the versions available for install. A distribution name lists all its versions, <distribution>@<range>\n" +
+			"filters them, and a range alone uses java.default_distribution. 'all' lists every distribution.",
+		Args: UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rangeArg := ""
+			selector := ""
 			if len(args) > 0 {
-				rangeArg = args[0]
+				selector = args[0]
 			}
 			normalized := opts
 			normalized.os = normalizeOS(opts.os)
-			return runLsRemote(cmd.Context(), cmd.OutOrStdout(), client, rangeArg, normalized)
+			normalized.distributionFlag = cmd.Flags().Changed("distribution")
+			return runLsRemote(cmd.Context(), cmd.OutOrStdout(), client, selector, normalized)
 		},
+		Example: "  javm ls-remote\n" +
+			"  javm ls-remote 21\n" +
+			"  javm ls-remote zulu\n" +
+			"  javm ls-remote zulu@25\n" +
+			"  javm ls-remote all@21",
 	}
 	cmd.Flags().StringVar(&opts.os, "os", runtime.GOOS, "Operating System (macos, linux, windows)")
 	cmd.Flags().StringVar(&opts.arch, "arch", runtime.GOARCH, "Architecture (amd64, arm64)")
-	cmd.Flags().StringVar(&opts.distribution, "distribution", defaultDistribution, "Java distribution (e.g. temurin, zulu, corretto). Use \"all\" to list all distributions")
+	cmd.Flags().StringVar(&opts.distribution, "distribution", defaultDistribution, "deprecated: name the distribution in the selector instead (javm ls-remote zulu@25)")
 	cmd.Flags().StringVar(&opts.latest, "latest", "major",
 		"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
 	return cmd
 }
 
-func runLsRemote(ctx context.Context, out io.Writer, client PackagesClient, rangeArg string, opts lsRemoteOptions) error {
-	var r *javaversion.Range
-	var err error
-	if rangeArg != "" {
-		r, err = javaversion.ParseRange(rangeArg)
-		if err != nil {
-			return UsageError(err)
+// parseLsRemoteSelector splits the selector into the distribution it names
+// ("" when none) and the range filter. A bare word that is not a range is a
+// distribution when "<word>@" parses, so the same names install accepts work.
+func parseLsRemoteSelector(selector string) (string, *javaversion.Range, error) {
+	if selector == "" {
+		return "", nil, nil
+	}
+	r, err := javaversion.ParseRange(selector)
+	if err != nil && !strings.Contains(selector, "@") {
+		if bare, bareErr := javaversion.ParseRange(selector + "@"); bareErr == nil {
+			r, err = bare, nil
 		}
 	}
+	if err != nil {
+		return "", nil, UsageError(err)
+	}
+	distribution := r.Qualifier
+	if distribution == "*" {
+		distribution = "all"
+	}
+	return distribution, r, nil
+}
 
-	distribution := opts.distribution
+func runLsRemote(ctx context.Context, out io.Writer, client PackagesClient, selector string, opts lsRemoteOptions) error {
+	distribution, r, err := parseLsRemoteSelector(selector)
+	if err != nil {
+		return err
+	}
+	if opts.distributionFlag {
+		if distribution != "" && distribution != opts.distribution {
+			return UsageError(fmt.Errorf("--distribution %q conflicts with the distribution %q in the selector", opts.distribution, distribution))
+		}
+		newForm := opts.distribution
+		if distribution == "" && selector != "" {
+			newForm += "@" + selector
+		} else if selector != "" {
+			newForm = selector
+		}
+		hint := "use: javm ls-remote " + shellWord(sanitizeTerminalText(newForm))
+		if strings.ContainsAny(newForm, "\"$`\\") && strings.Contains(newForm, "'") {
+			hint = "name the distribution in the selector"
+		}
+		warnOnce(ctx, fmt.Errorf("--distribution is deprecated; %s", hint))
+	}
+	if distribution == "" {
+		distribution = opts.distribution
+	}
 	if distribution == "all" {
 		distribution = ""
+		if r != nil {
+			r.Qualifier = ""
+		}
 	}
 	packageIndex, err := makePackageIndex(ctx, client, opts.os, opts.arch, distribution)
 	if err != nil {
@@ -82,6 +131,24 @@ func runLsRemote(ctx context.Context, out io.Writer, client PackagesClient, rang
 	}
 
 	return printVersions(out, vs, packageIndex, r, trimToValue)
+}
+
+// shellWord returns s ready to paste into a POSIX shell, PowerShell or cmd: as
+// is when it only has characters none of them treats specially, otherwise
+// quoted. "," and "^" are quoted too: PowerShell splits on "," and cmd
+// consumes "^".
+func shellWord(s string) string {
+	safe := s != "" && !strings.ContainsFunc(s, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("@._-+~", r))
+	})
+	switch {
+	case safe:
+		return s
+	case !strings.ContainsAny(s, "\"$`\\"):
+		return `"` + s + `"`
+	default:
+		return "'" + s + "'"
+	}
 }
 
 func printVersions(out io.Writer, versions []*javaversion.Version, packageIndex *packageIndex, r *javaversion.Range, value javaversion.VersionPart) error {

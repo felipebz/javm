@@ -112,14 +112,15 @@ javm does not switch automatically when you change directories.
 
 ```sh
 javm ls-remote                                 # latest Temurin build per major version (default distribution)
-javm ls-remote --distribution all              # every distribution
-javm ls-remote ">=8 <9" --distribution zulu    # filter by range and distribution
+javm ls-remote zulu                            # every Zulu version
+javm ls-remote "zulu@>=8 <9"                   # filter by distribution and range
+javm ls-remote all@21                          # every distribution
 javm install temurin@21
 javm install zulu@8
 javm install corretto@~21.0.2
 ```
 
-With `ls-remote`, choose the distribution with `--distribution`. Java 8 and older use modern version numbers:
+With `ls-remote`, name the distribution in the selector, as with `install`. Java 8 and older use modern version numbers:
 write `8` or `8.0.400`, not `1.8`.
 
 ### Run a command with a JDK
