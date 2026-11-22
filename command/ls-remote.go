@@ -65,6 +65,12 @@ func runLsRemote(ctx context.Context, out io.Writer, client PackagesClient, rang
 	if err != nil {
 		return err
 	}
+	if packageIndex.knownEmpty {
+		if _, err := fmt.Fprintf(RuntimeFromContext(ctx).Err, "no versions of %q found for %s/%s\n",
+			distribution, sanitizeTerminalText(opts.os), sanitizeTerminalText(opts.arch)); err != nil {
+			return fmt.Errorf("write remote JDK status: %w", err)
+		}
+	}
 
 	trimToValue := parseTrimTo(opts.latest)
 	if opts.latest != "" && trimToValue < 0 {

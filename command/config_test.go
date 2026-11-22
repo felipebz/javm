@@ -11,7 +11,7 @@ func TestConfigUsesCobraStreams(t *testing.T) {
 
 	t.Run("data goes to stdout", func(t *testing.T) {
 		var stdout, stderr bytes.Buffer
-		cmd := NewConfigCommand()
+		cmd := NewConfigCommand(&distributionsClient{})
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stderr)
 		cmd.SetArgs([]string{"get", "java.default_distribution"})
@@ -29,7 +29,7 @@ func TestConfigUsesCobraStreams(t *testing.T) {
 
 	t.Run("errors do not contaminate stdout", func(t *testing.T) {
 		var stdout, stderr bytes.Buffer
-		cmd := NewConfigCommand()
+		cmd := NewConfigCommand(&distributionsClient{})
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stderr)
 		cmd.SetArgs([]string{"get", "unknown"})

@@ -148,7 +148,7 @@ func newRootCommand(app application) *cobra.Command {
 		command.NewInitCommand(),
 		command.NewDiscoverCommand(),
 		command.NewDefaultCommand(),
-		command.NewConfigCommand(),
+		command.NewConfigCommand(app.client),
 	)
 	root.Flags().Bool("version", false, "version of javm")
 	root.PersistentFlags().Bool("debug", false, "enable verbose debug logging")

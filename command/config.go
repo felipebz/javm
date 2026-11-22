@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewConfigCommand() *cobra.Command {
+func NewConfigCommand(client DistributionsClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "config",
 		Short:        "Manage javm configuration",
@@ -29,7 +29,9 @@ func NewConfigCommand() *cobra.Command {
 		Use:   "set <key> <value>",
 		Short: "Set a config key to a value",
 		Args:  UsageArgs(cobra.ExactArgs(2)),
-		RunE:  runSetConfig,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSetConfig(cmd, client, args)
+		},
 	}
 
 	listCmd := &cobra.Command{
@@ -66,11 +68,19 @@ func runGetConfig(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runSetConfig(cmd *cobra.Command, args []string) error {
+func runSetConfig(cmd *cobra.Command, client DistributionsClient, args []string) error {
 	key := args[0]
 	val := args[1]
 	if !cfg.IsKnownKey(key) {
 		return UsageError(fmt.Errorf("unknown key %q", key))
+	}
+	if key == "java.default_distribution" {
+		distributions, err := client.GetDistributionsContext(cmd.Context())
+		if err != nil {
+			warnOnce(cmd.Context(), fmt.Errorf("could not check that distribution %q exists: %w", val, err))
+		} else if err := unknownDistributionError(val, distributions); err != nil {
+			return err
+		}
 	}
 	if err := cfg.SetValue(key, val); err != nil {
 		return fmt.Errorf("failed to write config: %w", configError(err))

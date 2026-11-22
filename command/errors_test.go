@@ -8,7 +8,7 @@ import (
 )
 
 func TestCommandArgumentValidationUsesUsageClass(t *testing.T) {
-	config := NewConfigCommand()
+	config := NewConfigCommand(&distributionsClient{})
 	discover := NewDiscoverCommand()
 
 	commands := []struct {

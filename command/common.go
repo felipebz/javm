@@ -29,6 +29,8 @@ type packageIndex struct {
 	ByVersion map[*javaversion.Version]discoapi.Package
 	Sorted    []*javaversion.Version
 	invalid   []invalidPackageVersion
+	// knownEmpty is set when the distribution exists but has no packages here.
+	knownEmpty bool
 }
 
 type invalidPackageVersion struct {
@@ -45,7 +47,43 @@ func makePackageIndex(ctx context.Context, client PackagesClient, osFlag, archFl
 	for _, invalid := range index.invalid {
 		loggerFromContext(ctx).Debugf("ignoring package %q with invalid Java version %q: %v", invalid.packageValue.Id, invalid.packageValue.JavaVersion, invalid.err)
 	}
+	if len(pkgs) == 0 && distributionFlag != "" {
+		// An empty result is the only case that needs the distribution list,
+		// so the normal path makes no extra request.
+		if lister, ok := client.(DistributionsClient); ok {
+			distributions, err := lister.GetDistributionsContext(ctx)
+			if err != nil {
+				loggerFromContext(ctx).Debugf("could not check distribution %q: %v", distributionFlag, err)
+				return index, nil
+			}
+			if err := unknownDistributionError(distributionFlag, distributions); err != nil {
+				return nil, err
+			}
+			index.knownEmpty = true
+		}
+	}
 	return index, nil
+}
+
+// errUnknownDistribution marks a distribution name the Disco API does not offer.
+var errUnknownDistribution = errors.New("unknown distribution")
+
+// unknownDistributionError returns a usage error when name is not a Disco API
+// distribution, suggesting the right case when only the case differs.
+func unknownDistributionError(name string, distributions []discoapi.Distribution) error {
+	for _, distribution := range distributions {
+		if distribution.APIParameter == name {
+			return nil
+		}
+	}
+	hint := ""
+	for _, distribution := range distributions {
+		if strings.EqualFold(distribution.APIParameter, name) {
+			hint = fmt.Sprintf("; did you mean %q?", distribution.APIParameter)
+			break
+		}
+	}
+	return UsageError(fmt.Errorf("%w %q; run 'javm ls-distributions' to see the available ones%s", errUnknownDistribution, name, hint))
 }
 
 func packageIndexFromPackages(pkgs []discoapi.Package) *packageIndex {

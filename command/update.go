@@ -117,6 +117,15 @@ func (u updater) updateAll(ctx context.Context, targets []string, explicit bool)
 			loggerFromContext(ctx).Warn(err)
 			continue
 		}
+		if !explicit && errors.Is(err, errUnknownDistribution) {
+			distribution := target
+			if rng, parseErr := javaversion.ParseRange(target); parseErr == nil {
+				distribution = rng.Qualifier
+			}
+			loggerFromContext(ctx).Warnf("skipping %s: distribution %q is not offered by the Disco API anymore",
+				sanitizeTerminalText(target), distribution)
+			continue
+		}
 		if err != nil {
 			errs = append(errs, err)
 			if explicit || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
