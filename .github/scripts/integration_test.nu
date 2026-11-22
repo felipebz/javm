@@ -18,6 +18,8 @@ def main [java_version: string = "25"] {
     let original_java_home = "/javm-ci/original-java-home"
     $env.JAVA_HOME = $original_java_home
     hide-env --ignore-errors JAVA_HOME_BEFORE_JAVM
+    hide-env --ignore-errors JAVM_ACTIVE_JAVA_HOME
+    let original_path = (path_string)
 
     echo (">>> Using JDK " + $java_version)
     javm use $java_version
@@ -65,6 +67,24 @@ def main [java_version: string = "25"] {
     if ("JAVA_HOME_BEFORE_JAVM" in $env) {
         error make {msg: ">>> ERROR: JAVA_HOME_BEFORE_JAVM is still set after deactivate"}
     }
+    let restored_path = (path_string)
+    if ($restored_path != $original_path) {
+        error make {msg: (">>> ERROR: deactivate left PATH " + $restored_path + ", want " + $original_path)}
+    }
+    if ("JAVM_ACTIVE_JAVA_HOME" in $env) {
+        error make {msg: ">>> ERROR: JAVM_ACTIVE_JAVA_HOME is still set after deactivate"}
+    }
 
     echo ">>> Done."
+}
+
+# PATH is a list after startup but a string once the wrapper sets it; compare
+# the value child processes see.
+def --env path_string [] {
+    let value = $env.PATH
+    if ($value | describe | str starts-with "list") {
+        $value | str join (char esep)
+    } else {
+        $value
+    }
 }

@@ -24,6 +24,8 @@ javm install "$javaVersion"
 $originalJavaHome = 'C:\javm-ci\original-java-home'
 $env:JAVA_HOME = $originalJavaHome
 Remove-Item -ErrorAction SilentlyContinue -Path env:JAVA_HOME_BEFORE_JAVM
+Remove-Item -ErrorAction SilentlyContinue -Path env:JAVM_ACTIVE_JAVA_HOME
+$originalPath = $env:PATH
 
 Write-Host ">>> Using JDK $javaVersion"
 javm use "$javaVersion"
@@ -59,5 +61,7 @@ Write-Host '>>> Deactivating JDK'
 javm deactivate
 if ($env:JAVA_HOME -ne $originalJavaHome) { Write-Error "deactivate left JAVA_HOME=$env:JAVA_HOME, want $originalJavaHome"; exit 1 }
 if (Test-Path env:JAVA_HOME_BEFORE_JAVM) { Write-Error 'JAVA_HOME_BEFORE_JAVM is still set after deactivate'; exit 1 }
+if ($env:PATH -ne $originalPath) { Write-Error "deactivate left PATH=$env:PATH, want $originalPath"; exit 1 }
+if (Test-Path env:JAVM_ACTIVE_JAVA_HOME) { Write-Error 'JAVM_ACTIVE_JAVA_HOME is still set after deactivate'; exit 1 }
 
 Write-Host '>>> Done.'

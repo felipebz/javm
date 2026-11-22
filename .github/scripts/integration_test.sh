@@ -23,6 +23,8 @@ javm install "${JAVA_VERSION}"
 ORIGINAL_JAVA_HOME="/javm-ci/original-java-home"
 export JAVA_HOME="${ORIGINAL_JAVA_HOME}"
 unset JAVA_HOME_BEFORE_JAVM
+unset JAVM_ACTIVE_JAVA_HOME
+ORIGINAL_PATH="${PATH}"
 
 echo ">>> Using JDK ${JAVA_VERSION}"
 javm use "${JAVA_VERSION}"
@@ -68,6 +70,14 @@ if [ "${JAVA_HOME:-}" != "${ORIGINAL_JAVA_HOME}" ]; then
 fi
 if [ -n "${JAVA_HOME_BEFORE_JAVM+set}" ]; then
   echo "ERROR: JAVA_HOME_BEFORE_JAVM is still set after deactivate"
+  exit 1
+fi
+if [ "${PATH}" != "${ORIGINAL_PATH}" ]; then
+  echo "ERROR: deactivate left PATH=${PATH}, want ${ORIGINAL_PATH}"
+  exit 1
+fi
+if [ -n "${JAVM_ACTIVE_JAVA_HOME+set}" ]; then
+  echo "ERROR: JAVM_ACTIVE_JAVA_HOME is still set after deactivate"
   exit 1
 fi
 

@@ -23,6 +23,10 @@ javm install $JAVA_VERSION
 set -l ORIGINAL_JAVA_HOME /javm-ci/original-java-home
 set -gx JAVA_HOME $ORIGINAL_JAVA_HOME
 set -e JAVA_HOME_BEFORE_JAVM
+set -e JAVM_ACTIVE_JAVA_HOME
+# The wrapper assigns PATH as one colon-separated string; compare what child
+# processes see.
+set -l ORIGINAL_PATH (string join : $PATH)
 
 echo ">>> Using JDK $JAVA_VERSION"
 javm use $JAVA_VERSION
@@ -69,6 +73,14 @@ if test "$JAVA_HOME" != "$ORIGINAL_JAVA_HOME"
 end
 if set -q JAVA_HOME_BEFORE_JAVM
     echo "ERROR: JAVA_HOME_BEFORE_JAVM is still set after deactivate"
+    exit 1
+end
+if test (string join : $PATH) != "$ORIGINAL_PATH"
+    echo "ERROR: deactivate left PATH="(string join : $PATH)", want $ORIGINAL_PATH"
+    exit 1
+end
+if set -q JAVM_ACTIVE_JAVA_HOME
+    echo "ERROR: JAVM_ACTIVE_JAVA_HOME is still set after deactivate"
     exit 1
 end
 

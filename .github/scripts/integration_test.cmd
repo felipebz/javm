@@ -15,6 +15,8 @@ rem left by an earlier use cannot take its place.
 set "ORIGINAL_JAVA_HOME=C:\javm-ci\original-java-home"
 set "JAVA_HOME=%ORIGINAL_JAVA_HOME%"
 set "JAVA_HOME_BEFORE_JAVM="
+set "JAVM_ACTIVE_JAVA_HOME="
+set "ORIGINAL_PATH=%PATH%"
 echo ^>^>^> Using JDK %JAVA_VERSION%
 call javm use "%JAVA_VERSION%" || exit /b 1
 
@@ -49,6 +51,14 @@ if not "%JAVA_HOME%"=="%ORIGINAL_JAVA_HOME%" (
 )
 if defined JAVA_HOME_BEFORE_JAVM (
     >&2 echo JAVA_HOME_BEFORE_JAVM is still set after deactivate
+    exit /b 1
+)
+if not "%PATH%"=="%ORIGINAL_PATH%" (
+    >&2 echo PATH was not restored after deactivate
+    exit /b 1
+)
+if defined JAVM_ACTIVE_JAVA_HOME (
+    >&2 echo JAVM_ACTIVE_JAVA_HOME is still set after deactivate
     exit /b 1
 )
 
