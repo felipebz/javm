@@ -58,8 +58,8 @@ func NewUseCommand() *cobra.Command {
 			}
 			return printForShellToEval(out, fd3)
 		},
-		Example: "  javm use 1.8\n" +
-			"  javm use ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
+		Example: "  javm use 21\n" +
+			"  javm use ~21.0.4 # same as \">=21.0.4 <21.1.0\"",
 	}
 	cmd.Flags().String("fd3", "", "")
 	_ = cmd.Flags().MarkHidden("fd3")

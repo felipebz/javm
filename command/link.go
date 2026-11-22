@@ -123,8 +123,8 @@ func NewLinkCommand() *cobra.Command {
 			}
 			return nil
 		},
-		Example: "  javm link system@1.8.20 /Library/Java/JavaVirtualMachines/jdk1.8.0_20.jdk\n" +
-			"  javm link system@1.8.20 # show link target",
+		Example: "  javm link system@21 /Library/Java/JavaVirtualMachines/temurin-21.jdk\n" +
+			"  javm link system@21 # show link target",
 	}
 }
 
@@ -139,13 +139,13 @@ func NewUnlinkCommand() *cobra.Command {
 			}
 			return nil
 		},
-		Example: "  javm unlink system@1.8.20",
+		Example: "  javm unlink system@21",
 	}
 }
 
 func link(ctx context.Context, selector string, dir string) error {
 	if !isSystemSelector(selector) {
-		return UsageError(errors.New("Name must begin with 'system@' (e.g. 'system@1.8.73')"))
+		return UsageError(errors.New("Name must begin with 'system@' (e.g. 'system@21')"))
 	}
 	if _, err := javaversion.ParseVersion(selector); err != nil {
 		return UsageError(err)

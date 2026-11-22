@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
@@ -159,7 +160,31 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 		return fallback, nil
 	}
 
-	return discovery.JDK{}, NotFoundError(fmt.Errorf("%s isn't installed", rng.String()))
+	return discovery.JDK{}, NotFoundError(fmt.Errorf("%s isn't installed%s", rng.String(), legacySelectorHint(selector)))
+}
+
+// legacySelectorHint explains the modern numbering when a selector uses the
+// 1.x form of Java 8 and earlier (1.8, ~1.8.73, zulu@1.8), which matches
+// nothing because javm reads 1.8.0_502 as 8.0.502. Other selectors get "".
+func legacySelectorHint(selector string) string {
+	if at := strings.IndexByte(selector, '@'); at >= 0 {
+		selector = selector[at+1:]
+	}
+	tokens := strings.FieldsFunc(selector, func(char rune) bool {
+		return char == ',' || char == '|' || unicode.IsSpace(char)
+	})
+	for _, token := range tokens {
+		version, legacy := strings.CutPrefix(strings.TrimLeft(token, "!<>=~^"), "1.")
+		if !legacy {
+			continue
+		}
+		feature := version[:len(version)-len(strings.TrimLeft(version, "0123456789"))]
+		if feature == "" {
+			feature = "8"
+		}
+		return ` (Java 8 and earlier are written without "1.", for example ` + feature + ")"
+	}
+	return ""
 }
 
 func printInstalledVersions(w io.Writer, styles styles, jdks []discovery.JDK, rng *javaversion.Range, showDetails bool) error {

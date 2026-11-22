@@ -46,8 +46,8 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 			}
 			return warnLinkFailures(cmd.Context(), linkLatest(cmd.Context()))
 		},
-		Example: "  javm install 1.8\n" +
-			"  javm install ~1.8.73 # same as \">=1.8.73 <1.9.0\"",
+		Example: "  javm install 21\n" +
+			"  javm install ~21.0.4 # same as \">=21.0.4 <21.1.0\"",
 	}
 	cmd.Flags().StringVarP(&customInstallDestination, "output", "o", "",
 		"New, non-existing custom destination (JDKs outside $JAVM_HOME/jdk are unmanaged unless linked)")
@@ -77,7 +77,7 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 		for _, v := range slices.Backward(packageIndex.Sorted) {
 			targets = append(targets, v.String())
 		}
-		return "", NotFoundError(errors.New("No compatible version found for " + selector +
+		return "", NotFoundError(errors.New("No compatible version found for " + selector + legacySelectorHint(selector) +
 			"\nValid install targets: " + strings.Join(targets, ", ")))
 	}
 	packageInfo, err := client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)

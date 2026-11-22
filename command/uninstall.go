@@ -27,7 +27,7 @@ func NewUninstallCommand() *cobra.Command {
 			}
 			return nil
 		},
-		Example: "  javm uninstall 1.8",
+		Example: "  javm uninstall temurin@21.0.4",
 	}
 }
 

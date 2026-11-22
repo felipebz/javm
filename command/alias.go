@@ -61,8 +61,8 @@ func NewAliasCommand() *cobra.Command {
 			}
 			return invalidateDiscoveryCache()
 		},
-		Example: "  javm alias default 1.8\n" +
-			"  javm alias default # show value bound to an alias",
+		Example: "  javm alias work temurin@21\n" +
+			"  javm alias work # show the selector bound to an alias",
 	}
 }
 
