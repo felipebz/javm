@@ -59,10 +59,10 @@ func installWithExtractor(ctx context.Context, file string, dst string, extract 
 
 	if info, statErr := os.Lstat(dst); replace {
 		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("replacement target %q is not an existing JDK directory", dst)
+			return fmt.Errorf("replacement target %s is not an existing JDK directory", quotePath(dst))
 		}
 	} else if statErr == nil {
-		return fmt.Errorf("installation destination %q already exists; refusing to replace it", dst)
+		return fmt.Errorf("installation destination %s already exists; refusing to replace it", quotePath(dst))
 	} else if !os.IsNotExist(statErr) {
 		return fmt.Errorf("inspect installation destination: %w", statErr)
 	}
@@ -98,7 +98,7 @@ func installWithExtractor(ctx context.Context, file string, dst string, extract 
 
 	if !replace {
 		if err := promoteNoReplace(readyRoot, dst); err != nil {
-			return fmt.Errorf("promote staged JDK to %q: %w; installation rolled back", dst, err)
+			return fmt.Errorf("promote staged JDK to %s: %w; installation rolled back", quotePath(dst), err)
 		}
 		return nil
 	}
@@ -107,10 +107,10 @@ func installWithExtractor(ctx context.Context, file string, dst string, extract 
 	// filesystem as dst, and is deleted with it once the new tree is promoted.
 	previous := filepath.Join(transactionDir, "previous")
 	if err := os.Rename(dst, previous); err != nil {
-		return fmt.Errorf("move existing JDK %q aside: %w; installation rolled back", dst, err)
+		return fmt.Errorf("move existing JDK %s aside: %w; installation rolled back", quotePath(dst), err)
 	}
 	if err := promoteNoReplace(readyRoot, dst); err != nil {
-		promoteErr := fmt.Errorf("promote staged JDK to %q: %w; installation rolled back", dst, err)
+		promoteErr := fmt.Errorf("promote staged JDK to %s: %w; installation rolled back", quotePath(dst), err)
 		if restoreErr := os.Rename(previous, dst); restoreErr != nil {
 			return errors.Join(promoteErr, fmt.Errorf("restore previous JDK: %w", restoreErr))
 		}
@@ -561,7 +561,7 @@ func (s *extractionState) makeDir(target string) error {
 	info, err := os.Lstat(target)
 	if err == nil {
 		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("archive directory collides with non-directory %q", target)
+			return fmt.Errorf("archive directory collides with non-directory %s", quotePath(target))
 		}
 		return nil
 	}
@@ -569,7 +569,7 @@ func (s *extractionState) makeDir(target string) error {
 		return err
 	}
 	if err := os.Mkdir(target, 0755); err != nil {
-		return fmt.Errorf("create archive directory %q: %w", target, err)
+		return fmt.Errorf("create archive directory %s: %w", quotePath(target), err)
 	}
 	return nil
 }
@@ -580,7 +580,7 @@ func (s *extractionState) writeFile(target string, mode os.FileMode, source io.R
 	}
 	f, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode.Perm()|0600)
 	if err != nil {
-		return fmt.Errorf("create archive file %q: %w", target, err)
+		return fmt.Errorf("create archive file %s: %w", quotePath(target), err)
 	}
 	written, copyErr := io.CopyN(f, source, expectedSize)
 	if copyErr == nil {
@@ -592,10 +592,10 @@ func (s *extractionState) writeFile(target string, mode os.FileMode, source io.R
 	}
 	closeErr := f.Close()
 	if copyErr != nil {
-		return fmt.Errorf("write archive file %q after %d bytes: %w", target, written, copyErr)
+		return fmt.Errorf("write archive file %s after %d bytes: %w", quotePath(target), written, copyErr)
 	}
 	if closeErr != nil {
-		return fmt.Errorf("close archive file %q: %w", target, closeErr)
+		return fmt.Errorf("close archive file %s: %w", quotePath(target), closeErr)
 	}
 	return nil
 }
@@ -616,7 +616,7 @@ func (s *extractionState) makeSymlink(rel, target, linkTarget string) error {
 		return fmt.Errorf("archive contains unsafe symlink %q -> %q: %w", rel, linkTarget, err)
 	}
 	if _, err := os.Lstat(target); err == nil {
-		return fmt.Errorf("archive symlink collides with existing path %q", target)
+		return fmt.Errorf("archive symlink collides with existing path %s", quotePath(target))
 	} else if !os.IsNotExist(err) {
 		return err
 	}
@@ -635,16 +635,16 @@ func (s *extractionState) makeHardlink(target, linkTarget string) error {
 		return fmt.Errorf("hardlink target is missing or appears after the link: %w", err)
 	}
 	if !info.Mode().IsRegular() {
-		return fmt.Errorf("hardlink target is not a regular file: %q", linkTarget)
+		return fmt.Errorf("hardlink target is not a regular file: %s", quotePath(linkTarget))
 	}
 	// Lstat and link(2) follow the intermediate components of the target, so a
 	// directory that is a symlink to outside the tree would leak an outside
 	// file into the extracted JDK.
 	if _, err := s.resolveLinkTarget(filepath.Dir(linkTarget), filepath.Base(linkTarget)); err != nil {
-		return fmt.Errorf("archive contains unsafe hardlink %q -> %q: %w", target, linkTarget, err)
+		return fmt.Errorf("archive contains unsafe hardlink %s -> %s: %w", quotePath(target), quotePath(linkTarget), err)
 	}
 	if err := os.Link(linkTarget, target); err != nil {
-		return fmt.Errorf("create archive hardlink %q: %w", target, err)
+		return fmt.Errorf("create archive hardlink %s: %w", quotePath(target), err)
 	}
 	return nil
 }
@@ -659,7 +659,7 @@ func (s *extractionState) resolveLinkTarget(startDir, target string) (string, er
 	root := physicalPath(s.root)
 	current, err := filepath.EvalSymlinks(startDir)
 	if err != nil {
-		return "", fmt.Errorf("resolve link directory %q: %w", startDir, err)
+		return "", fmt.Errorf("resolve link directory %s: %w", quotePath(startDir), err)
 	}
 	if !pathWithinRoot(root, current) {
 		return "", fmt.Errorf("link target escapes extraction root: %q", target)
@@ -685,7 +685,7 @@ func (s *extractionState) resolveLinkTarget(startDir, target string) (string, er
 				}
 				stored, readErr := os.Readlink(next)
 				if readErr != nil {
-					return "", fmt.Errorf("read existing symlink %q: %w", next, readErr)
+					return "", fmt.Errorf("read existing symlink %s: %w", quotePath(next), readErr)
 				}
 				stored = normalizeArchiveSeparators(stored)
 				if stored == "" || filepath.IsAbs(stored) || hasWindowsVolume(stored) {
@@ -695,7 +695,7 @@ func (s *extractionState) resolveLinkTarget(startDir, target string) (string, er
 				continue
 			}
 			if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) {
-				return "", fmt.Errorf("inspect link target %q: %w", next, statErr)
+				return "", fmt.Errorf("inspect link target %s: %w", quotePath(next), statErr)
 			}
 			current = next
 		}
@@ -710,7 +710,7 @@ func (s *extractionState) ensureParents(target string) error {
 	parent := filepath.Dir(target)
 	rel, err := filepath.Rel(s.root, parent)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
-		return fmt.Errorf("archive target escapes extraction root: %q", target)
+		return fmt.Errorf("archive target escapes extraction root: %s", quotePath(target))
 	}
 	current := s.root
 	if rel == "." {
@@ -721,15 +721,15 @@ func (s *extractionState) ensureParents(target string) error {
 		info, statErr := os.Lstat(current)
 		if os.IsNotExist(statErr) {
 			if err := os.Mkdir(current, 0755); err != nil {
-				return fmt.Errorf("create archive parent %q: %w", current, err)
+				return fmt.Errorf("create archive parent %s: %w", quotePath(current), err)
 			}
 			continue
 		}
 		if statErr != nil {
-			return fmt.Errorf("inspect archive parent %q: %w", current, statErr)
+			return fmt.Errorf("inspect archive parent %s: %w", quotePath(current), statErr)
 		}
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-			return fmt.Errorf("archive path traverses symlink or non-directory %q", current)
+			return fmt.Errorf("archive path traverses symlink or non-directory %s", quotePath(current))
 		}
 	}
 	return nil

@@ -155,7 +155,7 @@ func NewLinkCommand() *cobra.Command {
 				dir = args[0]
 			}
 			if info, err := os.Stat(dir); isSystemSelector(dir) && (err != nil || !info.IsDir()) {
-				return UsageError(fmt.Errorf("%q is not a JDK directory; to see the JDK behind a link, use 'javm which %s'", dir, sanitizeTerminalText(dir)))
+				return UsageError(fmt.Errorf("%s is not a JDK directory; to see the JDK behind a link, use 'javm which %s'", quotePath(dir), sanitizeTerminalText(dir)))
 			}
 			return linkJDK(cmd.Context(), dir, name)
 		},
@@ -301,7 +301,7 @@ func unlinkJDK(ctx context.Context, arg string) error {
 				sanitizeTerminalText(arg), sanitizeTerminalText(arg)))
 		}
 	}
-	return NotFoundError(fmt.Errorf("no link matches %q; see 'javm ls' for the available JDKs", arg))
+	return NotFoundError(fmt.Errorf("no link matches %s; see 'javm ls' for the available JDKs", quotePath(arg)))
 }
 
 func isSymlink(path string) bool {

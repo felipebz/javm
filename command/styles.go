@@ -111,6 +111,12 @@ func sanitizeTerminalText(v string) string {
 	}, v)
 }
 
+// quotePath quotes a host filesystem path for a message: unlike %q it keeps
+// the backslashes of Windows paths single, and it drops control characters.
+func quotePath(p string) string {
+	return `"` + sanitizeTerminalText(p) + `"`
+}
+
 // isTerminalControl reports whether r is a C0, DEL, or C1 control character.
 func isTerminalControl(r rune) bool {
 	return r < 0x20 || r == 0x7f || r >= 0x80 && r <= 0x9f

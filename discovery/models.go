@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/felipebz/javm/internal/state"
 )
@@ -21,6 +23,19 @@ type JDK struct {
 	Identifier   string `json:"identifier"`
 }
 
+// quotePath quotes a filesystem path for a message. Unlike %q it keeps the
+// backslashes of Windows paths single; control characters are dropped, as
+// the command layer's sanitizeTerminalText does, because discovery messages
+// reach the terminal through a logger that does not sanitize them.
+func quotePath(p string) string {
+	return `"` + strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, p) + `"`
+}
+
 // DiscoveryWarning describes a non-fatal failure while discovering JDKs.
 // Callers can inspect its fields with errors.As to provide actionable diagnostics.
 type DiscoveryWarning struct {
@@ -33,9 +48,9 @@ type DiscoveryWarning struct {
 func (w *DiscoveryWarning) Error() string {
 	where := ""
 	if w.Path != "" {
-		where = fmt.Sprintf(" at path %q", w.Path)
+		where = " at path " + quotePath(w.Path)
 	} else if w.Location != "" {
-		where = fmt.Sprintf(" at location %q", w.Location)
+		where = " at location " + quotePath(w.Location)
 	}
 	if w.Source != "" {
 		return fmt.Sprintf("discover JDKs from source %q%s: %v", w.Source, where, w.Err)

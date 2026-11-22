@@ -125,7 +125,7 @@ func (d *Manager) loadCache() (*Cache, error) {
 		return nil, fmt.Errorf("failed to load cache: %w", err)
 	}
 	if d.Warn != nil {
-		d.Warn(fmt.Errorf("ignoring corrupt discovery cache %q: %w", d.CacheFile, err))
+		d.Warn(fmt.Errorf("ignoring corrupt discovery cache %s: %w", quotePath(d.CacheFile), err))
 	}
 	return &Cache{JDKs: []JDK{}}, nil
 }
