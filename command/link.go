@@ -359,7 +359,7 @@ func removeStaleAliasLink(ctx context.Context, name, source string) error {
 	if err != nil {
 		return fmt.Errorf("inspect %s: %w", sanitizeTerminalText(source), err)
 	}
-	target := getLink(name)
+	target, _ := os.Readlink(source)
 	if err := os.Remove(source); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
