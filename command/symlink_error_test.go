@@ -75,7 +75,7 @@ func linkSystemJDK(t *testing.T, dir string) error {
 	makeFakeJDK(t, dir, runtime.GOOS == "darwin")
 	failAllSymlinks(t)
 	forceGOOS(t, "windows")
-	return link(context.Background(), "system@21", dir)
+	return linkJDK(context.Background(), dir, "system@21")
 }
 
 func TestLinkSystemJDKErrorNamesEachPathOnce(t *testing.T) {

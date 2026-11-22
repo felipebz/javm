@@ -130,73 +130,188 @@ func replaceSymlink(target, source string) error {
 	return nil
 }
 
+const linkUsage = "usage: javm link <path> [--name <version>]"
+
 func NewLinkCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "link [name] [path]",
-		Short: "Resolve or update a link",
-		Args:  UsageArgs(cobra.RangeArgs(0, 2)),
+	var name string
+	cmd := &cobra.Command{
+		Use:   "link <path> [--name <version>]",
+		Short: "Register a JDK installed outside javm",
+		Long: "Create JAVM_HOME/jdk/system@<version> for a JDK installed outside javm, so it can be selected as\n" +
+			"system@<version>. The version is read from the JDK; --name chooses another one.",
+		Args: UsageArgs(cobra.MaximumNArgs(2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return withSymlinkHint(linkLatest(cmd.Context()))
+			var dir string
+			switch {
+			case len(args) == 0:
+				return UsageError(errors.New("a JDK path is required; " + linkUsage))
+			case len(args) == 2 && isSystemSelector(args[0]) && name == "":
+				name, dir = args[0], args[1]
+				version := sanitizeTerminalText(strings.TrimPrefix(name, "system@"))
+				warnOnce(cmd.Context(), fmt.Errorf("'javm link system@%s <path>' is deprecated; use 'javm link <path> --name %s'", version, version))
+			case len(args) == 2:
+				return UsageError(errors.New("too many arguments; " + linkUsage))
+			default:
+				dir = args[0]
 			}
-			if len(args) == 1 {
-				if value := getLink(args[0]); value != "" {
-					if _, err := fmt.Fprintln(cmd.OutOrStdout(), value); err != nil {
-						return fmt.Errorf("write link: %w", err)
-					}
-				}
-			} else if err := link(cmd.Context(), args[0], args[1]); err != nil {
-				return err
+			if info, err := os.Stat(dir); isSystemSelector(dir) && (err != nil || !info.IsDir()) {
+				return UsageError(fmt.Errorf("%q is not a JDK directory; to see the JDK behind a link, use 'javm which %s'", dir, sanitizeTerminalText(dir)))
 			}
-			return nil
+			return linkJDK(cmd.Context(), dir, name)
 		},
-		Example: "  javm link system@21 /Library/Java/JavaVirtualMachines/temurin-21.jdk\n" +
-			"  javm link system@21 # show link target",
+		Example: "  javm link /Library/Java/JavaVirtualMachines/temurin-21.jdk\n" +
+			"  javm link /opt/jdk-21 --name 21-custom",
 	}
+	cmd.Flags().StringVar(&name, "name", "", "version for the system@<version> identifier instead of the JDK's own")
+	return cmd
 }
 
 func NewUnlinkCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "unlink [name]",
-		Short: "Delete a link",
+		Use:   "unlink <identifier|version|path>",
+		Short: "Remove a link created by 'javm link'",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := link(cmd.Context(), args[0], ""); err != nil {
-				return err
-			}
-			return nil
+			return unlinkJDK(cmd.Context(), args[0])
 		},
-		Example: "  javm unlink system@21",
+		Example: "  javm unlink system@21.0.4\n" +
+			"  javm unlink 21.0.4\n" +
+			"  javm unlink /Library/Java/JavaVirtualMachines/temurin-21.jdk",
 	}
 }
 
-func link(ctx context.Context, selector string, dir string) error {
-	if !isSystemSelector(selector) {
-		return UsageError(errors.New("name must begin with 'system@' (e.g. 'system@21')"))
+// linkJDK creates jdk/system@<version> for the JDK at dir. Linking the same
+// path again is a no-op; a different path under the same name is refused.
+func linkJDK(ctx context.Context, dir, name string) error {
+	if err := assertJavaDistribution(dir, runtime.GOOS); err != nil {
+		return err
 	}
-	if _, err := javaversion.ParseVersion(selector); err != nil {
-		return UsageError(err)
+	version, err := linkVersion(ctx, dir, name)
+	if err != nil {
+		return err
 	}
-	if dir == "" {
-		ver, err := LsBestMatchContext(ctx, selector, false)
-		if err != nil {
-			return err
+	identifier := "system@" + version
+	source := filepath.Join(cfg.Dir(), "jdk", identifier)
+	info, err := os.Lstat(source)
+	switch {
+	case err == nil && info.Mode()&os.ModeSymlink != 0 && canonicalHome(source) == canonicalHome(dir):
+		loggerFromContext(ctx).Info(sanitizeTerminalText(identifier) + " already links to " + sanitizeTerminalText(dir))
+		return nil
+	case err == nil:
+		existing := source
+		if target, readErr := os.Readlink(source); readErr == nil {
+			existing = target
 		}
-		if err := os.Remove(filepath.Join(cfg.Dir(), "jdk", ver)); err != nil {
-			return err
-		}
-	} else {
-		if err := assertJavaDistribution(dir, runtime.GOOS); err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Join(cfg.Dir(), "jdk"), 0755); err != nil {
-			return err
-		}
-		source := filepath.Join(cfg.Dir(), "jdk", selector)
-		if err := createSymlink(dir, source); err != nil {
-			return withSymlinkHint(&symlinkError{action: "create symlink", link: source, target: dir, err: err})
+		return UsageError(fmt.Errorf("%s already links to %s; choose another name with --name or remove it with 'javm unlink %s'",
+			sanitizeTerminalText(identifier), sanitizeTerminalText(existing), sanitizeTerminalText(identifier)))
+	case !errors.Is(err, fs.ErrNotExist):
+		return err
+	}
+	if jdks, err := LsContext(ctx, false); err == nil {
+		for _, jdk := range jdks {
+			if jdk.Identifier != identifier && canonicalHome(jdk.Path) == canonicalHome(dir) {
+				loggerFromContext(ctx).Infof("%s is already found by discovery as %s; selecting it does not need a link",
+					sanitizeTerminalText(dir), sanitizeTerminalText(jdk.Identifier))
+				break
+			}
 		}
 	}
+	if err := os.MkdirAll(filepath.Dir(source), 0o755); err != nil {
+		return err
+	}
+	if err := createSymlink(dir, source); err != nil {
+		return withSymlinkHint(&symlinkError{action: "create symlink", link: source, target: dir, err: err})
+	}
+	loggerFromContext(ctx).Info(sanitizeTerminalText(identifier) + " -> " + sanitizeTerminalText(dir))
+	return invalidateDiscoveryCache()
+}
+
+// linkVersion returns the version part of the system@ identifier: name when
+// given, otherwise the JDK's own version read as discovery reads it, without
+// the build as in managed directory names. Java 8 and earlier report 1.x
+// versions (1.8.0_402), which javm writes without the "1." (8.0.402).
+func linkVersion(ctx context.Context, dir, name string) (string, error) {
+	if name != "" {
+		name = strings.TrimPrefix(name, "system@")
+		if _, err := javaversion.ParseVersion("system@" + name); err != nil {
+			return "", UsageError(err)
+		}
+		return name, nil
+	}
+	unreadable := UsageError(fmt.Errorf("cannot read the version of the JDK at %s; choose one with --name", sanitizeTerminalText(dir)))
+	absolute, err := filepath.Abs(dir)
+	if err != nil {
+		return "", unreadable
+	}
+	parent := filepath.Dir(absolute)
+	jdk, ok, err := discovery.ValidateJDKContext(ctx, os.DirFS(parent), discovery.ExecRunner{}, parent, filepath.Base(absolute), "link")
+	if err != nil || !ok {
+		return "", unreadable
+	}
+	version := jdk.Version
+	if rest, legacy := strings.CutPrefix(version, "1."); legacy {
+		version = strings.ReplaceAll(rest, "_", ".")
+	}
+	parsed, err := javaversion.ParseVersion(version)
+	if err != nil {
+		return "", unreadable
+	}
+	return parsed.WithoutBuild(), nil
+}
+
+// unlinkJDK removes a jdk/system@* symlink chosen by identifier, bare
+// version or target path. Managed JDK directories are never removed.
+func unlinkJDK(ctx context.Context, arg string) error {
+	jdkDir := filepath.Join(cfg.Dir(), "jdk")
+	identifier := arg
+	if !isSystemSelector(identifier) {
+		identifier = "system@" + arg
+	}
+	if _, err := javaversion.ParseVersion(identifier); err == nil && isSymlink(filepath.Join(jdkDir, identifier)) {
+		return removeSystemLink(ctx, identifier)
+	}
+	if info, err := os.Stat(arg); err == nil && info.IsDir() {
+		entries, err := os.ReadDir(jdkDir)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		var matches []string
+		for _, entry := range entries {
+			path := filepath.Join(jdkDir, entry.Name())
+			if isSystemSelector(entry.Name()) && isSymlink(path) && canonicalHome(path) == canonicalHome(arg) {
+				matches = append(matches, entry.Name())
+			}
+		}
+		switch len(matches) {
+		case 0:
+		case 1:
+			return removeSystemLink(ctx, matches[0])
+		default:
+			for i := range matches {
+				matches[i] = sanitizeTerminalText(matches[i])
+			}
+			return UsageError(fmt.Errorf("%s is linked as %s; unlink one of them by name", sanitizeTerminalText(arg), strings.Join(matches, ", ")))
+		}
+	}
+	if dst, err := managedInstallDestination(cfg.Dir(), arg); err == nil {
+		if info, err := os.Lstat(dst); err == nil && info.IsDir() {
+			return UsageError(fmt.Errorf("%s is a JDK installed by javm, not a link; remove it with 'javm uninstall %s'",
+				sanitizeTerminalText(arg), sanitizeTerminalText(arg)))
+		}
+	}
+	return NotFoundError(fmt.Errorf("no link matches %q; see 'javm ls' for the available JDKs", arg))
+}
+
+func isSymlink(path string) bool {
+	info, err := os.Lstat(path)
+	return err == nil && info.Mode()&os.ModeSymlink != 0
+}
+
+func removeSystemLink(ctx context.Context, identifier string) error {
+	if err := os.Remove(filepath.Join(cfg.Dir(), "jdk", identifier)); err != nil {
+		return err
+	}
+	loggerFromContext(ctx).Info("Removed link " + sanitizeTerminalText(identifier))
 	return invalidateDiscoveryCache()
 }
 

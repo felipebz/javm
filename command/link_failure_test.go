@@ -147,31 +147,6 @@ func TestLinkLatestContinuesAfterOneLinkFails(t *testing.T) {
 	}
 }
 
-func TestLinkRefreshStillFailsWithHint(t *testing.T) {
-	for _, goos := range []string{"windows", "linux"} {
-		t.Run(goos, func(t *testing.T) {
-			t.Setenv("JAVM_HOME", t.TempDir())
-			writeManagedJDK(t, "temurin@21.0.4", "21.0.4+7", "")
-			failAllSymlinks(t)
-			forceGOOS(t, goos)
-
-			cmd := NewLinkCommand()
-			// nil would make Cobra read os.Args, which holds the test flags.
-			cmd.SetArgs([]string{})
-			cmd.SetOut(&bytes.Buffer{})
-			cmd.SetErr(&bytes.Buffer{})
-			cmd.SilenceUsage = true
-			err := cmd.ExecuteContext(context.Background())
-			if err == nil {
-				t.Fatal("javm link succeeded although the link could not be created")
-			}
-			if got := strings.Contains(err.Error(), windowsSymlinkHint); got != (goos == "windows") {
-				t.Fatalf("error %q contains the hint = %v, want %v", err, got, goos == "windows")
-			}
-		})
-	}
-}
-
 func TestSymlinkCommandsFailWithHint(t *testing.T) {
 	t.Run("alias", func(t *testing.T) {
 		home := t.TempDir()

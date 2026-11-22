@@ -146,7 +146,7 @@ func TestLinkAndUnlinkInvalidateDiscoveryCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	selector := "system@21.0.1"
-	if err := link(context.Background(), selector, target); err != nil {
+	if err := linkJDK(context.Background(), target, selector); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(cacheFile); !os.IsNotExist(err) {
@@ -164,7 +164,7 @@ func TestLinkAndUnlinkInvalidateDiscoveryCache(t *testing.T) {
 		Source:     "system",
 		Path:       target,
 	}}
-	if err := link(context.Background(), selector, ""); err != nil {
+	if err := unlinkJDK(context.Background(), selector); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(cacheFile); !os.IsNotExist(err) {
@@ -193,7 +193,7 @@ func TestLinkMakesExternalJDKDiscoverable(t *testing.T) {
 	}
 
 	selector := "system@21.0.1"
-	if err := link(context.Background(), selector, target); err != nil {
+	if err := linkJDK(context.Background(), target, selector); err != nil {
 		t.Fatalf("link() error = %v", err)
 	}
 

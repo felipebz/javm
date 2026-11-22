@@ -61,7 +61,13 @@ func uninstall(ctx context.Context, selector string) (string, error) {
 	}
 	if errors.Is(err, ErrNotFound) {
 		if all, lsErr := LsContext(ctx, false); lsErr == nil {
-			if jdk, findErr := FindBestMatchJDK(all, selector); findErr == nil && jdk.Source != "javm" {
+			jdk, findErr := FindBestMatchJDK(all, selector)
+			switch {
+			case findErr != nil:
+			case jdk.Source == "javm" && isSystemSelector(jdk.Identifier):
+				return "", UsageError(fmt.Errorf("%s is a link to a JDK outside javm; remove it with 'javm unlink %s'",
+					sanitizeTerminalText(jdk.Identifier), sanitizeTerminalText(jdk.Identifier)))
+			case jdk.Source != "javm":
 				return "", NotFoundError(fmt.Errorf("%s is not managed by javm (%s); remove it with the tool that installed it",
 					sanitizeTerminalText(jdk.Identifier), sanitizeTerminalText(jdk.Path)))
 			}

@@ -149,7 +149,7 @@ javm ls --details            # include source, vendor, architecture, and path
 javm update                  # update every installed distribution@feature line
 javm update --dry-run        # list available updates without installing
 javm uninstall zulu@8
-javm link system@21.0.1 /path/to/jdk   # register a JDK installed outside javm
+javm link /path/to/jdk                 # register a JDK installed outside javm as system@<version>
 javm alias project temurin@21          # name a selector; use it with javm use project
 ```
 
