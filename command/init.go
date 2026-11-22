@@ -47,8 +47,8 @@ var writePowerShellInitScript = realWritePowerShellInitScript
 
 func NewInitCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "init [shell]",
-		Short: "Print shell integration script for javm",
+		Use:   "init <shell>",
+		Short: "Print the shell integration script",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			shell := strings.ToLower(args[0])

@@ -16,7 +16,7 @@ type DistributionsClient interface {
 func NewLsDistributionsCommand(client DistributionsClient) *cobra.Command {
 	return &cobra.Command{
 		Use:   "ls-distributions",
-		Short: "List all available Java distributions",
+		Short: "List the distributions available for install",
 		Args:  UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			distributions, err := client.GetDistributionsContext(cmd.Context())

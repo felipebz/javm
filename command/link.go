@@ -168,8 +168,9 @@ func NewLinkCommand() *cobra.Command {
 
 func NewUnlinkCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "unlink <identifier|version|path>",
-		Short: "Remove a link created by 'javm link'",
+		Use:   "unlink <link>",
+		Short: "Remove a link created by javm link",
+		Long:  "Remove a link created by 'javm link'. <link> is its identifier (system@21.0.4), its version (21.0.4)\nor the path of the linked JDK.",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return unlinkJDK(cmd.Context(), args[0])

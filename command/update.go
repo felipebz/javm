@@ -25,7 +25,7 @@ type updateOptions struct {
 func NewUpdateCommand(client PackagesWithInfoClient) *cobra.Command {
 	var opts updateOptions
 	cmd := &cobra.Command{
-		Use:   "update [version or alias]",
+		Use:   "update [selector]",
 		Short: "Update installed JDKs to the latest matching build",
 		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {

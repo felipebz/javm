@@ -21,8 +21,8 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 	var customInstallDestination string
 
 	cmd := &cobra.Command{
-		Use:   "install [version to install]",
-		Short: "Download and install JDK",
+		Use:   "install [selector]",
+		Short: "Download and install a JDK",
 		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
@@ -50,7 +50,7 @@ func NewInstallCommand(client PackagesWithInfoClient) *cobra.Command {
 			"  javm install ~21.0.4 # same as \">=21.0.4 <21.1.0\"",
 	}
 	cmd.Flags().StringVarP(&customInstallDestination, "output", "o", "",
-		"New, non-existing custom destination (JDKs outside $JAVM_HOME/jdk are unmanaged unless linked)")
+		"new, non-existing destination directory (JDKs outside $JAVM_HOME/jdk are unmanaged unless linked)")
 	return cmd
 }
 

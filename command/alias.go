@@ -21,8 +21,8 @@ func aliasNameIsSelector(name string) bool {
 
 func NewAliasCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "alias [name] [version]",
-		Short: "Resolve or update an alias",
+		Use:   "alias <name> [selector]",
+		Short: "Show or set an alias",
 		Long:  "Bind a name to a JDK selector. Names that are version selectors themselves (17, 21.0.4, x) and 'default' are not allowed.",
 		Args:  UsageArgs(cobra.RangeArgs(1, 2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -81,8 +81,8 @@ func NewAliasCommand() *cobra.Command {
 
 func NewUnaliasCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "unalias [name]",
-		Short: "Delete an alias",
+		Use:   "unalias <name>",
+		Short: "Remove an alias",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			setErr := setAlias(args[0], "")

@@ -17,8 +17,8 @@ import (
 
 func NewUninstallCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "uninstall [version to uninstall]",
-		Short: "Uninstall JDK",
+		Use:   "uninstall <selector>",
+		Short: "Remove a JDK installed by javm",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if isSystemSelector(args[0]) {

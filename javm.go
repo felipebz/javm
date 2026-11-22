@@ -150,7 +150,7 @@ func newRootCommand(app application) *cobra.Command {
 		command.NewDefaultCommand(),
 		command.NewConfigCommand(app.client),
 	)
-	root.Flags().Bool("version", false, "version of javm")
+	root.Flags().Bool("version", false, "print the javm version")
 	root.PersistentFlags().Bool("debug", false, "enable verbose debug logging")
 	root.PersistentFlags().Bool("quiet", false, "suppress non-error logs")
 	root.PersistentPreRun = func(cmd *cobra.Command, args []string) {

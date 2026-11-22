@@ -20,8 +20,8 @@ import (
 func NewLsCommand() *cobra.Command {
 	var showDetails bool
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List installed versions",
+		Use:   "ls [range]",
+		Short: "List installed and discovered JDKs",
 		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var rng *javaversion.Range
@@ -44,7 +44,7 @@ func NewLsCommand() *cobra.Command {
 			return printInstalledVersions(out, newStyles(out), jdks, rng, showDetails)
 		},
 	}
-	cmd.Flags().BoolVarP(&showDetails, "details", "d", false, "Show detailed information about discovered JDKs")
+	cmd.Flags().BoolVarP(&showDetails, "details", "d", false, "include source, vendor, architecture and path")
 	return cmd
 }
 

@@ -17,8 +17,8 @@ import (
 // NewDefaultCommand creates the `javm default` CLI command.
 func NewDefaultCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "default [version]",
-		Short: "Set the default Java version to use in new shells",
+		Use:   "default <selector>",
+		Short: "Set the default JDK for new shells",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ver := strings.TrimSpace(args[0])

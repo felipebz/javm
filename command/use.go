@@ -12,8 +12,8 @@ import (
 func NewUseCommand() *cobra.Command {
 	var useDefault bool
 	cmd := &cobra.Command{
-		Use:   "use [version to use]",
-		Short: "Modify PATH & JAVA_HOME to use specific JDK",
+		Use:   "use [selector]",
+		Short: "Switch the current shell to a JDK",
 		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
@@ -63,7 +63,7 @@ func NewUseCommand() *cobra.Command {
 	}
 	cmd.Flags().String("fd3", "", "")
 	_ = cmd.Flags().MarkHidden("fd3")
-	cmd.Flags().BoolVar(&useDefault, "default", false, "use the configured default version")
+	cmd.Flags().BoolVar(&useDefault, "default", false, "use the default JDK set with javm default")
 	_ = cmd.Flags().MarkHidden("default")
 	return cmd
 }

@@ -9,7 +9,7 @@ import (
 func NewDeactivateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deactivate",
-		Short: "Undo effects of `javm` on current shell",
+		Short: "Undo javm's changes to the current shell",
 		Args:  UsageArgs(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := deactivateRecords(os.Environ())

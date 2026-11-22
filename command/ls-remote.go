@@ -29,7 +29,7 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "ls-remote [<distribution>[@<range>] | <range>]",
-		Short: "List remote versions available for install",
+		Short: "List JDK versions available for install",
 		Long: "List the versions available for install. A distribution name lists all its versions, <distribution>@<range>\n" +
 			"filters them, and a range alone uses java.default_distribution. 'all' lists every distribution.",
 		Args: UsageArgs(cobra.MaximumNArgs(1)),
@@ -49,11 +49,11 @@ func NewLsRemoteCommand(client PackagesClient) *cobra.Command {
 			"  javm ls-remote zulu@25\n" +
 			"  javm ls-remote all@21",
 	}
-	cmd.Flags().StringVar(&opts.os, "os", runtime.GOOS, "Operating System (macos, linux, windows)")
-	cmd.Flags().StringVar(&opts.arch, "arch", runtime.GOARCH, "Architecture (amd64, arm64)")
+	cmd.Flags().StringVar(&opts.os, "os", runtime.GOOS, "operating system (macos, linux, windows)")
+	cmd.Flags().StringVar(&opts.arch, "arch", runtime.GOARCH, "architecture (amd64, arm64)")
 	cmd.Flags().StringVar(&opts.distribution, "distribution", defaultDistribution, "deprecated: name the distribution in the selector instead (javm ls-remote zulu@25)")
 	cmd.Flags().StringVar(&opts.latest, "latest", "major",
-		"Part of the version to trim to (\"major\", \"minor\" or \"patch\")")
+		"part of the version to trim to (major, minor or patch)")
 	return cmd
 }
 

@@ -12,8 +12,8 @@ import (
 func NewWhichCommand() *cobra.Command {
 	var whichHome bool
 	cmd := &cobra.Command{
-		Use:   "which [version]",
-		Short: "Display path to installed JDK",
+		Use:   "which [selector]",
+		Short: "Print the path of a JDK",
 		Args:  UsageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ver string
@@ -38,7 +38,7 @@ func NewWhichCommand() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&whichHome, "home", false, "Account for platform differences so that value could be used as JAVA_HOME (e.g. append \"/Contents/Home\" on macOS)")
+	cmd.Flags().BoolVar(&whichHome, "home", false, "print a path usable as JAVA_HOME (adds /Contents/Home on macOS)")
 	return cmd
 }
 

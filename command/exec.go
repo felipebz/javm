@@ -19,7 +19,7 @@ import (
 func NewExecCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:                "exec [--jdk <selector>] [--] <command> [args...]",
-		Short:              "Execute a command with a selected JDK",
+		Short:              "Run a command with a JDK",
 		DisableFlagParsing: true,
 		Long: "Select a JDK and execute a process with JAVA_HOME and PATH set only for that process.\n" +
 			"Native executables run directly; Windows .cmd and .bat wrappers use the system command interpreter.\n" +

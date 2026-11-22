@@ -20,14 +20,14 @@ func NewConfigCommand(client DistributionsClient) *cobra.Command {
 
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
-		Short: "Get effective value for a config key",
+		Short: "Show the effective value of a config key",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE:  runGetConfig,
 	}
 
 	setCmd := &cobra.Command{
 		Use:   "set <key> <value>",
-		Short: "Set a config key to a value",
+		Short: "Set a config key",
 		Args:  UsageArgs(cobra.ExactArgs(2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runSetConfig(cmd, client, args)
@@ -36,14 +36,14 @@ func NewConfigCommand(client DistributionsClient) *cobra.Command {
 
 	listCmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all effective configuration keys and values",
+		Short: "List config keys and their effective values",
 		Args:  UsageArgs(cobra.NoArgs),
 		RunE:  runListConfig,
 	}
 
 	unsetCmd := &cobra.Command{
 		Use:   "unset <key>",
-		Short: "Remove a key from the user configuration (revert to default)",
+		Short: "Reset a config key to its default",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE:  runUnsetConfig,
 	}
