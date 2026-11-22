@@ -41,6 +41,13 @@ type invalidPackageVersion struct {
 func makePackageIndex(ctx context.Context, client PackagesClient, osFlag, archFlag, distributionFlag string) (*packageIndex, error) {
 	pkgs, err := client.GetPackagesContext(ctx, osFlag, archFlag, distributionFlag, "")
 	if err != nil {
+		// The API rejects an unknown distribution with a 4xx; the distribution
+		// list, not the API's message, decides whether that was the cause.
+		if httpErr, ok := errors.AsType[*discoapi.HTTPError](err); ok && httpErr.StatusCode >= 400 && httpErr.StatusCode < 500 && distributionFlag != "" {
+			if _, checkErr := checkDistribution(ctx, client, distributionFlag); checkErr != nil {
+				return nil, checkErr
+			}
+		}
 		return nil, NetworkError(err)
 	}
 	index := packageIndexFromPackages(pkgs)
@@ -48,21 +55,34 @@ func makePackageIndex(ctx context.Context, client PackagesClient, osFlag, archFl
 		loggerFromContext(ctx).Debugf("ignoring package %q with invalid Java version %q: %v", invalid.packageValue.Id, invalid.packageValue.JavaVersion, invalid.err)
 	}
 	if len(pkgs) == 0 && distributionFlag != "" {
-		// An empty result is the only case that needs the distribution list,
-		// so the normal path makes no extra request.
-		if lister, ok := client.(DistributionsClient); ok {
-			distributions, err := lister.GetDistributionsContext(ctx)
-			if err != nil {
-				loggerFromContext(ctx).Debugf("could not check distribution %q: %v", distributionFlag, err)
-				return index, nil
-			}
-			if err := unknownDistributionError(distributionFlag, distributions); err != nil {
-				return nil, err
-			}
-			index.knownEmpty = true
+		// An empty result is the only success that needs the distribution
+		// list, so the normal path makes no extra request.
+		known, err := checkDistribution(ctx, client, distributionFlag)
+		if err != nil {
+			return nil, err
 		}
+		index.knownEmpty = known
 	}
 	return index, nil
+}
+
+// checkDistribution returns an unknown distribution error when the Disco API's
+// distribution list lacks name, and known when the list has it. A client
+// without the list, or a list that cannot be fetched, proves neither.
+func checkDistribution(ctx context.Context, client PackagesClient, name string) (known bool, err error) {
+	lister, ok := client.(DistributionsClient)
+	if !ok {
+		return false, nil
+	}
+	distributions, err := lister.GetDistributionsContext(ctx)
+	if err != nil {
+		loggerFromContext(ctx).Debugf("could not check distribution %q: %v", name, err)
+		return false, nil
+	}
+	if err := unknownDistributionError(name, distributions); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // errUnknownDistribution marks a distribution name the Disco API does not offer.

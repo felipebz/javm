@@ -2,13 +2,16 @@ package discoapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
+	"unicode"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -23,6 +26,47 @@ type networkError struct{ error }
 
 func (e networkError) Is(target error) bool { return target == ErrNetwork }
 func (e networkError) Unwrap() error        { return e.error }
+
+// HTTPError is a non-2xx answer from the Disco API. It matches ErrNetwork, so
+// callers and exit codes treat it as before; StatusCode and Message let a
+// caller look closer at a rejected request.
+type HTTPError struct {
+	URL        string
+	StatusCode int
+	// Message is the API's "message" field, without control characters, or
+	// "" when the body is not such a JSON object.
+	Message string
+}
+
+func (e *HTTPError) Error() string {
+	text := fmt.Sprintf("GET %s returned %d", e.URL, e.StatusCode)
+	if e.Message != "" {
+		text += ": " + e.Message
+	}
+	return text
+}
+
+func (e *HTTPError) Is(target error) bool { return target == ErrNetwork }
+
+// errorMessage reads the "message" of an error body within maxResponseSize.
+func errorMessage(body io.Reader) string {
+	data, err := io.ReadAll(io.LimitReader(body, maxResponseSize+1))
+	if err != nil || int64(len(data)) > maxResponseSize {
+		return ""
+	}
+	var response struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(data, &response) != nil {
+		return ""
+	}
+	return strings.TrimSpace(strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, response.Message))
+}
 
 const (
 	DefaultDiscoAPIURL = "https://api.foojay.io/disco/v3.0"
@@ -88,7 +132,7 @@ func (c *Client) fetchContext(ctx context.Context, endpoint string, params url.V
 	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, networkError{fmt.Errorf("GET %s returned %d", fullURL, resp.StatusCode)}
+		return nil, &HTTPError{URL: fullURL, StatusCode: resp.StatusCode, Message: errorMessage(resp.Body)}
 	}
 
 	if resp.ContentLength > maxResponseSize {
