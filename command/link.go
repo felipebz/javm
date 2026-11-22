@@ -48,6 +48,33 @@ func withSymlinkHint(err error) error {
 	return err
 }
 
+// symlinkError names the link and its target once with native separators.
+// *os.LinkError and *fs.PathError repeat the paths in their text, so only their
+// cause is printed; the original error stays reachable through Unwrap.
+type symlinkError struct {
+	action, link, target string
+	err                  error
+}
+
+func (e *symlinkError) Error() string {
+	cause := e.err
+	var linkErr *os.LinkError
+	var pathErr *fs.PathError
+	switch {
+	case errors.As(cause, &linkErr):
+		cause = linkErr.Err
+	case errors.As(cause, &pathErr):
+		cause = pathErr.Err
+	}
+	message := e.action + " " + sanitizeTerminalText(e.link)
+	if e.target != "" {
+		message += " -> " + sanitizeTerminalText(e.target)
+	}
+	return message + ": " + cause.Error()
+}
+
+func (e *symlinkError) Unwrap() error { return e.err }
+
 // linkRefreshError collects failures to create or replace convenience links
 // (jdk/<dist@feature.interim>, jdk/default, jdk/<alias>). Selection does not
 // depend on these links, so callers that only refresh them may warn instead.
@@ -95,10 +122,10 @@ func replaceSymlink(target, source string) error {
 	case err == nil:
 	case errors.Is(err, fs.ErrNotExist):
 	default:
-		return &linkRefreshError{failures: []error{fmt.Errorf("remove existing symlink %q: %w", source, err)}}
+		return &linkRefreshError{failures: []error{&symlinkError{action: "remove existing symlink", link: source, err: err}}}
 	}
 	if err := createSymlink(target, source); err != nil {
-		return &linkRefreshError{failures: []error{fmt.Errorf("create symlink %q -> %q: %w", source, target, err)}}
+		return &linkRefreshError{failures: []error{&symlinkError{action: "create symlink", link: source, target: target, err: err}}}
 	}
 	return nil
 }
@@ -165,8 +192,9 @@ func link(ctx context.Context, selector string, dir string) error {
 		if err := os.MkdirAll(filepath.Join(cfg.Dir(), "jdk"), 0755); err != nil {
 			return err
 		}
-		if err := createSymlink(dir, filepath.Join(cfg.Dir(), "jdk", selector)); err != nil {
-			return withSymlinkHint(err)
+		source := filepath.Join(cfg.Dir(), "jdk", selector)
+		if err := createSymlink(dir, source); err != nil {
+			return withSymlinkHint(&symlinkError{action: "create symlink", link: source, target: dir, err: err})
 		}
 	}
 	return invalidateDiscoveryCache()
