@@ -13,8 +13,9 @@ import (
 
 // discoveredAndManaged21 uses the real discovery, with its cache, limited to
 // javm and the intellij source under a scratch home. It installs a managed
-// temurin@21.0.4, a discovered 21 under ~/.jdks and the given pin files, and
-// returns the discovered JDK's path.
+// temurin@21.0.4, a discovered 21 where the intellij source scans and the
+// given pin files, and returns the discovered JDK's path: the bundle root on
+// macOS, as discovery reports it and javm links it.
 func discoveredAndManaged21(t *testing.T, managed map[string]string, pins map[string]string) string {
 	t.Helper()
 	skipWithoutSymlinks(t)
@@ -33,6 +34,9 @@ func discoveredAndManaged21(t *testing.T, managed map[string]string, pins map[st
 		writeManagedJDK(t, identifier, version, "")
 	}
 	discovered := filepath.Join(home, ".jdks", "corretto-21.0.2")
+	if runtime.GOOS == "darwin" {
+		discovered = filepath.Join(home, "Library", "Java", "JavaVirtualMachines", "corretto-21.0.2.jdk")
+	}
 	jdkHome := filepath.FromSlash(discovery.ExpectedJDKDir(discovered, runtime.GOOS))
 	java := filepath.FromSlash(discovery.ExpectedJavaPath(discovered, runtime.GOOS))
 	if err := os.MkdirAll(filepath.Dir(java), 0o755); err != nil {
