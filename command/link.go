@@ -319,7 +319,7 @@ func removeSystemLink(ctx context.Context, identifier string) error {
 }
 
 func linkLatest(ctx context.Context) error {
-	defer warnCacheInvalidation(ctx)
+	warnCacheInvalidation(ctx)
 	jdks, err := LsContext(ctx, true)
 	if err != nil {
 		return err
