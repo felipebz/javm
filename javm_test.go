@@ -70,13 +70,14 @@ func TestRootCommandRejectsUnexpectedArguments(t *testing.T) {
 func TestSimpleFormatterSortsFields(t *testing.T) {
 	formatter := &simpleFormatter{}
 	formatted, err := formatter.Format(&log.Entry{
+		Level:   log.InfoLevel,
 		Message: "message",
 		Data:    log.Fields{"zeta": 2, "alpha": 1},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(formatted), "message alpha=1 zeta=2 \n"; got != want {
+	if got, want := string(formatted), "message alpha=1 zeta=2\n"; got != want {
 		t.Fatalf("formatted log = %q, want %q", got, want)
 	}
 }

@@ -39,15 +39,22 @@ type simpleFormatter struct{}
 
 func (f *simpleFormatter) Format(entry *log.Entry) ([]byte, error) {
 	b := &bytes.Buffer{}
-	fmt.Fprintf(b, "%s ", entry.Message)
+	switch entry.Level {
+	case log.PanicLevel, log.FatalLevel, log.ErrorLevel:
+		b.WriteString("Error: ")
+	case log.WarnLevel:
+		b.WriteString("Warning: ")
+	case log.DebugLevel, log.TraceLevel:
+		b.WriteString("Debug: ")
+	}
+	b.WriteString(entry.Message)
 	keys := make([]string, 0, len(entry.Data))
 	for key := range entry.Data {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		v := entry.Data[k]
-		fmt.Fprintf(b, "%s=%+v ", k, v)
+		fmt.Fprintf(b, " %s=%+v", k, entry.Data[k])
 	}
 	b.WriteByte('\n')
 	return b.Bytes(), nil
