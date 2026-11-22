@@ -35,7 +35,7 @@ func NewUninstallCommand() *cobra.Command {
 			if err := warnLinkFailures(cmd.Context(), refreshAliasLinks(cmd.Context())); err != nil {
 				return err
 			}
-			warnUnresolvedPins(cmd.Context(), pins, removed)
+			reportPinChanges(cmd.Context(), pins, removed)
 			return nil
 		},
 		Example: "  javm uninstall temurin@21.0.4",
@@ -138,8 +138,10 @@ func resolvePins(ctx context.Context) []resolvedPin {
 	return pins
 }
 
-// Runs after the removal: only the new list shows whether another JDK took over.
-func warnUnresolvedPins(ctx context.Context, pins []resolvedPin, removed string) {
+// reportPinChanges tells, for each pin that selected the removed JDK, which
+// JDK it selects now, or warns when it matches none. It runs after the
+// removal: only the new list shows whether another JDK took over.
+func reportPinChanges(ctx context.Context, pins []resolvedPin, removed string) {
 	pins = slices.DeleteFunc(pins, func(p resolvedPin) bool { return p.identifier != removed })
 	if len(pins) == 0 {
 		return
@@ -150,15 +152,21 @@ func warnUnresolvedPins(ctx context.Context, pins []resolvedPin, removed string)
 		return
 	}
 	for _, p := range pins {
-		if _, err := resolveJDKFromList(jdks, p.selector); err == nil {
+		selector := sanitizeTerminalText(p.selector)
+		name := sanitizeTerminalText(p.name)
+		if jdk, err := resolveJDKFromList(jdks, p.selector); err == nil {
+			identifier := sanitizeTerminalText(jdk.Identifier)
+			if p.name == "" {
+				loggerFromContext(ctx).Infof("default %s now selects %s", selector, identifier)
+			} else {
+				loggerFromContext(ctx).Infof("alias %s (%s) now selects %s", name, selector, identifier)
+			}
 			continue
 		}
-		selector := sanitizeTerminalText(p.selector)
 		if p.name == "" {
 			warnOnce(ctx, fmt.Errorf("default version %s no longer matches an installed JDK; set another with 'javm default <version>'", selector))
 			continue
 		}
-		name := sanitizeTerminalText(p.name)
 		warnOnce(ctx, fmt.Errorf("alias %s (%s) no longer matches an installed JDK; change it with 'javm alias %s <version>' or remove it with 'javm unalias %s'",
 			name, selector, name, name))
 	}
