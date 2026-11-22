@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"sort"
+	"strings"
 
 	"github.com/felipebz/javm/cfg"
 	"github.com/felipebz/javm/discovery"
+	"github.com/felipebz/javm/javaversion"
 	"github.com/spf13/cobra"
 )
 
@@ -40,20 +43,66 @@ func NewUninstallCommand() *cobra.Command {
 }
 
 func uninstall(ctx context.Context, selector string) (string, error) {
-	ver, err := LsBestMatchContext(ctx, selector, true)
+	jdks, err := LsContext(ctx, true)
 	if err == nil {
-		return ver, removeManagedJDK(ver)
+		var identifier string
+		if identifier, err = uniqueManagedMatch(jdks, selector); err == nil {
+			return identifier, removeAndReport(ctx, identifier)
+		}
 	}
 	// A JDK whose metadata cannot be read is not listed, so it can only be
 	// removed by its exact directory name.
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrUsage) {
 		if dst, dstErr := managedInstallDestination(cfg.Dir(), selector); dstErr == nil {
 			if info, statErr := os.Lstat(dst); statErr == nil && info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
-				return selector, removeManagedJDK(selector)
+				return selector, removeAndReport(ctx, selector)
+			}
+		}
+	}
+	if errors.Is(err, ErrNotFound) {
+		if all, lsErr := LsContext(ctx, false); lsErr == nil {
+			if jdk, findErr := FindBestMatchJDK(all, selector); findErr == nil && jdk.Source != "javm" {
+				return "", NotFoundError(fmt.Errorf("%s is not managed by javm (%s); remove it with the tool that installed it",
+					sanitizeTerminalText(jdk.Identifier), sanitizeTerminalText(jdk.Path)))
 			}
 		}
 	}
 	return "", err
+}
+
+func uniqueManagedMatch(jdks []discovery.JDK, selector string) (string, error) {
+	for _, jdk := range jdks {
+		if jdk.Identifier == selector {
+			return jdk.Identifier, nil
+		}
+	}
+	rng, err := javaversion.ParseRange(selector)
+	if err != nil {
+		return "", UsageError(err)
+	}
+	matches := filterByRange(jdks, rng)
+	switch len(matches) {
+	case 0:
+		_, err := FindBestMatchJDK(jdks, selector)
+		return "", err
+	case 1:
+		return matches[0].Identifier, nil
+	}
+	sort.Slice(matches, func(i, j int) bool { return newerJDKFirst(matches[i], matches[j]) })
+	identifiers := make([]string, len(matches))
+	for i, jdk := range matches {
+		identifiers[i] = sanitizeTerminalText(jdk.Identifier)
+	}
+	return "", UsageError(fmt.Errorf("%s matches %d installed JDKs: %s; pass the exact identifier",
+		sanitizeTerminalText(selector), len(matches), strings.Join(identifiers, ", ")))
+}
+
+func removeAndReport(ctx context.Context, identifier string) error {
+	if err := removeManagedJDK(identifier); err != nil {
+		return err
+	}
+	loggerFromContext(ctx).Infof("Removed %s", sanitizeTerminalText(identifier))
+	return nil
 }
 
 type resolvedPin struct {
