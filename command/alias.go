@@ -1,7 +1,9 @@
 package command
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +22,10 @@ func NewAliasCommand() *cobra.Command {
 			name := args[0]
 			if len(args) == 1 {
 				value, err := readAlias(name)
-				if err != nil && !os.IsNotExist(err) {
+				if errors.Is(err, fs.ErrNotExist) {
+					return aliasNotSetError(name)
+				}
+				if err != nil {
 					return err
 				}
 				if value != "" {
@@ -49,15 +54,25 @@ func NewUnaliasCommand() *cobra.Command {
 		Short: "Delete an alias",
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := setAlias(args[0], ""); err != nil {
-				return err
+			setErr := setAlias(args[0], "")
+			if setErr != nil && !errors.Is(setErr, fs.ErrNotExist) {
+				return setErr
 			}
 			if err := linkAliasName(cmd.Context(), args[0]); err != nil {
 				return err
 			}
+			if setErr != nil {
+				return aliasNotSetError(args[0])
+			}
 			return nil
 		},
 	}
+}
+
+// aliasNotSetError reports an alias without a file, as exit code 3, without
+// exposing the path of the file.
+func aliasNotSetError(name string) error {
+	return NotFoundError(fmt.Errorf("alias %q is not set", sanitizeTerminalText(name)))
 }
 
 func validateAliasName(name string) error {
