@@ -50,7 +50,7 @@ func NewInitCommand() *cobra.Command {
 			script, ok := shellScripts[shell]
 			if !ok {
 				return UsageError(fmt.Errorf("unsupported shell: %s\nSupported shells: %s",
-					shell,
+					sanitizeTerminalText(shell),
 					strings.Join(sortedShells(), ", "),
 				))
 			}

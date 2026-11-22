@@ -160,7 +160,7 @@ func FindBestMatchJDK(jdks []discovery.JDK, selector string) (discovery.JDK, err
 		return fallback, nil
 	}
 
-	return discovery.JDK{}, NotFoundError(fmt.Errorf("%s isn't installed%s", rng.String(), legacySelectorHint(selector)))
+	return discovery.JDK{}, NotFoundError(fmt.Errorf("%s isn't installed%s", sanitizeTerminalText(rng.String()), legacySelectorHint(selector)))
 }
 
 // legacySelectorHint explains the modern numbering when a selector uses the

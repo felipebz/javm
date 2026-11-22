@@ -145,7 +145,7 @@ func NewUnlinkCommand() *cobra.Command {
 
 func link(ctx context.Context, selector string, dir string) error {
 	if !isSystemSelector(selector) {
-		return UsageError(errors.New("Name must begin with 'system@' (e.g. 'system@21')"))
+		return UsageError(errors.New("name must begin with 'system@' (e.g. 'system@21')"))
 	}
 	if _, err := javaversion.ParseVersion(selector); err != nil {
 		return UsageError(err)

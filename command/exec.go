@@ -83,7 +83,7 @@ func runExec(ctx context.Context, cmd *cobra.Command, selector string, childArgs
 	childEnv := os.Environ()
 	selected, err := buildJDKEnvironment(jdk.Path, childEnv)
 	if err != nil {
-		return fmt.Errorf("prepare environment for %s: %w", selector, err)
+		return fmt.Errorf("prepare environment for %s: %w", sanitizeTerminalText(selector), err)
 	}
 	if err := validateJDKHome(selected.JavaHome); err != nil {
 		return fmt.Errorf("selected JDK %q is inaccessible: %w", jdk.Identifier, err)
@@ -94,9 +94,9 @@ func runExec(ctx context.Context, cmd *cobra.Command, selector string, childArgs
 	resolved, err := findExecutableInEnvironment(childArgs[0], childEnv)
 	if err != nil {
 		if errors.Is(err, os.ErrPermission) {
-			return fmt.Errorf("command %q is not executable in the environment for %s: %w", childArgs[0], selector, err)
+			return fmt.Errorf("command %q is not executable in the environment for %s: %w", childArgs[0], sanitizeTerminalText(selector), err)
 		}
-		return NotFoundError(fmt.Errorf("command %q was not found in the environment for %s", childArgs[0], selector))
+		return NotFoundError(fmt.Errorf("command %q was not found in the environment for %s", childArgs[0], sanitizeTerminalText(selector)))
 	}
 
 	child, err := newExecProcess(ctx, resolved, childArgs[1:], childEnv)

@@ -75,9 +75,9 @@ func runInstall(ctx context.Context, client PackagesWithInfoClient, selector str
 	if ver == nil {
 		targets := make([]string, 0, len(packageIndex.Sorted))
 		for _, v := range slices.Backward(packageIndex.Sorted) {
-			targets = append(targets, v.String())
+			targets = append(targets, sanitizeTerminalText(v.String()))
 		}
-		return "", NotFoundError(errors.New("No compatible version found for " + selector + legacySelectorHint(selector) +
+		return "", NotFoundError(errors.New("no compatible version found for " + sanitizeTerminalText(selector) + legacySelectorHint(selector) +
 			"\nValid install targets: " + strings.Join(targets, ", ")))
 	}
 	packageInfo, err := client.GetPackageInfoContext(ctx, packageIndex.ByVersion[ver].Id)

@@ -33,7 +33,7 @@ func TestRunInstallHintsLegacySelector(t *testing.T) {
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("runInstall(1.8) error = %v, want a not-found error", err)
 	}
-	if !strings.Contains(err.Error(), `No compatible version found for 1.8 (Java 8 and earlier are written without "1.", for example 8)`) {
+	if !strings.Contains(err.Error(), `no compatible version found for 1.8 (Java 8 and earlier are written without "1.", for example 8)`) {
 		t.Fatalf("runInstall(1.8) error = %q, want the legacy version hint", err)
 	}
 	if client.infoID != "" {

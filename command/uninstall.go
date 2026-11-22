@@ -17,7 +17,7 @@ func NewUninstallCommand() *cobra.Command {
 		Args:  UsageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if isSystemSelector(args[0]) {
-				return UsageError(fmt.Errorf("Link to system JDK can only be removed with 'unlink' (e.g. 'javm unlink %s')", args[0]))
+				return UsageError(fmt.Errorf("link to system JDK can only be removed with 'unlink' (e.g. 'javm unlink %s')", sanitizeTerminalText(args[0])))
 			}
 			if err := uninstall(cmd.Context(), args[0]); err != nil {
 				return err

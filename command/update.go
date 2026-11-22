@@ -168,7 +168,7 @@ func (u updater) updateOne(ctx context.Context, target string) (bool, error) {
 	}
 	latest := idx.latestMatching(rng)
 	if latest == nil {
-		return false, NotFoundError(fmt.Errorf("no remote package matches %s", target))
+		return false, NotFoundError(fmt.Errorf("no remote package matches %s", sanitizeTerminalText(target)))
 	}
 	if !isNewerPackage(idx, latest, installed) {
 		if _, err := fmt.Fprintf(u.out, "%s: up to date (%s)\n", sanitizeTerminalText(target), sanitizeTerminalText(installed.String())); err != nil {

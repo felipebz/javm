@@ -228,7 +228,7 @@ func ParseVersion(raw string) (*Version, error) {
 
 	parsed, err := parseUnqualified(versionText)
 	if err != nil {
-		return nil, fmt.Errorf("%s is not a valid version", versionText)
+		return nil, fmt.Errorf("%q is not a valid version", versionText)
 	}
 	parsed.qualifier = qualifier
 	parsed.raw = raw

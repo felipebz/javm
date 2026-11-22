@@ -64,7 +64,7 @@ func secureRedirect(req *http.Request, via []*http.Request) error {
 		return fmt.Errorf("download stopped after %d redirects", len(via))
 	}
 	if req.URL == nil || !strings.EqualFold(req.URL.Scheme, "https") {
-		return fmt.Errorf("insecure redirect to non-HTTPS URL: %v", req.URL)
+		return fmt.Errorf("insecure redirect to non-HTTPS URL: %s", sanitizeTerminalText(fmt.Sprint(req.URL)))
 	}
 	return nil
 }
@@ -75,7 +75,7 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL string,
 		return "", fmt.Errorf("invalid download URL: %w", err)
 	}
 	if !strings.EqualFold(parsedURL.Scheme, "https") {
-		return "", fmt.Errorf("insecure download URL: only HTTPS is allowed, got: %s", rawURL)
+		return "", fmt.Errorf("insecure download URL: only HTTPS is allowed, got: %s", sanitizeTerminalText(rawURL))
 	}
 	if maxBytes <= 0 {
 		return "", fmt.Errorf("invalid download size limit: %d", maxBytes)
@@ -204,7 +204,7 @@ func validateChecksum(path string, expected string, algorithm string) (err error
 	case "sha1":
 		h = sha1.New()
 	default:
-		return fmt.Errorf("unsupported checksum type: %s", algorithm)
+		return fmt.Errorf("unsupported checksum type: %s", sanitizeTerminalText(algorithm))
 	}
 
 	if _, err := io.Copy(h, f); err != nil {
@@ -212,7 +212,7 @@ func validateChecksum(path string, expected string, algorithm string) (err error
 	}
 	actual := fmt.Sprintf("%x", h.Sum(nil))
 	if actual != expected {
-		return fmt.Errorf("checksum mismatch: expected %s (%s), got %s", expected, algorithm, actual)
+		return fmt.Errorf("checksum mismatch: expected %s (%s), got %s", sanitizeTerminalText(expected), sanitizeTerminalText(algorithm), actual)
 	}
 	return nil
 }

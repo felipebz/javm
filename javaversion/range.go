@@ -433,5 +433,5 @@ func uintsToStrings(values []uint64) []string {
 }
 
 func invalidRange(raw string) error {
-	return fmt.Errorf("%s is not a valid version", raw)
+	return fmt.Errorf("%q is not a valid version", raw)
 }
