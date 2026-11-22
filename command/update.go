@@ -363,9 +363,7 @@ func refreshAliasLinks(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := invalidateDiscoveryCache(); err != nil {
-		return err
-	}
+	warnCacheInvalidation(ctx)
 	return refresh.result()
 }
 

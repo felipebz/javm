@@ -224,7 +224,8 @@ func linkJDK(ctx context.Context, dir, name string) error {
 		return withSymlinkHint(&symlinkError{action: "create symlink", link: source, target: dir, err: err})
 	}
 	loggerFromContext(ctx).Info(sanitizeTerminalText(identifier) + " -> " + sanitizeTerminalText(dir))
-	return invalidateDiscoveryCache()
+	warnCacheInvalidation(ctx)
+	return nil
 }
 
 // linkVersion returns the version part of the system@ identifier: name when
@@ -313,19 +314,12 @@ func removeSystemLink(ctx context.Context, identifier string) error {
 		return err
 	}
 	loggerFromContext(ctx).Info("Removed link " + sanitizeTerminalText(identifier))
-	return invalidateDiscoveryCache()
+	warnCacheInvalidation(ctx)
+	return nil
 }
 
-func linkLatest(ctx context.Context) (resultErr error) {
-	defer func() {
-		if err := invalidateDiscoveryCache(); err != nil {
-			if resultErr == nil {
-				resultErr = err
-			} else {
-				loggerFromContext(ctx).Warn(err)
-			}
-		}
-	}()
+func linkLatest(ctx context.Context) error {
+	defer warnCacheInvalidation(ctx)
 	jdks, err := LsContext(ctx, true)
 	if err != nil {
 		return err
@@ -418,14 +412,14 @@ func linkAliasName(ctx context.Context, name string) error {
 	if err := link(ctx, name, jdks); err != nil {
 		return withSymlinkHint(err)
 	}
-	return invalidateDiscoveryCache()
+	warnCacheInvalidation(ctx)
+	return nil
 }
 
-func invalidateDiscoveryCache() error {
+func warnCacheInvalidation(ctx context.Context) {
 	if err := discovery.DeleteCacheFile(cfg.Dir()); err != nil {
-		return fmt.Errorf("invalidate discovery cache: %w", err)
+		warnOnce(ctx, fmt.Errorf("could not clear the discovery cache: %w; if 'javm ls' misses or still shows a JDK, run 'javm discover refresh'", err))
 	}
-	return nil
 }
 
 // linkDefault points jdk/default at the JDK the default resolves to, as

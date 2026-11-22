@@ -72,7 +72,8 @@ func NewAliasCommand() *cobra.Command {
 			if err := linkAlias(cmd.Context(), name, jdks); err != nil {
 				return withSymlinkHint(err)
 			}
-			return invalidateDiscoveryCache()
+			warnCacheInvalidation(cmd.Context())
+			return nil
 		},
 		Example: "  javm alias work temurin@21\n" +
 			"  javm alias work # show the selector bound to an alias",
