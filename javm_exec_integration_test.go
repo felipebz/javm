@@ -353,6 +353,10 @@ func createGradleJDK(t *testing.T) string {
 	t.Helper()
 	gradleHome := t.TempDir()
 	jdk := filepath.Join(gradleHome, "jdks", "test-jdk-17")
+	// Discovery expects the bundle layout on macOS.
+	if runtime.GOOS == "darwin" {
+		jdk = filepath.Join(jdk, "Contents", "Home")
+	}
 	if err := os.MkdirAll(filepath.Join(jdk, "bin"), 0o755); err != nil {
 		t.Fatal(err)
 	}

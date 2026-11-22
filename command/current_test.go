@@ -41,10 +41,7 @@ func makeFakeJDK(t *testing.T, root string, macOS bool) string {
 	if macOS {
 		home = filepath.Join(root, "Contents", "Home")
 	}
-	java := filepath.Join(home, "bin", "java")
-	if runtime.GOOS == "windows" {
-		java += ".exe"
-	}
+	java := fakeJavaPath(home)
 	if err := os.MkdirAll(filepath.Dir(java), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -52,6 +49,15 @@ func makeFakeJDK(t *testing.T, root string, macOS bool) string {
 		t.Fatal(err)
 	}
 	return home
+}
+
+// fakeJavaPath is the java executable makeFakeJDK creates under home.
+func fakeJavaPath(home string) string {
+	java := filepath.Join(home, "bin", "java")
+	if runtime.GOOS == "windows" {
+		java += ".exe"
+	}
+	return java
 }
 
 func runCurrent(t *testing.T) (string, error) {
@@ -109,7 +115,7 @@ func TestCurrentReportsActiveJDK(t *testing.T) {
 				root := filepath.Join(javmHome, "jdk", "zulu@21.0.4")
 				home := makeFakeJDK(t, root, true)
 				mockLsResult = []discovery.JDK{{Identifier: "zulu@21.0.4", Source: "javm", Path: root}}
-				lookPath = func(string) (string, error) { return filepath.Join(home, "bin", "java"), nil }
+				lookPath = func(string) (string, error) { return fakeJavaPath(home), nil }
 			},
 			want: "zulu@21.0.4",
 		},
@@ -207,7 +213,7 @@ func TestCurrentFailsWhenNoKnownJDKIsActive(t *testing.T) {
 			name: "java on PATH matches no JDK",
 			setup: func(t *testing.T) string {
 				unknown := makeFakeJDK(t, filepath.Join(t.TempDir(), "unknown-jdk"), false)
-				java := filepath.Join(unknown, "bin", "java")
+				java := fakeJavaPath(unknown)
 				lookPath = func(string) (string, error) { return java, nil }
 				resolved, err := filepath.EvalSymlinks(java)
 				if err != nil {
