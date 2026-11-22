@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+// errNoJavaVersion marks a command run without a version where no
+// .java-version provides one.
+var errNoJavaVersion = errors.New("no version given and no .java-version found")
+
 // javaVersionSelector returns the selector from the nearest .java-version in
 // the current directory or its parents, for commands run without a version
 // argument, or an error that says why there is none. The nearest entry
@@ -41,7 +45,7 @@ func javaVersionSelector() (string, error) {
 			return "", fmt.Errorf("read %s: %w", sanitizeTerminalText(path), err)
 		}
 		if filepath.Dir(dir) == dir {
-			return "", fmt.Errorf("no version given and no .java-version found in %s or its parent directories", sanitizeTerminalText(cwd))
+			return "", fmt.Errorf("%w in %s or its parent directories", errNoJavaVersion, sanitizeTerminalText(cwd))
 		}
 	}
 }

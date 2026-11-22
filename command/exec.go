@@ -39,7 +39,7 @@ func NewExecCommand() *cobra.Command {
 			} else if parsed.quiet && logger.GetLevel() != log.DebugLevel {
 				logger.SetLevel(log.WarnLevel)
 			}
-			err = runExec(cmd.Context(), cmd, parsed.selector, parsed.command)
+			err = runExec(cmd.Context(), cmd, parsed.selector, parsed.command, !parsed.explicit)
 			var childErr *childExitError
 			if errors.As(err, &childErr) {
 				// The child has already reported its failure.
@@ -56,8 +56,31 @@ func NewExecCommand() *cobra.Command {
 
 type execArgs struct {
 	selector     string
+	explicit     bool
 	command      []string
 	quiet, debug bool
+}
+
+// execSelectorHint suggests --jdk when the command word looks like a JDK
+// selector, as in "javm exec 21 -- java" written the way other version
+// managers take it. It is only used once that command line has failed.
+func execSelectorHint(command []string) string {
+	word := command[0]
+	if !aliasNameIsSelector(word) && getAlias(word) == "" {
+		return ""
+	}
+	rest := command[1:]
+	if len(rest) > 0 && rest[0] == "--" {
+		rest = rest[1:]
+	}
+	suggestion := []string{"javm", "exec", "--jdk", shellWord(sanitizeTerminalText(word)), "--"}
+	if len(rest) == 0 {
+		suggestion = append(suggestion, "<command>")
+	}
+	for _, arg := range rest {
+		suggestion = append(suggestion, shellWord(sanitizeTerminalText(arg)))
+	}
+	return fmt.Sprintf("; %q looks like a JDK selector; did you mean: %s", sanitizeTerminalText(word), strings.Join(suggestion, " "))
 }
 
 // parseExecArgs reads javm options up to the first other argument or "--";
@@ -87,7 +110,7 @@ options:
 			if value == "" {
 				return execArgs{}, UsageError(errors.New("--jdk requires a selector; " + usage))
 			}
-			parsed.selector = value
+			parsed.selector, parsed.explicit = value, true
 		case arg == "--quiet":
 			parsed.quiet = true
 		case arg == "--debug":
@@ -105,6 +128,9 @@ options:
 
 	if parsed.selector == "" {
 		selector, err := javaVersionSelector()
+		if errors.Is(err, errNoJavaVersion) {
+			err = fmt.Errorf("%w%s", err, execSelectorHint(parsed.command))
+		}
 		if err != nil {
 			return execArgs{}, UsageError(err)
 		}
@@ -137,7 +163,9 @@ func childExitStatus(err *osExec.ExitError) int {
 	return err.ExitCode()
 }
 
-func runExec(ctx context.Context, cmd *cobra.Command, selector string, childArgs []string) error {
+// selectorFromFile is set when the JDK came from .java-version, where a
+// command word that is not found may have been meant as the selector.
+func runExec(ctx context.Context, cmd *cobra.Command, selector string, childArgs []string, selectorFromFile bool) error {
 	jdk, err := resolveJDKContext(ctx, selector)
 	if err != nil {
 		return err
@@ -159,7 +187,11 @@ func runExec(ctx context.Context, cmd *cobra.Command, selector string, childArgs
 		if errors.Is(err, os.ErrPermission) {
 			return fmt.Errorf("command %q is not executable in the environment for %s: %w", childArgs[0], sanitizeTerminalText(selector), err)
 		}
-		return NotFoundError(fmt.Errorf("command %q was not found in the environment for %s", childArgs[0], sanitizeTerminalText(selector)))
+		hint := ""
+		if selectorFromFile {
+			hint = execSelectorHint(childArgs)
+		}
+		return NotFoundError(fmt.Errorf("command %q was not found in the environment for %s%s", childArgs[0], sanitizeTerminalText(selector), hint))
 	}
 
 	if err := ctx.Err(); err != nil {
