@@ -208,7 +208,7 @@ func (u updater) updateOne(ctx context.Context, target string) (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	holders, err := selectorsHolding(after, current.Identifier)
+	holders, err := selectorsHolding(ctx, after, current.Identifier)
 	if err != nil {
 		return true, err
 	}
@@ -277,13 +277,19 @@ type aliasSelector struct {
 }
 
 // selectorsHolding lists default-version and aliases that still resolve to
-// identifier, so update keeps a JDK the user pinned.
-func selectorsHolding(jdks []discovery.JDK, identifier string) ([]string, error) {
+// identifier, so update keeps a JDK the user pinned. A pin file that exists
+// but cannot be read may have meant any JDK, so it holds identifier too.
+func selectorsHolding(ctx context.Context, jdks []discovery.JDK, identifier string) ([]string, error) {
 	var pinned []aliasSelector
+	var holders []string
 	defaultVersion, err := readDefaultVersion()
 	switch {
 	case err == nil:
 		pinned = append(pinned, aliasSelector{label: "default-version", selector: defaultVersion})
+	case errors.Is(err, ErrUsage):
+		warnOnce(ctx, fmt.Errorf("ignoring %s: %w; old builds are kept until it is fixed",
+			sanitizeTerminalText(defaultVersionPath()), usageCause(err)))
+		holders = append(holders, "unreadable default-version")
 	case !errors.Is(err, os.ErrNotExist):
 		return nil, err
 	}
@@ -293,13 +299,16 @@ func selectorsHolding(jdks []discovery.JDK, identifier string) ([]string, error)
 	}
 	for _, name := range names {
 		value, err := readAlias(name)
+		if skipInvalidAlias(ctx, name, err) {
+			holders = append(holders, "unreadable alias "+name)
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
 		pinned = append(pinned, aliasSelector{label: "alias " + name, selector: value})
 	}
 
-	var holders []string
 	for _, p := range pinned {
 		if jdk, err := resolveJDKFromList(jdks, p.selector); err == nil && jdk.Identifier == identifier {
 			holders = append(holders, p.label)
@@ -326,6 +335,9 @@ func refreshAliasLinks(ctx context.Context) error {
 	}
 	var refresh linkRefreshError
 	for _, name := range names {
+		if _, err := readAlias(name); skipInvalidAlias(ctx, name, err) {
+			continue
+		}
 		if err := linkAlias(ctx, name, jdks); err != nil && !refresh.add(err) {
 			return err
 		}
@@ -334,6 +346,15 @@ func refreshAliasLinks(ctx context.Context) error {
 		return err
 	}
 	return refresh.result()
+}
+
+func skipInvalidAlias(ctx context.Context, name string, err error) bool {
+	if !errors.Is(err, ErrUsage) {
+		return false
+	}
+	warnOnce(ctx, fmt.Errorf("ignoring alias %q: its file must hold one selector on a single line; its link and old builds are kept until it is fixed",
+		sanitizeTerminalText(name)))
+	return true
 }
 
 // aliasNames lists the valid alias names stored in cfg.Dir().

@@ -30,7 +30,7 @@ func NewUseCommand() *cobra.Command {
 				// shell wrappers apply nothing when no records are written.
 				if errors.Is(err, ErrUsage) {
 					loggerFromContext(cmd.Context()).Warnf("ignoring %s: %v; run 'javm default <version>' to replace it",
-						sanitizeTerminalText(defaultVersionPath()), err)
+						sanitizeTerminalText(defaultVersionPath()), usageCause(err))
 					return nil
 				}
 				if err != nil {

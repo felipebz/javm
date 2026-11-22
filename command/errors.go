@@ -24,6 +24,17 @@ func UsageError(err error) error {
 	return fmt.Errorf("%w: %w", ErrUsage, err)
 }
 
+func usageCause(err error) error {
+	for e := err; e != nil; e = errors.Unwrap(e) {
+		if multi, ok := e.(interface{ Unwrap() []error }); ok {
+			if errs := multi.Unwrap(); len(errs) == 2 && errs[0] == ErrUsage {
+				return errs[1]
+			}
+		}
+	}
+	return err
+}
+
 // NotFoundError marks an error caused by a requested resource not existing.
 func NotFoundError(err error) error {
 	if err == nil || errors.Is(err, ErrNotFound) {

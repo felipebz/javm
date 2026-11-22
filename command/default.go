@@ -71,9 +71,22 @@ func readDefaultVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	selector := string(data)
-	if err := validateDefaultSelector(selector); err != nil {
+	selector, err := persistedSelector(data)
+	if err != nil {
+		err = UsageError(fmt.Errorf("default version selector %w", err))
+	} else {
+		err = validateDefaultSelector(selector)
+	}
+	if err != nil {
 		return "", fmt.Errorf("invalid persisted default version: %w", err)
+	}
+	return selector, nil
+}
+
+func persistedSelector(data []byte) (string, error) {
+	selector := strings.TrimRight(string(data), " \t\r\n")
+	if strings.ContainsAny(selector, "\r\n\x00") {
+		return "", errors.New("contains a forbidden control character")
 	}
 	return strings.TrimSpace(selector), nil
 }

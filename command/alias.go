@@ -155,7 +155,11 @@ func readAlias(name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read alias %q: %w", name, err)
 	}
-	return string(b), nil
+	value, err := persistedSelector(b)
+	if err != nil {
+		return "", UsageError(fmt.Errorf("alias %q is invalid: its selector %w", sanitizeTerminalText(name), err))
+	}
+	return value, nil
 }
 
 func getAlias(name string) string {
