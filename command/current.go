@@ -140,3 +140,17 @@ func sameHome(left, right string) bool {
 	}
 	return left == right
 }
+
+// jdkDirKey identifies the JDK directory behind path, so that the same JDK
+// found under different paths gets one key: symlinks resolved, a macOS
+// bundle's Contents/Home folded into the bundle, and case folded on Windows.
+func jdkDirKey(path string) string {
+	key := canonicalHome(path)
+	if hostGOOS == "darwin" && filepath.Base(key) == "Home" && filepath.Base(filepath.Dir(key)) == "Contents" {
+		key = filepath.Dir(filepath.Dir(key))
+	}
+	if runtime.GOOS == "windows" {
+		key = strings.ToLower(key)
+	}
+	return key
+}

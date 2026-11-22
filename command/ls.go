@@ -195,19 +195,97 @@ func legacySelectorHint(selector string) string {
 }
 
 func printInstalledVersions(w io.Writer, styles styles, jdks []discovery.JDK, rng *javaversion.Range, showDetails bool) error {
-	filtered := filterByRange(jdks, rng)
-	sort.Slice(filtered, func(i, j int) bool {
-		if filtered[i].Source != filtered[j].Source {
-			return filtered[i].Source < filtered[j].Source
+	var groups []jdkGroup
+	var displayed []discovery.JDK
+	for _, group := range groupJDKs(jdks) {
+		if len(filterByRange(group.members, rng)) > 0 {
+			groups = append(groups, group)
+			displayed = append(displayed, group.members...)
 		}
-		return newerJDKFirst(filtered[i], filtered[j])
+	}
+	sort.Slice(groups, func(i, j int) bool {
+		a, b := groups[i].primary, groups[j].primary
+		if a.Source != b.Source {
+			return a.Source < b.Source
+		}
+		return newerJDKFirst(a, b)
 	})
 
-	selectedBy := computeSelectedBy(jdks, filtered)
+	selectedBy := computeSelectedBy(jdks, displayed)
 	if showDetails {
-		return writeTable(w, styles, detailedRows(filtered, selectedBy))
+		return writeTable(w, styles, detailedRows(groups, selectedBy))
 	}
-	return writeTable(w, styles, compactRows(filtered, selectedBy))
+	return writeTable(w, styles, compactRows(groups, selectedBy))
+}
+
+// jdkGroup is one JDK directory found as one or more entries, for example
+// as a system@ link and by the source that found its real directory.
+type jdkGroup struct {
+	primary discovery.JDK
+	members []discovery.JDK
+}
+
+// groupJDKs groups the entries of the same JDK directory in discovery order.
+// The row is named after a JDK managed by javm, then a system@ link the user
+// created, then the first entry found.
+func groupJDKs(jdks []discovery.JDK) []jdkGroup {
+	var groups []jdkGroup
+	byDir := make(map[string]int)
+	for _, jdk := range jdks {
+		if jdk.Path != "" {
+			key := jdkDirKey(jdk.Path)
+			if i, ok := byDir[key]; ok {
+				groups[i].members = append(groups[i].members, jdk)
+				if rowPreference(jdk) < rowPreference(groups[i].primary) {
+					groups[i].primary = jdk
+				}
+				continue
+			}
+			byDir[key] = len(groups)
+		}
+		groups = append(groups, jdkGroup{primary: jdk, members: []discovery.JDK{jdk}})
+	}
+	return groups
+}
+
+func rowPreference(jdk discovery.JDK) int {
+	switch {
+	case jdk.Source == "javm" && !strings.HasPrefix(jdk.Identifier, "system@"):
+		return 0
+	case jdk.Source == "javm":
+		return 1
+	default:
+		return 2
+	}
+}
+
+// groupSelectedBy merges the selectors that pick any entry of group and
+// appends "also <name>" for its other identifiers not already listed.
+// hasSelectors reports whether any selector picks the group.
+func groupSelectedBy(group jdkGroup, selectedBy map[string]string) (label string, hasSelectors bool) {
+	members := append([]discovery.JDK{group.primary}, group.members...)
+	var selectors []string
+	for _, jdk := range members {
+		for selector := range strings.SplitSeq(selectedBy[jdkKey(jdk)], ", ") {
+			if selector != "" && !slices.Contains(selectors, selector) {
+				selectors = append(selectors, selector)
+			}
+		}
+	}
+	var others []string
+	for _, jdk := range group.members {
+		if jdk.Identifier != group.primary.Identifier && !slices.Contains(selectors, jdk.Identifier) && !slices.Contains(others, jdk.Identifier) {
+			others = append(others, jdk.Identifier)
+		}
+	}
+	label = strings.Join(selectors, ", ")
+	if len(others) > 0 {
+		if label != "" {
+			label += "; "
+		}
+		label += "also " + strings.Join(others, ", ")
+	}
+	return label, len(selectors) > 0
 }
 
 // newerJDKFirst orders JDKs by descending version, comparing unparsable
@@ -239,8 +317,10 @@ func filterByRange(jdks []discovery.JDK, rng *javaversion.Range) []discovery.JDK
 	return filtered
 }
 
-func detailedRows(jdks []discovery.JDK, selectedBy map[string]string) [][]tableCell {
-	rows := make([][]tableCell, 0, len(jdks)+1)
+// detailedRows shows every entry: the group's row first, then its other
+// sources and paths indented below it.
+func detailedRows(groups []jdkGroup, selectedBy map[string]string) [][]tableCell {
+	rows := make([][]tableCell, 0, len(groups)+1)
 	rows = append(rows, []tableCell{
 		{"SOURCE", roleHeader},
 		{"NAME", roleHeader},
@@ -249,35 +329,49 @@ func detailedRows(jdks []discovery.JDK, selectedBy map[string]string) [][]tableC
 		{"ARCHITECTURE", roleHeader},
 		{"PATH", roleHeader},
 	})
-	for _, jdk := range jdks {
-		selected := selectedBy[jdkKey(jdk)]
+	for _, group := range groups {
+		label, hasSelectors := groupSelectedBy(group, selectedBy)
+		jdk := group.primary
 		rows = append(rows, []tableCell{
 			{jdk.Source, roleDim},
-			{jdk.Identifier, nameRole(selected)},
-			{selected, roleAccent},
+			{jdk.Identifier, nameRole(hasSelectors)},
+			{label, roleAccent},
 			{jdk.Vendor, roleDefault},
 			{jdk.Architecture, roleDefault},
 			{jdk.Path, roleDefault},
 		})
+		for _, other := range group.members {
+			if other == jdk {
+				continue
+			}
+			rows = append(rows, []tableCell{
+				{"  " + other.Source, roleDim},
+				{"  " + other.Identifier, roleDim},
+				{"", roleAccent},
+				{other.Vendor, roleDefault},
+				{other.Architecture, roleDefault},
+				{other.Path, roleDefault},
+			})
+		}
 	}
 	return rows
 }
 
-func compactRows(jdks []discovery.JDK, selectedBy map[string]string) [][]tableCell {
-	rows := make([][]tableCell, 0, len(jdks)+1)
+func compactRows(groups []jdkGroup, selectedBy map[string]string) [][]tableCell {
+	rows := make([][]tableCell, 0, len(groups)+1)
 	rows = append(rows, []tableCell{
 		{"NAME", roleHeader},
 		{"SOURCE", roleHeader},
 		{"SELECTED BY", roleHeader},
 	})
-	for _, jdk := range jdks {
-		selected := selectedBy[jdkKey(jdk)]
+	for _, group := range groups {
+		label, hasSelectors := groupSelectedBy(group, selectedBy)
 		row := []tableCell{
-			{jdk.Identifier, nameRole(selected)},
-			{jdk.Source, roleDim},
+			{group.primary.Identifier, nameRole(hasSelectors)},
+			{group.primary.Source, roleDim},
 		}
-		if selected != "" {
-			row = append(row, tableCell{selected, roleAccent})
+		if label != "" {
+			row = append(row, tableCell{label, roleAccent})
 		}
 		rows = append(rows, row)
 	}
@@ -286,8 +380,8 @@ func compactRows(jdks []discovery.JDK, selectedBy map[string]string) [][]tableCe
 
 // nameRole keeps the JDKs that win one of the selectors shown in SELECTED BY at
 // normal intensity and dims the others, which stay readable but less prominent.
-func nameRole(selectedBy string) styleRole {
-	if selectedBy == "" {
+func nameRole(hasSelectors bool) styleRole {
+	if !hasSelectors {
 		return roleDim
 	}
 	return roleDefault
