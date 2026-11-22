@@ -26,11 +26,10 @@ Examples:
 
 ```sh
 javm exec java --version
-javm exec ./gradlew test
 javm exec mvn test
 
 javm exec --jdk 21 java --version
-javm exec --jdk temurin@21 ./gradlew build
+javm exec --jdk temurin@21 mvn verify
 ```
 
 `javm exec` sets `JAVA_HOME` and `PATH` only for the child process.

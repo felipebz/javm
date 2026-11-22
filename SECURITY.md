@@ -201,7 +201,7 @@ You can reduce risk by doing the following:
 
    ```bash
    javm install
-   javm exec ./gradlew build
+   javm exec mvn verify
    ```
 
    Explicit version pinning makes builds reproducible and reduces supply-chain surprises. See

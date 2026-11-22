@@ -102,7 +102,7 @@ Nushell and Command Prompt use a generated script or wrapper; see
 ```sh
 echo 21 > .java-version
 javm install                 # installs the version from .java-version
-javm exec ./gradlew build    # runs the build with that JDK
+javm exec mvn verify         # runs the build with that JDK
 javm use                     # or switch the current shell to it
 ```
 
@@ -127,7 +127,7 @@ write `8` or `8.0.400`, not `1.8`.
 ```sh
 javm exec mvn test                         # JDK from .java-version
 javm exec --jdk 21 java --version
-javm exec --jdk temurin@21 ./gradlew build
+javm exec --jdk temurin@21 mvn verify
 ```
 
 Only the child process gets the selected `JAVA_HOME` and `PATH`; the current shell is unchanged.
@@ -168,7 +168,7 @@ through `javm exec`:
     curl -fsSL https://javm.dev/install.sh | bash -s v0.17.0
     echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 - run: javm install
-- run: javm exec ./gradlew build
+- run: javm exec mvn verify
 ```
 <!-- x-release-please-end -->
 
