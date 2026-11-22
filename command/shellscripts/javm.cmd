@@ -44,8 +44,11 @@ if not exist "%_JAVM_ENV_FILE%" goto javm_missing_environment
 
 rem Without a JAVA_HOME record, deactivate leaves JAVA_HOME as it is.
 set "_JAVM_NEW_JAVA_HOME=%JAVA_HOME%"
+rem PATH is applied unconditionally below, so a file without its record is refused.
+set "_JAVM_HAS_PATH="
 for /f "usebackq tokens=1,2,* delims=	" %%A in ("%_JAVM_ENV_FILE%") do (
     if /i "%%A"=="SET" if /i "%%B"=="PATH" set "_JAVM_NEW_PATH=%%C"
+    if /i "%%A"=="SET" if /i "%%B"=="PATH" set "_JAVM_HAS_PATH=1"
     if /i "%%A"=="SET" if /i "%%B"=="JAVA_HOME" set "_JAVM_NEW_JAVA_HOME=%%C"
     if /i "%%A"=="UNSET" if /i "%%B"=="JAVA_HOME" set "_JAVM_NEW_JAVA_HOME="
     if /i "%%A"=="SET" if /i "%%B"=="JAVA_HOME_BEFORE_JAVM" set "_JAVM_NEW_JAVA_HOME_BEFORE_JAVM=%%C"
@@ -53,9 +56,16 @@ for /f "usebackq tokens=1,2,* delims=	" %%A in ("%_JAVM_ENV_FILE%") do (
     if /i "%%A"=="SET" if /i "%%B"=="JAVM_ACTIVE_JAVA_HOME" set "_JAVM_NEW_JAVM_ACTIVE_JAVA_HOME=%%C"
 )
 
+if not defined _JAVM_HAS_PATH if defined _JAVM_APPLY_DEFAULT goto javm_skip_default
+if not defined _JAVM_HAS_PATH goto javm_incomplete_environment
 if defined _JAVM_APPLY_DEFAULT goto javm_apply_default
 if /i "%~1"=="use" goto javm_apply_use
 goto javm_apply_deactivate
+
+:javm_incomplete_environment
+>&2 echo javm: environment update file is incomplete.
+set "_JAVM_EXIT_CODE=1"
+goto javm_cleanup
 
 :javm_missing_environment
 >&2 echo javm: environment update file was not created.
