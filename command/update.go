@@ -271,25 +271,20 @@ func isNewerPackage(idx *packageIndex, latest, installed *javaversion.Version) b
 	return latestHasBuild && installedHasBuild && latestBuild > installedBuild
 }
 
+// name is empty for default-version; err is set when the file exists but is invalid.
 type aliasSelector struct {
 	label    string
+	name     string
 	selector string
+	err      error
 }
 
-// selectorsHolding lists default-version and aliases that still resolve to
-// identifier, so update keeps a JDK the user pinned. A pin file that exists
-// but cannot be read may have meant any JDK, so it holds identifier too.
-func selectorsHolding(ctx context.Context, jdks []discovery.JDK, identifier string) ([]string, error) {
+func pinnedSelectors() ([]aliasSelector, error) {
 	var pinned []aliasSelector
-	var holders []string
 	defaultVersion, err := readDefaultVersion()
 	switch {
-	case err == nil:
-		pinned = append(pinned, aliasSelector{label: "default-version", selector: defaultVersion})
-	case errors.Is(err, ErrUsage):
-		warnOnce(ctx, fmt.Errorf("ignoring %s: %w; old builds are kept until it is fixed",
-			sanitizeTerminalText(defaultVersionPath()), usageCause(err)))
-		holders = append(holders, "unreadable default-version")
+	case err == nil, errors.Is(err, ErrUsage):
+		pinned = append(pinned, aliasSelector{label: "default-version", selector: defaultVersion, err: err})
 	case !errors.Is(err, os.ErrNotExist):
 		return nil, err
 	}
@@ -299,19 +294,35 @@ func selectorsHolding(ctx context.Context, jdks []discovery.JDK, identifier stri
 	}
 	for _, name := range names {
 		value, err := readAlias(name)
-		if skipInvalidAlias(ctx, name, err) {
-			holders = append(holders, "unreadable alias "+name)
-			continue
-		}
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrUsage) {
 			return nil, err
 		}
-		pinned = append(pinned, aliasSelector{label: "alias " + name, selector: value})
+		pinned = append(pinned, aliasSelector{label: "alias " + name, name: name, selector: value, err: err})
 	}
+	return pinned, nil
+}
 
+// selectorsHolding lists default-version and aliases that still resolve to
+// identifier, so update keeps a JDK the user pinned. A pin file that exists
+// but cannot be read may have meant any JDK, so it holds identifier too.
+func selectorsHolding(ctx context.Context, jdks []discovery.JDK, identifier string) ([]string, error) {
+	pinned, err := pinnedSelectors()
+	if err != nil {
+		return nil, err
+	}
+	var holders []string
 	for _, p := range pinned {
-		if jdk, err := resolveJDKFromList(jdks, p.selector); err == nil && jdk.Identifier == identifier {
-			holders = append(holders, p.label)
+		switch {
+		case p.err != nil && p.name == "":
+			warnOnce(ctx, fmt.Errorf("ignoring %s: %w; old builds are kept until it is fixed",
+				sanitizeTerminalText(defaultVersionPath()), usageCause(p.err)))
+			holders = append(holders, "unreadable default-version")
+		case skipInvalidAlias(ctx, p.name, p.err):
+			holders = append(holders, "unreadable alias "+p.name)
+		default:
+			if jdk, err := resolveJDKFromList(jdks, p.selector); err == nil && jdk.Identifier == identifier {
+				holders = append(holders, p.label)
+			}
 		}
 	}
 	return holders, nil
