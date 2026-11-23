@@ -262,6 +262,30 @@ func TestInitCommand_CMD(t *testing.T) {
 	}
 }
 
+// cmd.exe can miss goto labels in a batch file with bare LF line endings,
+// depending on where the labels fall in the file.
+func TestInitCommand_CMDUsesCRLFLineEndings(t *testing.T) {
+	t.Setenv("JAVM_HOME", t.TempDir())
+	for _, withDefault := range []bool{false, true} {
+		if withDefault {
+			if err := os.WriteFile(filepath.Join(os.Getenv("JAVM_HOME"), "default-version"), []byte("21"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cmd := NewInitCommand()
+		buf := &bytes.Buffer{}
+		cmd.SetOut(buf)
+		cmd.SetArgs([]string{"cmd"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		output := buf.String()
+		if !strings.HasSuffix(output, "\r\n") || strings.Count(output, "\n") != strings.Count(output, "\r\n") || strings.Contains(output, "\r\r") {
+			t.Fatalf("cmd wrapper (default %v) has lines without CRLF: %q", withDefault, output)
+		}
+	}
+}
+
 func TestInitCommand_UnsupportedShell(t *testing.T) {
 	cmd := NewInitCommand()
 	buf := &bytes.Buffer{}

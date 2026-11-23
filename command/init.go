@@ -86,6 +86,9 @@ func NewInitCommand() *cobra.Command {
 					`if not defined _JAVM_DEFAULT_INITIALIZED goto javm_initialize_default`,
 				}, "\n")
 				script = strings.ReplaceAll(script, "::JAVM_DEFAULT_INIT::", defaultInit)
+				// cmd.exe can miss goto labels in a batch file with bare LF
+				// line endings, and the embedded script is checked out with LF.
+				script = strings.ReplaceAll(strings.ReplaceAll(script, "\r\n", "\n"), "\n", "\r\n")
 			} else if defaultConfigured {
 				script += "\njavm use --default\n"
 			}
