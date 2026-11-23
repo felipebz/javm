@@ -27,7 +27,7 @@ func TestDownloadErrorsNameThePrefixOnce(t *testing.T) {
 		"HTTP 503":    {client: unavailable.Client(), url: unavailable.URL + "/jdk.tar.gz", want: "HTTP 503"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := downloadWithClient(context.Background(), tt.client, tt.url, 1<<20)
+			_, err := downloadWithClient(context.Background(), tt.client, tt.url, "", 1<<20)
 			if !errors.Is(err, ErrNetwork) {
 				t.Fatalf("error = %v, want a network error", err)
 			}

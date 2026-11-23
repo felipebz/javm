@@ -314,7 +314,7 @@ func TestDownloadValidatesStatusSizeAndCancellation(t *testing.T) {
 			_, _ = io.WriteString(w, "archive")
 		}))
 		defer server.Close()
-		file, err := downloadWithClient(context.Background(), server.Client(), server.URL+"/jdk.zip?token=x", 32)
+		file, err := downloadWithClient(context.Background(), server.Client(), server.URL+"/jdk.zip?token=x", "", 32)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -333,7 +333,7 @@ func TestDownloadValidatesStatusSizeAndCancellation(t *testing.T) {
 			w.WriteHeader(http.StatusBadGateway)
 		}))
 		defer server.Close()
-		if _, err := downloadWithClient(context.Background(), server.Client(), server.URL+"/jdk.zip", 32); err == nil || !strings.Contains(err.Error(), "HTTP 502") {
+		if _, err := downloadWithClient(context.Background(), server.Client(), server.URL+"/jdk.zip", "", 32); err == nil || !strings.Contains(err.Error(), "HTTP 502") {
 			t.Fatalf("expected status error, got %v", err)
 		}
 	})
@@ -346,7 +346,7 @@ func TestDownloadValidatesStatusSizeAndCancellation(t *testing.T) {
 		defer server.Close()
 		var diagnostics bytes.Buffer
 		ctx := WithRuntime(context.Background(), Runtime{Err: &diagnostics, ShowProgress: true})
-		file, err := downloadWithClient(ctx, server.Client(), server.URL+"/jdk.zip", 32)
+		file, err := downloadWithClient(ctx, server.Client(), server.URL+"/jdk.zip", "", 32)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -366,7 +366,7 @@ func TestDownloadValidatesStatusSizeAndCancellation(t *testing.T) {
 			_, _ = io.WriteString(w, "123456")
 		}))
 		defer server.Close()
-		if _, err := downloadWithClient(context.Background(), server.Client(), server.URL+"/jdk.zip", 5); err == nil || !strings.Contains(err.Error(), "exceeds 5 bytes") {
+		if _, err := downloadWithClient(context.Background(), server.Client(), server.URL+"/jdk.zip", "", 5); err == nil || !strings.Contains(err.Error(), "exceeds 5 bytes") {
 			t.Fatalf("expected size error, got %v", err)
 		}
 		matches, err := filepath.Glob(filepath.Join(os.TempDir(), "javm-download-*"))
@@ -385,7 +385,7 @@ func TestDownloadValidatesStatusSizeAndCancellation(t *testing.T) {
 		defer server.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 		defer cancel()
-		if _, err := downloadWithClient(ctx, server.Client(), server.URL+"/jdk.zip", 32); err == nil || !errorsIsContext(err) {
+		if _, err := downloadWithClient(ctx, server.Client(), server.URL+"/jdk.zip", "", 32); err == nil || !errorsIsContext(err) {
 			t.Fatalf("expected cancellation error, got %v", err)
 		}
 	})

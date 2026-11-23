@@ -43,7 +43,10 @@ func (r RedirectTracer) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-func download(ctx context.Context, rawURL string) (string, error) {
+// download saves rawURL to a temporary file. Its extension, which selects the
+// archive format, comes from filename (the Disco API's name for the package)
+// or, without one, from the URL path.
+func download(ctx context.Context, rawURL, filename string) (string, error) {
 	transport := http.DefaultTransport
 	if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
 		configured := defaultTransport.Clone()
@@ -56,7 +59,7 @@ func download(ctx context.Context, rawURL string) (string, error) {
 		Timeout:       downloadTimeout,
 		CheckRedirect: secureRedirect,
 	}
-	return downloadWithClient(ctx, client, rawURL, maxArtifactSize)
+	return downloadWithClient(ctx, client, rawURL, filename, maxArtifactSize)
 }
 
 func secureRedirect(req *http.Request, via []*http.Request) error {
@@ -69,7 +72,7 @@ func secureRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func downloadWithClient(ctx context.Context, client *http.Client, rawURL string, maxBytes int64) (file string, err error) {
+func downloadWithClient(ctx context.Context, client *http.Client, rawURL, filename string, maxBytes int64) (file string, err error) {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
 		return "", fmt.Errorf("invalid download URL: %w", err)
@@ -102,7 +105,10 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL string,
 		return "", fmt.Errorf("download artifact exceeds %d bytes", maxBytes)
 	}
 
-	ext := getFileExtension(parsedURL.Path)
+	ext := getFileExtension(filename)
+	if filename == "" {
+		ext = getFileExtension(parsedURL.Path)
+	}
 	tmp, err := os.CreateTemp("", "javm-download-*"+ext)
 	if err != nil {
 		return "", fmt.Errorf("create temporary download: %w", err)

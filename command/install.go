@@ -178,7 +178,7 @@ func fetchAndInstall(ctx context.Context, ver *javaversion.Version, info *discoa
 		loggerFromContext(ctx).Info("Downloading ", ver)
 		loggerFromContext(ctx).Debug("URL: ", url)
 		var err error
-		file, err = download(ctx, url)
+		file, err = download(ctx, url, info.Filename)
 		if err != nil {
 			return err
 		}
