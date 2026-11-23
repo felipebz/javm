@@ -74,7 +74,7 @@ The installer places `javm.exe` in `%LOCALAPPDATA%\Programs\javm` and adds that 
 ### Versions, verification, and removal
 
 <!-- x-release-please-start-version -->
-Both installers accept `nightly` or a release tag such as `v0.17.0`, always verify the SHA-256 checksum, and can
+Both installers accept `nightly` or a release tag such as `v1.0.0`, always verify the SHA-256 checksum, and can
 optionally verify build provenance with `JAVM_VERIFY_ATTESTATION=1`. See the
 [installation guide](https://javm.dev/docs/install/) for these options, upgrades, and
 [uninstalling javm](https://javm.dev/docs/install/#uninstall-javm), and [ATTESTATION.md](ATTESTATION.md) for the
@@ -167,7 +167,7 @@ through `javm exec`:
 <!-- x-release-please-start-version -->
 ```yaml
 - run: |
-    curl -fsSL https://javm.dev/install.sh | bash -s v0.17.0
+    curl -fsSL https://javm.dev/install.sh | bash -s v1.0.0
     echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 - run: javm install
 - run: javm exec mvn verify
