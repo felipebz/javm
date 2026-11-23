@@ -54,6 +54,7 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
       - name: Attest Release Assets
         if: ${{ steps.release.outputs.release_created == 'true' }}

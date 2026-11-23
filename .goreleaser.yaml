@@ -60,3 +60,37 @@ release:
   extra_files:
     - glob: install.sh
     - glob: install.ps1
+
+winget:
+  - name: javm
+    package_identifier: felipebz.javm
+    publisher: Felipe Zorzo
+    publisher_url: https://github.com/felipebz
+    publisher_support_url: https://github.com/felipebz/javm/issues
+    author: Felipe Zorzo
+    short_description: Java version manager for Linux, macOS, and Windows
+    description: >-
+      javm installs JDKs from distributions such as Temurin, Zulu, Corretto, and GraalVM, finds the JDKs already
+      on your machine, and selects the one a project asks for in .java-version, without changing your system Java.
+    homepage: https://javm.dev
+    license: Apache-2.0
+    license_url: https://github.com/felipebz/javm/blob/main/LICENSE
+    copyright: Copyright Felipe Zorzo
+    release_notes: "{{ .Changelog }}"
+    release_notes_url: "https://github.com/felipebz/javm/releases/tag/{{ .Tag }}"
+    tags: [java, jdk, version-manager, cli]
+    commit_author:
+      name: Felipe Zorzo
+      email: felipe.b.zorzo@gmail.com
+    skip_upload: auto
+    repository:
+      owner: felipebz
+      name: winget-pkgs
+      branch: "javm-{{ .Version }}"
+      token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
+      pull_request:
+        enabled: true
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
