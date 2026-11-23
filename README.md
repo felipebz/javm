@@ -34,9 +34,6 @@ maintained fork of [jabba](https://github.com/shyiko/jabba).
 - Stable exit codes for scripts and CI
 - Prebuilt binaries for Linux, macOS, and Windows on amd64 and arm64
 
-javm is before 1.0: commands and configuration may still change between minor versions. Pin a release tag when you
-need reproducible setups.
-
 ## Quick start
 
 ```bash
