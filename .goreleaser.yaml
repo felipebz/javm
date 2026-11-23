@@ -76,7 +76,6 @@ winget:
     license: Apache-2.0
     license_url: https://github.com/felipebz/javm/blob/main/LICENSE
     copyright: Copyright Felipe Zorzo
-    release_notes: "{{ .Changelog }}"
     release_notes_url: "https://github.com/felipebz/javm/releases/tag/{{ .Tag }}"
     tags: [java, jdk, version-manager, cli]
     commit_author:
