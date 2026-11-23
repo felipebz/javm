@@ -2,7 +2,14 @@
 
 package command
 
-import "golang.org/x/sys/windows"
+import (
+	"errors"
+	"time"
+
+	"golang.org/x/sys/windows"
+)
+
+const promoteRetryTimeout = 10 * time.Second
 
 func promoteNoReplace(source, destination string) error {
 	from, err := windows.UTF16PtrFromString(source)
@@ -13,5 +20,14 @@ func promoteNoReplace(source, destination string) error {
 	if err != nil {
 		return err
 	}
-	return windows.MoveFile(from, to)
+	deadline := time.Now().Add(promoteRetryTimeout)
+	delay := 10 * time.Millisecond
+	for {
+		err := windows.MoveFile(from, to)
+		if err == nil || !errors.Is(err, windows.ERROR_ACCESS_DENIED) && !errors.Is(err, windows.ERROR_SHARING_VIOLATION) || time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(delay)
+		delay = min(delay*2, 500*time.Millisecond)
+	}
 }
