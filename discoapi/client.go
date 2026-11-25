@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/felipebz/javm/internal/useragent"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -77,6 +78,7 @@ type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
 	Logger     *log.Logger
+	UserAgent  string
 }
 
 func NewClient() *Client {
@@ -120,6 +122,7 @@ func (c *Client) fetchContext(ctx context.Context, endpoint string, params url.V
 	if err != nil {
 		return nil, networkError{fmt.Errorf("build GET %s: %w", fullURL, err)}
 	}
+	req.Header.Set("User-Agent", useragent.OrDefault(c.UserAgent))
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		// *url.Error already names the method and URL.

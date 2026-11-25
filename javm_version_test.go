@@ -77,3 +77,24 @@ func TestVersionFlagPrintsVersion(t *testing.T) {
 		t.Fatalf("exit %d, stdout %q, stderr %q, want one non-empty line", code, stdout, stderr)
 	}
 }
+
+func TestReleaseVersion(t *testing.T) {
+	tests := []struct {
+		name, version string
+		info          *debug.BuildInfo
+		want          string
+	}{
+		{"release ldflags win over build info", "0.17.0", vcsBuildInfo("v9.9.9", "true"), "0.17.0"},
+		{"go install of a tag", "", &debug.BuildInfo{Main: debug.Module{Version: "v0.17.0"}}, "0.17.0"},
+		{"pseudo-version", "", vcsBuildInfo("v0.17.1-0.20261122130922-c8a53c0cac05+dirty", "true"), "0.17.1-0.20261122130922-c8a53c0cac05+dirty"},
+		{"devel build", "", vcsBuildInfo("(devel)", "true"), "dev"},
+		{"no build info", "", nil, "dev"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := releaseVersion(tt.version, tt.info); got != tt.want {
+				t.Fatalf("releaseVersion() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

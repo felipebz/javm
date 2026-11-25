@@ -14,6 +14,7 @@ import (
 
 	"github.com/felipebz/javm/command"
 	"github.com/felipebz/javm/discoapi"
+	"github.com/felipebz/javm/internal/useragent"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -61,18 +62,38 @@ func (f *simpleFormatter) Format(entry *log.Entry) ([]byte, error) {
 }
 
 type application struct {
-	out      io.Writer
-	err      io.Writer
-	logger   *log.Logger
-	client   *discoapi.Client
-	terminal func(io.Writer) bool
+	out       io.Writer
+	err       io.Writer
+	logger    *log.Logger
+	client    *discoapi.Client
+	terminal  func(io.Writer) bool
+	userAgent string
+}
+
+func newApplication(out, err io.Writer, info *debug.BuildInfo) application {
+	logger := log.New()
+	logger.SetFormatter(&simpleFormatter{})
+	logger.SetLevel(log.InfoLevel)
+	userAgent := useragent.Format(releaseVersion(version, info))
+	client := discoapi.NewClient()
+	client.Logger = logger
+	client.UserAgent = userAgent
+	return application{out: out, err: err, logger: logger, client: client, terminal: isTerminalWriter, userAgent: userAgent}
+}
+
+func releaseVersion(version string, info *debug.BuildInfo) string {
+	if version == "" && info != nil && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		version = strings.TrimPrefix(info.Main.Version, "v")
+	}
+	if version == "" {
+		return "dev"
+	}
+	return version
 }
 
 func versionText(version, commit, date string, info *debug.BuildInfo) string {
+	version = releaseVersion(version, info)
 	if info != nil {
-		if version == "" && info.Main.Version != "" && info.Main.Version != "(devel)" {
-			version = strings.TrimPrefix(info.Main.Version, "v")
-		}
 		revision, revisionTime, modified := vcsSettings(info)
 		// Go already marks a pseudo-version built from a modified tree with +dirty.
 		if revision != "" && modified && !strings.HasSuffix(version, "+dirty") {
@@ -84,9 +105,6 @@ func versionText(version, commit, date string, info *debug.BuildInfo) string {
 		if date == "" {
 			date = revisionTime
 		}
-	}
-	if version == "" {
-		version = "dev"
 	}
 	details := make([]string, 0, 2)
 	if commit != "" {
@@ -181,6 +199,7 @@ func newRootCommand(app application) *cobra.Command {
 			Logger:       app.logger,
 			Err:          cmd.ErrOrStderr(),
 			ShowProgress: showProgress,
+			UserAgent:    app.userAgent,
 		})
 		cmd.SetContext(ctx)
 	}
@@ -244,12 +263,8 @@ func isTerminalWriter(w io.Writer) bool {
 }
 
 func main() {
-	logger := log.New()
-	logger.SetFormatter(&simpleFormatter{})
-	logger.SetLevel(log.InfoLevel)
-	client := discoapi.NewClient()
-	client.Logger = logger
-	rootCmd = newRootCommand(application{out: os.Stdout, err: os.Stderr, logger: logger, client: client, terminal: isTerminalWriter})
+	buildInfo, _ := debug.ReadBuildInfo()
+	rootCmd = newRootCommand(newApplication(os.Stdout, os.Stderr, buildInfo))
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	err := rootCmd.ExecuteContext(ctx)

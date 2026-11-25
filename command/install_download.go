@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/felipebz/javm/internal/useragent"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -88,6 +89,7 @@ func downloadWithClient(ctx context.Context, client *http.Client, rawURL, filena
 	if err != nil {
 		return "", fmt.Errorf("create download request: %w", err)
 	}
+	req.Header.Set("User-Agent", useragent.OrDefault(RuntimeFromContext(ctx).UserAgent))
 	res, err := client.Do(req)
 	if err != nil {
 		return "", NetworkError(fmt.Errorf("download artifact: %w", err))

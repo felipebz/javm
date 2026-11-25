@@ -15,6 +15,7 @@ type Runtime struct {
 	Logger       *log.Logger
 	Err          io.Writer
 	ShowProgress bool
+	UserAgent    string
 
 	// warned holds the warnings already logged for this command, so helpers
 	// that list JDKs several times report each problem once.
