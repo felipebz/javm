@@ -1,6 +1,9 @@
 package javaversion
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestRangePreservesCommonSelectors(t *testing.T) {
 	tests := []struct {
@@ -66,10 +69,11 @@ func TestRangeMatchesJavaBuildsAndPatchComponents(t *testing.T) {
 	}{
 		{selector: "25", version: "25.0.4.1+1", want: true},
 		{selector: "25.0.4", version: "25.0.4+7", want: true},
-		{selector: "25.0.4", version: "25.0.4.1+1", want: false},
+		// Plain selectors match as a numeric prefix, so 25.0.4 follows 25.0.4.x.
+		{selector: "25.0.4", version: "25.0.4.1+1", want: true},
 		{selector: "25.0.4.1", version: "25.0.4.1+1", want: true},
 		{selector: "25.0.4.1+1", version: "25.0.4.1+2", want: false},
-		{selector: "25.0.4.1", version: "25.0.4.1.2", want: false},
+		{selector: "25.0.4.1", version: "25.0.4.1.2", want: true}, // numeric prefix rule
 	}
 
 	for _, tt := range tests {
@@ -83,6 +87,76 @@ func TestRangeMatchesJavaBuildsAndPatchComponents(t *testing.T) {
 		}
 		if got := rangeValue.Contains(version); got != tt.want {
 			t.Errorf("%q contains %q = %v, want %v", tt.selector, tt.version, got, tt.want)
+		}
+	}
+}
+
+func TestRangeMatchesPlainSelectorsAsNumericPrefix(t *testing.T) {
+	candidates := []string{"25+36", "25.0.4+7", "25.0.5+8", "25.0.5.1+2", "25.0.6+3", "26+35"}
+	all25 := []string{"25+36", "25.0.4+7", "25.0.5+8", "25.0.5.1+2", "25.0.6+3"}
+	tests := []struct {
+		selector string
+		want     []string
+	}{
+		{"25", all25},
+		{"25.0", all25},
+		{"25.0.0", []string{"25+36"}},
+		{"25.0.4", []string{"25.0.4+7"}},
+		{"25.0.5", []string{"25.0.5+8", "25.0.5.1+2"}},
+		{"25.0.5.0", []string{"25.0.5+8"}},
+		{"25.0.5.1", []string{"25.0.5.1+2"}},
+		{"25.0.5+8", []string{"25.0.5+8"}},
+		{"!=25.0.5", []string{"25+36", "25.0.4+7", "25.0.6+3", "26+35"}},
+		{"<25.0.5", []string{"25+36", "25.0.4+7"}},
+		{"<=25.0.5", []string{"25+36", "25.0.4+7", "25.0.5+8", "25.0.5.1+2"}},
+		{"<=25.0.5.0", []string{"25+36", "25.0.4+7", "25.0.5+8"}},
+		{">=25.0.5", []string{"25.0.5+8", "25.0.5.1+2", "25.0.6+3", "26+35"}},
+		{">25.0.5", []string{"25.0.6+3", "26+35"}},
+		{">25", []string{"26+35"}},
+		{"<=25", all25},
+		{"21 - 25.0.5", []string{"25+36", "25.0.4+7", "25.0.5+8", "25.0.5.1+2"}},
+		{"~25.0.5", []string{"25.0.5+8", "25.0.5.1+2", "25.0.6+3"}},
+		{"^25.0.5", []string{"25.0.5+8", "25.0.5.1+2", "25.0.6+3"}},
+		{"<=25.0.5+8", []string{"25+36", "25.0.4+7", "25.0.5+8"}},
+		{">25.0.5+8", []string{"25.0.5.1+2", "25.0.6+3", "26+35"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.selector, func(t *testing.T) {
+			rangeValue, err := ParseRange(tt.selector)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, candidate := range candidates {
+				version, err := ParseVersion(candidate)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rangeValue.Contains(version) {
+					got = append(got, candidate)
+				}
+			}
+			if strings.Join(got, " ") != strings.Join(tt.want, " ") {
+				t.Fatalf("%q matches %v, want %v", tt.selector, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPlainSelectorIgnoresOptionalPart(t *testing.T) {
+	for _, selector := range []string{">=25.0.5", "25.0.5"} {
+		rangeValue, err := ParseRange(selector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, candidate := range []string{"25.0.5+8-LTS", "25.0.5.1+2-LTS"} {
+			version, err := ParseVersion(candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !rangeValue.Contains(version) {
+				t.Errorf("%q does not match %q", selector, candidate)
+			}
 		}
 	}
 }

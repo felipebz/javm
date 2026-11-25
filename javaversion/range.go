@@ -44,6 +44,9 @@ type versionPattern struct {
 	hasBuild    bool
 	hasPre      bool
 	hasOptional bool
+	// plain is set for numeric components only, optionally ending in a
+	// wildcard. numeric is then the prefix the selector matches.
+	plain bool
 }
 
 // Contains reports whether v matches the selector, including its optional
@@ -78,6 +81,9 @@ func (c constraint) matches(candidate *Version) bool {
 		}
 		return matched
 	}
+	if c.pattern.plain {
+		return c.matchesPlainComparison(candidate)
+	}
 
 	comparison := compareUnqualified(candidate, c.pattern.version)
 	switch c.op {
@@ -94,7 +100,43 @@ func (c constraint) matches(candidate *Version) bool {
 	}
 }
 
+// matchesPlainComparison compares the candidate with a plain pattern's prefix
+// p. Every version that starts with p sits between p and next(p), so <=p means
+// below next(p) and >p means from next(p) on. Only the numeric components and
+// the pre-release take part: the build and the optional part do not.
+func (c constraint) matchesPlainComparison(candidate *Version) bool {
+	prefix := &Version{numeric: c.pattern.numeric}
+	switch c.op {
+	case opLess:
+		return compareNumericAndPrerelease(candidate, prefix) < 0
+	case opLessOrEqual:
+		return compareNumericAndPrerelease(candidate, nextPrefix(c.pattern.numeric)) < 0
+	case opGreater:
+		return compareNumericAndPrerelease(candidate, nextPrefix(c.pattern.numeric)) >= 0
+	case opGreaterOrEqual:
+		return compareNumericAndPrerelease(candidate, prefix) >= 0
+	default:
+		return false
+	}
+}
+
+func nextPrefix(prefix []uint64) *Version {
+	numeric := append([]uint64(nil), prefix...)
+	numeric[len(numeric)-1]++
+	return &Version{numeric: numeric}
+}
+
 func (p versionPattern) matchesExact(candidate *Version) bool {
+	if p.plain {
+		// The first components of the candidate, zero padded, equal the
+		// prefix: 25.0.5 matches 25.0.5+8 and 25.0.5.1, and 25.0 matches 25.
+		for i, value := range p.numeric {
+			if candidate.numericValue(i) != value {
+				return false
+			}
+		}
+		return len(candidate.prerelease) == 0
+	}
 	if p.wildcard {
 		if len(candidate.numeric) < len(p.numeric) {
 			return false
@@ -142,7 +184,11 @@ func sameNumericSequence(left, right []uint64) bool {
 }
 
 // ParseRange parses javm selectors such as 25, temurin@25.0.4,
-// >=21, ~17.0.10, and compound comparisons.
+// >=21, ~17.0.10, and compound comparisons. A selector made of numeric
+// components only (25, 25.0.5, 25.0.x) is a numeric prefix: 25.0.5 matches
+// 25.0.5+8 and the 25.0.5.1 emergency release, and 25.0.5.0 pins 25.0.5. A
+// selector with a pre-release, build or optional part (25.0.5+8) matches that
+// exact version.
 func ParseRange(raw string) (*Range, error) {
 	original := raw
 	raw = strings.TrimSpace(raw)
@@ -220,8 +266,8 @@ func parseGroup(raw string) ([]constraint, error) {
 	return result, nil
 }
 
-// parseHyphenRange expands "left - right". A partial right side such as 21 or
-// 21.0 includes the whole prefix, so it becomes an exclusive upper boundary.
+// parseHyphenRange expands "left - right" into >=left and <=right, so a plain
+// right side such as 21 or 21.0.2 includes every version that starts with it.
 func parseHyphenRange(leftRaw, rightRaw string) ([]constraint, error) {
 	left, err := parsePattern(leftRaw)
 	if err != nil {
@@ -235,9 +281,6 @@ func parseHyphenRange(leftRaw, rightRaw string) ([]constraint, error) {
 	if len(right.numeric) == 0 {
 		// A bare wildcard upper side ("17 - x") has no upper boundary.
 		return []constraint{lower}, nil
-	}
-	if len(right.numeric) <= 2 && !right.hasPre && !right.hasBuild && !right.hasOptional {
-		return []constraint{lower, {op: opLess, pattern: boundary(right, len(right.numeric)-1)}}, nil
 	}
 	return []constraint{lower, {op: opLessOrEqual, pattern: right}}, nil
 }
@@ -326,6 +369,8 @@ func splitOperator(token string) (operatorValue operator, value string) {
 	return opExact, token
 }
 
+// parsePattern marks a version with numeric components only (25, 25.0.5,
+// 25.0.x) as plain: its numeric components are a prefix, not an exact version.
 func parsePattern(raw string) (versionPattern, error) {
 	if raw == "" {
 		return versionPattern{}, fmt.Errorf("empty version")
@@ -383,11 +428,7 @@ func parsePattern(raw string) (versionPattern, error) {
 		hasPre:      len(parsed.prerelease) > 0,
 		hasOptional: len(parsed.optional) > 0,
 	}
-	// Keep the historic javm behavior where 25 and 25.0 mean a prefix range,
-	// while 25.0.4 (and more precise versions) are exact numeric versions.
-	if wildcardIndex < 0 && len(numeric) < 3 && !pattern.hasPre && !pattern.hasBuild && !pattern.hasOptional {
-		pattern.wildcard = true
-	}
+	pattern.plain = !pattern.hasPre && !pattern.hasBuild && !pattern.hasOptional
 	return pattern, nil
 }
 
@@ -421,7 +462,7 @@ func boundary(pattern versionPattern, index int) versionPattern {
 	numeric[index]++
 	numeric = numeric[:index+1]
 	version := &Version{numeric: numeric, raw: strings.Join(uintsToStrings(numeric), ".")}
-	return versionPattern{version: version, numeric: numeric}
+	return versionPattern{version: version, numeric: numeric, plain: true}
 }
 
 func uintsToStrings(values []uint64) []string {
