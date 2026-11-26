@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.1](https://github.com/felipebz/javm/compare/v1.0.0...v1.0.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **init:** use CRLF line endings for cmd wrapper ([27ebaed](https://github.com/felipebz/javm/commit/27ebaeda6ab6653203dafb4dfc501fdd948c097e))
+* **install:** retry Windows promotion on locked files ([9855ffe](https://github.com/felipebz/javm/commit/9855ffe9373c36afdbf121a2c3922b24114cac69))
+* **install:** use package filename for archive extension, fixes GraalVM installation ([bb14a51](https://github.com/felipebz/javm/commit/bb14a51aa5133778c4ae7221da06d4b02b2bfbdc))
+* send javm User-Agent on HTTP requests ([9af7858](https://github.com/felipebz/javm/commit/9af7858e2dcb5bb705eaa5a3799017b5f41acaa8))
+* **version:** match plain selectors as numeric prefixes ([861f18a](https://github.com/felipebz/javm/commit/861f18a1cd97d9bfa928c00415c2d64c2e03c621))
+
 ## [1.0.0](https://github.com/felipebz/javm/compare/v0.17.0...v1.0.0) (2026-11-22)
 
 
